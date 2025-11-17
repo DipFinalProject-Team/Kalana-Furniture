@@ -2,12 +2,29 @@ import { Link } from 'react-router-dom';
 
 const Header = () => {
   return (
-    <header className="bg-white shadow-md fixed w-full z-10">
-      <div className="max-w-7xl mx-auto px-4">
+    <header className="bg-white shadow-md fixed w-full z-50">
+      <div className="max-w-7xl mx-auto px-8">
         <div className="flex justify-between items-center py-4">
           <div className="flex items-center">
-            <Link to="/" className="font-serif text-2xl font-bold text-wood-brown">
-              Kalana Furniture
+            <Link to="/" className="flex items-center group relative">
+              <div className="relative group">
+                <div className="absolute -inset-2 bg-gradient-to-r from-wood-accent via-wood-brown to-wood-accent-hover rounded-xl blur opacity-30 group-hover:opacity-60 transition-opacity duration-500"></div>
+                <div className="relative bg-white rounded-xl p-2 transform transition-all duration-500">
+                  <img 
+                    src='/logo.png' 
+                    alt="Kalana Furniture Logo" 
+                    className='w-50 h-10 object-cover'
+                  />
+                </div>
+              </div>
+              <div className="ml-6 text-left">
+                <h1 className="font-serif text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-wood-brown to-wood-accent group-hover:from-wood-accent group-hover:to-wood-brown transition-all duration-500">
+                  Kalana
+                </h1>
+                <p className="text-md font-semibold text-wood-accent group-hover:text-wood-brown transition-colors duration-300">
+                  Furniture
+                </p>
+              </div>
             </Link>
           </div>
           <div className="hidden md:flex items-center space-x-6">

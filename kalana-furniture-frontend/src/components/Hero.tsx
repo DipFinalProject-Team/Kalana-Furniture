@@ -1,53 +1,23 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-
-const HeroSnowAnimation = () => {
-  const [heroSnowflakes, setHeroSnowflakes] = useState<Array<{ id: number; left: number; animationDuration: number; animationDelay: number; size: number }>>([]);
-
-  useEffect(() => {
-    const generateHeroSnowflakes = () => {
-      const flakes = [];
-      for (let i = 0; i < 30; i++) {
-        flakes.push({
-          id: i,
-          left: Math.random() * 100,
-          animationDuration: Math.random() * 8 + 8, // 8-16 seconds
-          animationDelay: Math.random() * 5, // 0-5 seconds delay
-          size: Math.random() * 20 + 10, // 10-30px
-        });
-      }
-      setHeroSnowflakes(flakes);
-    };
-
-    generateHeroSnowflakes();
-  }, []);
-
-  return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {heroSnowflakes.map((flake) => (
-        <div
-          key={flake.id}
-          className="absolute animate-hero-snowfall opacity-60"
-          style={{
-            left: `${flake.left}%`,
-            animationDuration: `${flake.animationDuration}s`,
-            animationDelay: `${flake.animationDelay}s`,
-            fontSize: `${flake.size}px`,
-          }}
-        >
-          ❄
-        </div>
-      ))}
-    </div>
-  );
-};
+import SnowAnimation from './SnowAnimation';
 
 const Hero = () => {
   return (
     <section className="relative h-[80vh] bg-wood-brown text-white flex items-center justify-center overflow-hidden">
-      <HeroSnowAnimation />
+      <SnowAnimation
+        containerClass="absolute inset-0 pointer-events-none overflow-hidden"
+        numFlakes={30}
+        minDuration={8}
+        maxDuration={16}
+        minDelay={0}
+        maxDelay={5}
+        minSize={10}
+        maxSize={30}
+        opacity={0.6}
+      />
+      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80')] opacity-30 bg-cover bg-center"></div>
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')] opacity-10"></div>
-      <div className="relative z-10 text-center p-4 mt-16">
+      <div className="relative z-10 text-center p-4 mt-28">
         <h1 className="font-serif text-5xl md:text-6xl font-bold mb-4 drop-shadow-lg">Your Space, Your Style</h1>
         <p className="text-lg md:text-xl text-wood-light mb-8 drop-shadow-md">Find the perfect furniture to complete your home</p>
         <div className="max-w-2xl mx-auto">
