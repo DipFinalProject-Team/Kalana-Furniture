@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #F0EAD6; /* wood-light */
+}
+
+
+@font-face {
+  font-family: "RealwoodRegular";
+  src: url("/fonts/Realwood-Regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "RealwoodOutline";
+  src: url("/fonts/Realwood-Outline.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "RealwoodInline";
+  src: url("/fonts/Realwood-Inline.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
