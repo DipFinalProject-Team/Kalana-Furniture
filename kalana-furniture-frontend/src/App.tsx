@@ -6,27 +6,36 @@ import HomePage from './components/HomePage';
 import UserProfile from './components/UserProfile';
 import Cart from './components/Cart';
 import OrderHistory from './components/OrderHistory';
-import ProductsPage from './pages/ProductsPage';
+import ProductsPage from './components/ProductsPage';
+import CategoryProducts from './components/CategoryProducts';
 import SnowAnimation from './components/SnowAnimation';
+import { CartProvider } from './contexts/CartContext';
+import ProductDetailsPage from './components/ProductDetailsPage';
+import OffersPage from './components/OffersPage';
 
 function App() {
   const navigate = useNavigate();
 
   return (
-    <div className="relative">
-      <SnowAnimation />
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginPage onSwitchToRegister={() => navigate('/register')} onForgotPassword={() => navigate('/forgot-password')} />} />
-        <Route path="/register" element={<RegistrationPage onSwitchToLogin={() => navigate('/login')} />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage onSwitchToLogin={() => navigate('/login')} />} />
-        <Route path="/profile" element={<UserProfile />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/orders" element={<OrderHistory />} />
-        <Route path="/products" element={<ProductsPage />} />
-        <Route path="*" element={<HomePage />} />
-      </Routes>
-    </div>
+    <CartProvider>
+      <div className="relative">
+        <SnowAnimation />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage onSwitchToRegister={() => navigate('/register')} onForgotPassword={() => navigate('/forgot-password')} />} />
+          <Route path="/register" element={<RegistrationPage onSwitchToLogin={() => navigate('/login')} />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage onSwitchToLogin={() => navigate('/login')} />} />
+          <Route path="/profile" element={<UserProfile />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/orders" element={<OrderHistory />} />
+          <Route path="/products" element={<ProductsPage />} />
+          <Route path="/offers" element={<OffersPage />} />
+          <Route path="/category/:categoryName" element={<CategoryProducts />} />
+          <Route path="/product/:id" element={<ProductDetailsPage />} />
+          <Route path="*" element={<HomePage />} />
+        </Routes>
+      </div>
+    </CartProvider>
   );
 }
 

@@ -6,15 +6,13 @@ import {
   FaEnvelope,
   FaCamera,
   FaLock,
-  FaArrowLeft,
   FaCheckCircle,
   FaExclamationTriangle,
 } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
 import SnowAnimation from "./SnowAnimation";
+import Header from './Header';
 
 const UserProfile = () => {
-  const navigate = useNavigate();
   const [profileData, setProfileData] = useState({
     name: "John Doe",
     phone: "+94",
@@ -228,7 +226,11 @@ const UserProfile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wood-brown via-nav-brown to-wood-accent py-12 px-4 relative overflow-hidden">
+    <>
+    <div>
+      <Header />
+    </div>
+    <div className="min-h-screen bg-gradient-to-br from-wood-brown via-nav-brown to-wood-accent py-[140px] px-4 relative overflow-hidden">
       {/* Floating decorative elements */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-20 left-10 w-32 h-32 bg-wood-accent/10 rounded-full animate-blob"></div>
@@ -248,24 +250,10 @@ const UserProfile = () => {
         opacity={0.5}
       />
       <div className="max-w-4xl mx-auto">
-        {/* Back Button */}
-        <div className="mb-8">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center space-x-2 text-white hover:text-wood-accent transition-colors duration-300 group"
-          >
-            <FaArrowLeft className="text-lg group-hover:-translate-x-1 transition-transform duration-300" />
-            <span className="font-medium">Back to Previous Page</span>
-          </button>
-        </div>
-
-        <div className="text-center mb-12">
-          <h1 className="font-serif text-5xl font-bold text-white mb-4 drop-shadow-lg">
+        <div className="text-start mb-4">
+          <h1 className="font-sans text-4xl font-bold text-white mb-4 drop-shadow-lg">
             Your Profile
           </h1>
-          <p className="text-wood-light text-lg">
-            Manage your account details and preferences
-          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -601,6 +589,7 @@ const UserProfile = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

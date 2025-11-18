@@ -1,13 +1,5 @@
 import { useState } from 'react';
 
-// Re-using the FurnitureIcon from other pages for consistency
-const FurnitureIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375z" />
-    <path fillRule="evenodd" d="M3.087 9l.54 9.176A3 3 0 006.62 21h10.757a3 3 0 002.995-2.824L20.913 9H3.087zm6.163 3.75A.75.75 0 0110 12h4a.75.75 0 010 1.5h-4a.75.75 0 01-.75-.75z" clipRule="evenodd" />
-  </svg>
-);
-
 type ForgotPasswordPageProps = {
   onSwitchToLogin: () => void;
 };
@@ -54,7 +46,11 @@ const ForgotPasswordPage = ({ onSwitchToLogin }: ForgotPasswordPageProps) => {
       <div className="w-full max-w-md bg-white shadow-2xl rounded-lg overflow-hidden">
         <div className="p-8 md:p-12">
           <div className="flex justify-center mb-6">
-            <FurnitureIcon className="w-20 h-20 text-wood-accent" />
+            <img
+            src="/logo.png"
+            alt="Kalana Furniture Logo"
+            className="w-[140px] h-[63px] object-cover"
+          />
           </div>
           <h2 className="font-serif text-3xl font-bold text-wood-brown text-center mb-2">Forgot Password?</h2>
           

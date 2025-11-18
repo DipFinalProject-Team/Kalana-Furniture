@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom';
+import { useCart } from '../contexts/CartContext';
 
 const Header = () => {
+  const { getTotalItems } = useCart();
+  const cartItemCount = getTotalItems();
   return (
     <header className="bg-white shadow-md fixed w-full z-50">
       <div className="max-w-7xl mx-auto px-8">
@@ -28,15 +31,23 @@ const Header = () => {
             </Link>
           </div>
           <div className="hidden md:flex items-center space-x-6">
+            <Link to="/products" className="text-gray-600 hover:text-wood-accent transition duration-300">Products</Link>
+            <Link to="/offers" className="text-gray-600 hover:text-wood-accent transition duration-300">Offers</Link>
+            <div className="border-l border-gray-300 h-6"></div>
             <Link to="/login" className="text-gray-600 hover:text-wood-accent transition duration-300">Login</Link>
             <Link to="/register" className="bg-wood-accent text-white font-bold py-2 px-4 rounded-md hover:bg-wood-accent-hover transition duration-300">
               Register
             </Link>
             <div className="border-l border-gray-300 h-6"></div>
-            <Link to="/cart" className="text-gray-600 hover:text-wood-accent transition duration-300" title="Shopping Cart">
+            <Link to="/cart" className="relative text-gray-600 hover:text-wood-accent transition duration-300" title="Shopping Cart">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
+              {cartItemCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-wood-accent text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                  {cartItemCount}
+                </span>
+              )}
             </Link>
             <Link to="/orders" className="text-gray-600 hover:text-wood-accent transition duration-300" title="Order History">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

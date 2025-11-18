@@ -1,12 +1,5 @@
 import { useState } from 'react';
 import PasswordStrengthMeter from './PasswordStrengthMeter.tsx';
-// You can replace this with your actual logo or an icon
-const FurnitureIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375z" />
-    <path fillRule="evenodd" d="M3.087 9l.54 9.176A3 3 0 006.62 21h10.757a3 3 0 002.995-2.824L20.913 9H3.087zm6.163 3.75A.75.75 0 0110 12h4a.75.75 0 010 1.5h-4a.75.75 0 01-.75-.75z" clipRule="evenodd" />
-  </svg>
-); 
 
 type RegistrationPageProps = {
   onSwitchToLogin: () => void;
@@ -111,7 +104,11 @@ const RegistrationPage = ({ onSwitchToLogin }: RegistrationPageProps) => {
         {/* Left Side - Decorative */}
         <div className="hidden md:flex md:w-1/2 bg-wood-brown p-12 flex-col justify-center items-center text-white relative">
            <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')] opacity-10"></div>
-          <FurnitureIcon className="w-24 h-24 mb-4 text-wood-accent" />
+         <img
+            src="/logo.png"
+            alt="Kalana Furniture Logo"
+            className="w-[250px] h-[113px] object-cover mb-6"
+          />
           <h1 className="font-serif text-4xl font-bold mb-2">Kalana Furniture</h1>
           <p className="text-center text-wood-light">Crafting comfort for your modern life.</p>
         </div>
@@ -162,7 +159,7 @@ const RegistrationPage = ({ onSwitchToLogin }: RegistrationPageProps) => {
                     onChange={handleInputChange}
                   />
                   {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
-                  <PasswordStrengthMeter password={formData.password} />
+                  <PasswordStrengthMeter password={formData.password}/>
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-wood-brown mb-1" htmlFor="confirm-password">Confirm Password</label>
