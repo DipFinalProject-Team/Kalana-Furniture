@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import PasswordStrengthMeter from './PasswordStrengthMeter.tsx';
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 type RegistrationPageProps = {
   onSwitchToLogin: () => void;
@@ -16,6 +17,8 @@ const RegistrationPage = ({ onSwitchToLogin }: RegistrationPageProps) => {
   });
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
@@ -149,29 +152,47 @@ const RegistrationPage = ({ onSwitchToLogin }: RegistrationPageProps) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-wood-brown mb-1" htmlFor="password">Password</label>
-                  <input 
-                    className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-wood-accent ${errors.password ? 'border-red-500' : ''}`} 
-                    id="password" 
-                    name="password"
-                    type="password" 
-                    placeholder="••••••••"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                  />
+                  <div className="relative">
+                    <input 
+                      className={`w-full px-4 py-2 pr-12 border rounded-md focus:outline-none focus:ring-2 focus:ring-wood-accent ${errors.password ? 'border-red-500' : ''}`} 
+                      id="password" 
+                      name="password"
+                      type={showPassword ? "text" : "password"} 
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
                   {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
                   <PasswordStrengthMeter password={formData.password}/>
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-wood-brown mb-1" htmlFor="confirm-password">Confirm Password</label>
-                  <input 
-                    className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-wood-accent ${errors.confirmPassword ? 'border-red-500' : ''}`} 
-                    id="confirm-password" 
-                    name="confirmPassword"
-                    type="password" 
-                    placeholder="••••••••"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                  />
+                  <div className="relative">
+                    <input 
+                      className={`w-full px-4 py-2 pr-12 border rounded-md focus:outline-none focus:ring-2 focus:ring-wood-accent ${errors.confirmPassword ? 'border-red-500' : ''}`} 
+                      id="confirm-password" 
+                      name="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"} 
+                      placeholder="••••••••"
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
                   {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
                 </div>
             </div>

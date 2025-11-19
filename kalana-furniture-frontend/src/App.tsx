@@ -5,16 +5,19 @@ import ForgotPasswordPage from './components/ForgotPasswordPage';
 import HomePage from './components/HomePage';
 import UserProfile from './components/UserProfile';
 import Cart from './components/Cart';
-import OrderHistory from './components/OrderHistory';
+import OrderHistoryPage from './components/OrderHistory';
 import ProductsPage from './components/ProductsPage';
 import CategoryProducts from './components/CategoryProducts';
 import SnowAnimation from './components/SnowAnimation';
 import { CartProvider } from './contexts/CartContext';
 import ProductDetailsPage from './components/ProductDetailsPage';
 import OffersPage from './components/OffersPage';
+import ReviewPage from './components/ReviewPage';
+import CheckoutPage from './components/CheckoutPage';
 
 function App() {
   const navigate = useNavigate();
+
 
   return (
     <CartProvider>
@@ -27,11 +30,13 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage onSwitchToLogin={() => navigate('/login')} />} />
           <Route path="/profile" element={<UserProfile />} />
           <Route path="/cart" element={<Cart />} />
-          <Route path="/orders" element={<OrderHistory />} />
+          <Route path="/orders" element={<OrderHistoryPage />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/offers" element={<OffersPage />} />
           <Route path="/category/:categoryName" element={<CategoryProducts />} />
           <Route path="/product/:id" element={<ProductDetailsPage />} />
+          <Route path="/review/:id" element={<ReviewPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>
       </div>

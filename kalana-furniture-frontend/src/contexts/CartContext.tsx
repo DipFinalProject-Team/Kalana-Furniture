@@ -17,6 +17,11 @@ interface CartContextType {
   clearCart: () => void;
   getTotalItems: () => number;
   getTotalPrice: () => number;
+  appliedDiscount: number;
+  promoCode: string;
+  promoMessage: string;
+  applyPromoCode: (code: string) => boolean;
+  removePromoCode: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -61,6 +66,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     },
   ]);
 
+  const [appliedDiscount, setAppliedDiscount] = useState(0);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoMessage, setPromoMessage] = useState('');
+
   const addToCart = (item: CartItem) => {
     setCartItems(prev => {
       const existing = prev.find(i => i.id === item.id);
@@ -95,6 +104,46 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     return cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
   };
 
+  const applyPromoCode = (code: string): boolean => {
+    const upperCode = code.toUpperCase().trim();
+    
+    // Sample promo codes - in a real app, this would come from a backend
+    const promoCodes = {
+      'SAVE10': { discount: 0.1, type: 'percentage' }, // 10% off
+      'SAVE20': { discount: 0.2, type: 'percentage' }, // 20% off
+      'FIXED50': { discount: 50, type: 'fixed' }, // $50 off
+      'WOODLOVER': { discount: 0.15, type: 'percentage' }, // 15% off
+    };
+
+    if (promoCodes[upperCode as keyof typeof promoCodes]) {
+      const promo = promoCodes[upperCode as keyof typeof promoCodes];
+      const subtotal = getTotalPrice();
+      
+      let discountAmount = 0;
+      if (promo.type === 'percentage') {
+        discountAmount = subtotal * promo.discount;
+      } else {
+        discountAmount = Math.min(promo.discount, subtotal);
+      }
+      
+      setAppliedDiscount(discountAmount);
+      setPromoCode(upperCode);
+      setPromoMessage(`Promo code applied! You saved Rs.${discountAmount.toFixed(2)}`);
+      return true;
+    } else {
+      setAppliedDiscount(0);
+      setPromoCode('');
+      setPromoMessage('Invalid promo code. Please try again.');
+      return false;
+    }
+  };
+
+  const removePromoCode = () => {
+    setPromoCode('');
+    setAppliedDiscount(0);
+    setPromoMessage('');
+  };
+
   return (
     <CartContext.Provider value={{
       cartItems,
@@ -103,7 +152,12 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       updateQuantity,
       clearCart,
       getTotalItems,
-      getTotalPrice
+      getTotalPrice,
+      appliedDiscount,
+      promoCode,
+      promoMessage,
+      applyPromoCode,
+      removePromoCode
     }}>
       {children}
     </CartContext.Provider>

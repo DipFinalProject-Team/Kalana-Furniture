@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { FaTrash, FaPlus, FaMinus, FaShoppingCart, FaCreditCard } from 'react-icons/fa';
+import { useMemo, useState } from 'react';
+import { FaTrash, FaPlus, FaMinus, FaShoppingCart, FaCreditCard, FaTag } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import SnowAnimation from './SnowAnimation';
 import { useCart } from '../contexts/CartContext';
@@ -7,7 +7,9 @@ import Header from './Header';
 
 const Cart = () => {
   const navigate = useNavigate();
-  const { cartItems, updateQuantity, removeFromCart, getTotalPrice } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, getTotalPrice, appliedDiscount, promoMessage, applyPromoCode, removePromoCode } = useCart();
+  
+  const [localPromoCode, setLocalPromoCode] = useState('');
 
   const handleQuantityChange = (id: number, delta: number) => {
     const item = cartItems.find(item => item.id === id);
@@ -20,7 +22,17 @@ const Cart = () => {
     removeFromCart(id);
   };
 
-  const total = useMemo(() => getTotalPrice(), [cartItems]);
+  const handleApplyPromoCode = () => {
+    applyPromoCode(localPromoCode);
+  };
+
+  const handleRemovePromoCode = () => {
+    removePromoCode();
+    setLocalPromoCode('');
+  };
+
+  const subtotal = useMemo(() => getTotalPrice(), [cartItems]);
+  const total = useMemo(() => Math.max(subtotal - appliedDiscount, 0), [subtotal, appliedDiscount]);
 
   return (
     <>
@@ -88,13 +100,62 @@ const Cart = () => {
             <div className="lg:col-span-1">
               <div className="sticky top-28 bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20 animate-in fade-in-0 slide-in-from-right-4 duration-700">
                 <h2 className="text-2xl font-bold text-white mb-6 border-b border-white/20 pb-4">Order Summary</h2>
-                <div className="space-y-4">
-                  <div className="flex justify-between text-2xl font-bold text-white">
+                
+                {/* Promo Code Section */}
+                <div className="mb-6">
+                  <label className="flex items-center text-sm font-medium text-wood-light mb-2">
+                    <FaTag className="mr-2" />
+                    Promo Code
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={localPromoCode}
+                      onChange={(e) => setLocalPromoCode(e.target.value)}
+                      placeholder="Enter promo code"
+                      className="flex-1 px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white placeholder-wood-light focus:outline-none focus:ring-2 focus:ring-wood-accent focus:border-transparent"
+                    />
+                    <button
+                      onClick={handleApplyPromoCode}
+                      className="px-4 py-2 bg-wood-accent text-white rounded-lg hover:bg-wood-accent-hover transition-colors duration-200 font-medium"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                  {promoMessage && (
+                    <p className={`text-sm mt-2 ${appliedDiscount > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {promoMessage}
+                    </p>
+                  )}
+                  {appliedDiscount > 0 && (
+                    <button
+                      onClick={handleRemovePromoCode}
+                      className="text-xs text-red-400 hover:text-red-300 mt-1 underline"
+                    >
+                      Remove promo code
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-4 border-t border-white/20 pt-4">
+                  <div className="flex justify-between text-white">
+                    <span>Subtotal</span>
+                    <span>Rs.{subtotal.toFixed(2)}</span>
+                  </div>
+                  {appliedDiscount > 0 && (
+                    <div className="flex justify-between text-green-400">
+                      <span>Discount</span>
+                      <span>-Rs.{appliedDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-2xl font-bold text-white border-t border-white/20 pt-4">
                     <span>Total</span>
                     <span>Rs.{total.toFixed(2)}</span>
                   </div>
                 </div>
-                <button className="w-full mt-8 bg-wood-accent text-white font-bold py-4 px-6 rounded-lg hover:bg-wood-accent-hover transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-[0_0_20px_rgba(200,162,124,0.5)] flex items-center justify-center">
+                <button 
+                  onClick={() => navigate('/checkout')}
+                  className="w-full mt-8 bg-wood-accent text-white font-bold py-4 px-6 rounded-lg hover:bg-wood-accent-hover transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-[0_0_20px_rgba(200,162,124,0.5)] flex items-center justify-center">
                   <FaCreditCard className="mr-3" />
                   Proceed to Checkout
                 </button>

@@ -8,6 +8,8 @@ import {
   FaLock,
   FaCheckCircle,
   FaExclamationTriangle,
+  FaEye,
+  FaEyeSlash,
 } from "react-icons/fa";
 import SnowAnimation from "./SnowAnimation";
 import Header from './Header';
@@ -31,6 +33,8 @@ const UserProfile = () => {
   );
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error'; visible: boolean }>({
     text: '',
     type: 'success',
@@ -431,7 +435,7 @@ const UserProfile = () => {
 
       {/* Styled Message Notification */}
       {message.visible && (
-        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-right-4 fade-in-0 duration-300">
+        <div className="fixed top-28 right-4 z-50 animate-in slide-in-from-right-4 fade-in-0 duration-300">
           <div className={`flex items-center space-x-3 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-lg ${
             message.type === 'success'
               ? 'bg-green-500/20 border-green-400/30 text-green-100'
@@ -499,19 +503,28 @@ const UserProfile = () => {
                 <label className="block text-wood-light mb-2">
                   New Password
                 </label>
-                <input
-                  type="password"
-                  value={passwordData.newPassword}
-                  onChange={(e) =>
-                    handlePasswordChange("newPassword", e.target.value)
-                  }
-                  className={`w-full px-4 py-3 bg-white/20 border rounded-lg text-white placeholder-wood-light focus:outline-none focus:ring-2 transition-all duration-300 ${
-                    passwordErrors.newPassword
-                      ? 'border-red-400 focus:ring-red-400'
-                      : 'border-white/30 focus:ring-wood-accent'
-                  }`}
-                  placeholder="Enter new password"
-                />
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    value={passwordData.newPassword}
+                    onChange={(e) =>
+                      handlePasswordChange("newPassword", e.target.value)
+                    }
+                    className={`w-full px-4 py-3 pr-12 bg-white/20 border rounded-lg text-white placeholder-wood-light focus:outline-none focus:ring-2 transition-all duration-300 ${
+                      passwordErrors.newPassword
+                        ? 'border-red-400 focus:ring-red-400'
+                        : 'border-white/30 focus:ring-wood-accent'
+                    }`}
+                    placeholder="Enter new password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                  >
+                    {showNewPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
                 {passwordData.newPassword && (
                   <div className="mt-2">
                     <div className="flex items-center space-x-2">
@@ -549,19 +562,28 @@ const UserProfile = () => {
                 <label className="block text-wood-light mb-2">
                   Confirm New Password
                 </label>
-                <input
-                  type="password"
-                  value={passwordData.confirmPassword}
-                  onChange={(e) =>
-                    handlePasswordChange("confirmPassword", e.target.value)
-                  }
-                  className={`w-full px-4 py-3 bg-white/20 border rounded-lg text-white placeholder-wood-light focus:outline-none focus:ring-2 transition-all duration-300 ${
-                    passwordErrors.confirmPassword
-                      ? 'border-red-400 focus:ring-red-400'
-                      : 'border-white/30 focus:ring-wood-accent'
-                  }`}
-                  placeholder="Confirm new password"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={passwordData.confirmPassword}
+                    onChange={(e) =>
+                      handlePasswordChange("confirmPassword", e.target.value)
+                    }
+                    className={`w-full px-4 py-3 pr-12 bg-white/20 border rounded-lg text-white placeholder-wood-light focus:outline-none focus:ring-2 transition-all duration-300 ${
+                      passwordErrors.confirmPassword
+                        ? 'border-red-400 focus:ring-red-400'
+                        : 'border-white/30 focus:ring-wood-accent'
+                    }`}
+                    placeholder="Confirm new password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
                 {passwordErrors.confirmPassword && (
                   <p className="text-red-400 text-sm mt-1 flex items-center">
                     <FaExclamationTriangle className="mr-1" />
