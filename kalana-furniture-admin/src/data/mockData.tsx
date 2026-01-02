@@ -44,15 +44,15 @@ export const dashboardStats = [
   {
     id: 6,
     title: 'Total Revenue',
-    value: '$52,000',
+    value: 'Rs. 52,000',
     icon: FaWallet,
     color: 'bg-purple-500',
     trend: '+15%',
   },
   {
     id: 7,
-    title: 'Monthly Revenue',
-    value: '$8,900',
+    title: 'Monthly Sales',
+    value: 'Rs. 8,900',
     icon: FaMoneyBillWave,
     color: 'bg-teal-500',
     trend: '+10%',

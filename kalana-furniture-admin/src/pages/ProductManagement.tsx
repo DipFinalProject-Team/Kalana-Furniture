@@ -185,7 +185,7 @@ const ProductManagement: React.FC = () => {
                   <p className="text-xs text-gray-500 mb-1">{product.category}</p>
                   <h3 className="font-bold text-gray-800 line-clamp-1">{product.productName}</h3>
                 </div>
-                <p className="font-bold text-wood-brown">${product.price}</p>
+                <p className="font-bold text-wood-brown">Rs. {product.price}</p>
               </div>
               
               <div className="flex items-center justify-between text-sm text-gray-500 mt-4 pt-4 border-t border-gray-50">
@@ -260,7 +260,7 @@ const ProductManagement: React.FC = () => {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Price ($)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Price (Rs.)</label>
                     <input
                       type="number"
                       name="price"

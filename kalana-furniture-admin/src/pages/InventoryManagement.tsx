@@ -196,7 +196,7 @@ const InventoryManagement: React.FC = () => {
                   </td>
                   <td className="p-4 text-gray-600 font-mono text-sm">{item.sku}</td>
                   <td className="p-4 text-gray-600">{item.category}</td>
-                  <td className="p-4 font-medium text-gray-800">${item.price}</td>
+                  <td className="p-4 font-medium text-gray-800">Rs. {item.price}</td>
                   <td className="p-4">
                     {editingId === item.id ? (
                       <div className="flex items-center gap-2">

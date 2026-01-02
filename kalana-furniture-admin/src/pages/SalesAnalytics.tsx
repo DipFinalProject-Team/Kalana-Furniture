@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, 
+  LineChart, Line, PieChart, Pie, Cell, 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
   AreaChart, Area 
 } from 'recharts';
@@ -8,17 +8,11 @@ import {
   monthlySalesData, 
   ordersData, 
   topSellingProducts, 
-  salesByCategory, 
-  inventoryData 
+  salesByCategory 
 } from '../data/mockData';
-import { FaChartLine, FaShoppingCart, FaExclamationTriangle, FaTrophy } from 'react-icons/fa';
+import { FaChartLine, FaShoppingCart, FaTrophy } from 'react-icons/fa';
 
 const SalesAnalytics: React.FC = () => {
-  // Filter low stock items
-  const lowStockItems = inventoryData.filter(
-    item => item.status === 'Low Stock' || item.status === 'Out of Stock'
-  );
-
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F'];
 
   return (
@@ -52,10 +46,10 @@ const SalesAnalytics: React.FC = () => {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af' }} tickFormatter={(value) => `$${value}`} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af' }} tickFormatter={(value) => `Rs. ${value}`} />
                 <Tooltip 
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                  formatter={(value: number | string | Array<number | string> | undefined) => [`$${value}`, 'Sales']}
+                  formatter={(value: number | string | Array<number | string> | undefined) => [`Rs. ${value}`, 'Sales']}
                 />
                 <Area type="monotone" dataKey="sales" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorSales)" />
               </AreaChart>
@@ -150,7 +144,7 @@ const SalesAnalytics: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-wood-brown">{product.sales} Sold</p>
-                  <p className="text-xs text-gray-500">${product.price}</p>
+                  <p className="text-xs text-gray-500">Rs. {product.price}</p>
                 </div>
                 <div className="w-24 bg-gray-100 rounded-full h-2 hidden sm:block">
                   <div 
@@ -164,54 +158,7 @@ const SalesAnalytics: React.FC = () => {
         </div>
       </div>
 
-      {/* Low Stock Alert Chart */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <div className="flex items-center gap-2 mb-6">
-          <div className="p-2 bg-red-50 rounded-lg text-red-600">
-            <FaExclamationTriangle />
-          </div>
-          <h2 className="text-lg font-bold text-gray-800">Low Stock Alerts</h2>
-        </div>
-        
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={lowStockItems}
-              layout="vertical"
-              margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
-              <XAxis type="number" hide />
-              <YAxis dataKey="productName" type="category" width={150} tick={{ fontSize: 12, fill: '#4b5563' }} />
-              <Tooltip 
-                cursor={{ fill: 'transparent' }}
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-              />
-              <Bar dataKey="stock" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={20}>
-                {lowStockItems.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.stock === 0 ? '#ef4444' : '#f59e0b'} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {lowStockItems.map((item) => (
-            <div key={item.id} className={`p-3 rounded-lg border ${item.stock === 0 ? 'bg-red-50 border-red-100' : 'bg-yellow-50 border-yellow-100'}`}>
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-bold text-gray-800 text-sm truncate">{item.productName}</p>
-                  <p className="text-xs text-gray-500">SKU: {item.sku}</p>
-                </div>
-                <span className={`text-xs font-bold px-2 py-1 rounded-full ${item.stock === 0 ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                  {item.stock} left
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+
     </div>
   );
 };

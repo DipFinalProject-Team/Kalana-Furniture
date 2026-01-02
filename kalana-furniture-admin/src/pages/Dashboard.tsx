@@ -64,7 +64,7 @@ const Dashboard: React.FC = () => {
                   <p className="text-xs text-gray-500">{product.category}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-wood-brown text-sm">${product.price}</p>
+                  <p className="font-bold text-wood-brown text-sm">Rs. {product.price}</p>
                   <p className="text-xs text-gray-400">{product.lastUpdated}</p>
                 </div>
               </div>

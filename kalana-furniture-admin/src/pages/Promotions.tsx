@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaTag, FaCalendarAlt, FaPercent, FaDollarSign, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaTag, FaCalendarAlt, FaPercent, FaCheck, FaTimes } from 'react-icons/fa';
 import { promotionsData } from '../data/mockData';
 import ConfirmationModal from '../components/ConfirmationModal';
 import Toast from '../components/Toast';
@@ -150,7 +150,7 @@ const Promotions: React.FC = () => {
                 <p className="text-gray-600">{promo.description}</p>
                 <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                   <span className="flex items-center gap-1">
-                    {promo.type === 'percentage' ? <FaPercent /> : <FaDollarSign />}
+                    {promo.type === 'percentage' ? <FaPercent /> : <span className="font-bold">Rs.</span>}
                     {promo.value} {promo.type === 'percentage' ? 'OFF' : 'Discount'}
                   </span>
                   <span className="flex items-center gap-1">
@@ -224,7 +224,7 @@ const Promotions: React.FC = () => {
                     onChange={(e) => setFormData({...formData, type: e.target.value as 'percentage' | 'fixed'})}
                   >
                     <option value="percentage">Percentage (%)</option>
-                    <option value="fixed">Fixed Amount ($)</option>
+                    <option value="fixed">Fixed Amount (Rs.)</option>
                   </select>
                 </div>
               </div>

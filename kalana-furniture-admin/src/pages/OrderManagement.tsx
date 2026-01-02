@@ -206,7 +206,7 @@ const OrderManagement: React.FC = () => {
                   <td className="p-4 font-mono font-medium text-gray-800">{order.id}</td>
                   <td className="p-4 text-gray-800 font-medium">{order.customerName}</td>
                   <td className="p-4 text-gray-600 text-sm">{order.orderDate}</td>
-                  <td className="p-4 font-bold text-gray-800">${order.totalAmount.toFixed(2)}</td>
+                  <td className="p-4 font-bold text-gray-800">Rs. {order.totalAmount.toFixed(2)}</td>
                   <td className="p-4">
                     <button
                       onClick={() => {
@@ -321,13 +321,13 @@ const OrderManagement: React.FC = () => {
                           <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
                         </div>
                       </div>
-                      <p className="font-medium text-gray-800">${item.price.toFixed(2)}</p>
+                      <p className="font-medium text-gray-800">Rs. {item.price.toFixed(2)}</p>
                     </div>
                   ))}
                 </div>
                 <div className="mt-4 pt-3 border-t border-gray-200 flex justify-between items-center">
                   <p className="font-bold text-gray-800">Total Amount</p>
-                  <p className="text-xl font-bold text-wood-brown">${selectedOrder.totalAmount.toFixed(2)}</p>
+                  <p className="text-xl font-bold text-wood-brown">Rs. {selectedOrder.totalAmount.toFixed(2)}</p>
                 </div>
               </div>
 
