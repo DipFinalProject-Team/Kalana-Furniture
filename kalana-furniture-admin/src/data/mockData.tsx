@@ -243,3 +243,264 @@ export const reviewsData = [
     productUrl: 'https://kalana-furniture.com/products/luxury-king-bed',
   },
 ];
+
+export const customersData = [
+  {
+    id: 1,
+    name: 'John Doe',
+    email: 'john.doe@example.com',
+    phone: '+1 (555) 123-4567',
+    registrationDate: '2023-11-15',
+    totalOrders: 5,
+    totalSpent: 1250.00,
+    status: 'Active',
+    avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
+    address: '123 Maple Street, Springfield, IL 62704',
+  },
+  {
+    id: 2,
+    name: 'Jane Smith',
+    email: 'jane.smith@example.com',
+    phone: '+1 (555) 987-6543',
+    registrationDate: '2023-12-01',
+    totalOrders: 3,
+    totalSpent: 850.50,
+    status: 'Active',
+    avatar: 'https://randomuser.me/api/portraits/women/2.jpg',
+    address: '456 Oak Avenue, Metropolis, NY 10012',
+  },
+  {
+    id: 3,
+    name: 'Mike Johnson',
+    email: 'mike.johnson@example.com',
+    phone: '+1 (555) 456-7890',
+    registrationDate: '2024-01-10',
+    totalOrders: 1,
+    totalSpent: 120.00,
+    status: 'Blocked',
+    avatar: 'https://randomuser.me/api/portraits/men/3.jpg',
+    address: '789 Pine Road, Gotham, NJ 07001',
+  },
+  {
+    id: 4,
+    name: 'Sarah Williams',
+    email: 'sarah.williams@example.com',
+    phone: '+1 (555) 222-3333',
+    registrationDate: '2023-10-20',
+    totalOrders: 8,
+    totalSpent: 3400.00,
+    status: 'Active',
+    avatar: 'https://randomuser.me/api/portraits/women/4.jpg',
+    address: '321 Elm Street, Smallville, KS 66002',
+  },
+  {
+    id: 5,
+    name: 'David Brown',
+    email: 'david.brown@example.com',
+    phone: '+1 (555) 777-8888',
+    registrationDate: '2024-01-05',
+    totalOrders: 0,
+    totalSpent: 0.00,
+    status: 'Active',
+    avatar: 'https://randomuser.me/api/portraits/men/5.jpg',
+    address: '654 Cedar Lane, Star City, CA 90210',
+  },
+  {
+    id: 6,
+    name: 'Emily Davis',
+    email: 'emily.davis@example.com',
+    phone: '+1 (555) 999-0000',
+    registrationDate: '2023-09-15',
+    totalOrders: 12,
+    totalSpent: 5600.00,
+    status: 'Active',
+    avatar: 'https://randomuser.me/api/portraits/women/6.jpg',
+    address: '987 Birch Blvd, Central City, MO 64101',
+  },
+  {
+    id: 7,
+    name: 'Robert Wilson',
+    email: 'robert.wilson@example.com',
+    phone: '+1 (555) 111-2222',
+    registrationDate: '2024-01-18',
+    totalOrders: 2,
+    totalSpent: 450.00,
+    status: 'Blocked',
+    avatar: 'https://randomuser.me/api/portraits/men/7.jpg',
+    address: '159 Walnut Way, Coast City, CA 90001',
+  },
+];
+
+export const inventoryData = [
+  {
+    id: 1,
+    productName: 'Modern Sofa Set',
+    sku: 'SOFA-001',
+    category: 'Living Room',
+    price: 1200,
+    stock: 15,
+    status: 'In Stock',
+    lastUpdated: '2024-01-15',
+    image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 2,
+    productName: 'Oak Dining Table',
+    sku: 'TABLE-002',
+    category: 'Dining',
+    price: 800,
+    stock: 3,
+    status: 'Low Stock',
+    lastUpdated: '2024-01-18',
+    image: 'https://images.unsplash.com/photo-1577140917170-285929fb55b7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 3,
+    productName: 'Ergonomic Office Chair',
+    sku: 'CHAIR-003',
+    category: 'Office',
+    price: 250,
+    stock: 45,
+    status: 'In Stock',
+    lastUpdated: '2024-01-10',
+    image: 'https://images.unsplash.com/photo-1580480055273-228ff5388ef8?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 4,
+    productName: 'Luxury King Bed',
+    sku: 'BED-004',
+    category: 'Bedroom',
+    price: 1500,
+    stock: 0,
+    status: 'Out of Stock',
+    lastUpdated: '2024-01-05',
+    image: 'https://images.unsplash.com/photo-1505693416388-b0346efee535?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 5,
+    productName: 'Wooden Coffee Table',
+    sku: 'TABLE-005',
+    category: 'Living Room',
+    price: 300,
+    stock: 8,
+    status: 'In Stock',
+    lastUpdated: '2024-01-12',
+    image: 'https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 6,
+    productName: 'Bookshelf Unit',
+    sku: 'SHELF-006',
+    category: 'Office',
+    price: 450,
+    stock: 2,
+    status: 'Low Stock',
+    lastUpdated: '2024-01-19',
+    image: 'https://images.unsplash.com/photo-1594620302200-9a762244a156?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 7,
+    productName: 'Bedside Lamp',
+    sku: 'LAMP-007',
+    category: 'Bedroom',
+    price: 85,
+    stock: 120,
+    status: 'In Stock',
+    lastUpdated: '2024-01-15',
+    image: 'https://images.unsplash.com/photo-1507473888900-52e1ad1459ce?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+  },
+  {
+    id: 8,
+    productName: 'Recliner Chair',
+    sku: 'CHAIR-008',
+    category: 'Living Room',
+    price: 650,
+    stock: 0,
+    status: 'Out of Stock',
+    lastUpdated: '2024-01-08',
+    image: 'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+  },
+];
+
+export const ordersList = [
+  {
+    id: 'ORD-001',
+    customerName: 'John Doe',
+    orderDate: '2024-01-20',
+    totalAmount: 1250.00,
+    paymentStatus: 'Paid',
+    status: 'Placed',
+    items: [
+      { name: 'Luxury King Bed', quantity: 1, price: 1200 },
+      { name: 'Bedside Lamp', quantity: 1, price: 50 }
+    ]
+  },
+  {
+    id: 'ORD-002',
+    customerName: 'Jane Smith',
+    orderDate: '2024-01-21',
+    totalAmount: 850.50,
+    paymentStatus: 'Paid',
+    status: 'Pending',
+    items: [
+      { name: 'Oak Dining Table', quantity: 1, price: 800 },
+      { name: 'Table Cloth', quantity: 1, price: 50.50 }
+    ]
+  },
+  {
+    id: 'ORD-003',
+    customerName: 'Mike Johnson',
+    orderDate: '2024-01-22',
+    totalAmount: 120.00,
+    paymentStatus: 'Pending',
+    status: 'Pending',
+    items: [
+      { name: 'Bedside Lamp', quantity: 2, price: 60 }
+    ]
+  },
+  {
+    id: 'ORD-004',
+    customerName: 'Sarah Williams',
+    orderDate: '2024-01-22',
+    totalAmount: 3400.00,
+    paymentStatus: 'Paid',
+    status: 'Pending',
+    items: [
+      { name: 'Modern Sofa Set', quantity: 2, price: 1200 },
+      { name: 'Coffee Table', quantity: 1, price: 1000 }
+    ]
+  },
+  {
+    id: 'ORD-005',
+    customerName: 'David Brown',
+    orderDate: '2024-01-23',
+    totalAmount: 450.00,
+    paymentStatus: 'Failed',
+    status: 'Cancelled',
+    items: [
+      { name: 'Bookshelf Unit', quantity: 1, price: 450 }
+    ]
+  },
+  {
+    id: 'ORD-006',
+    customerName: 'Emily Davis',
+    orderDate: '2024-01-24',
+    totalAmount: 250.00,
+    paymentStatus: 'Paid',
+    status: 'Placed',
+    items: [
+      { name: 'Ergonomic Office Chair', quantity: 1, price: 250 }
+    ]
+  },
+  {
+    id: 'ORD-007',
+    customerName: 'Robert Wilson',
+    orderDate: '2024-01-25',
+    totalAmount: 1500.00,
+    paymentStatus: 'Pending',
+    status: 'Pending',
+    items: [
+      { name: 'Luxury King Bed', quantity: 1, price: 1500 }
+    ]
+  }
+];

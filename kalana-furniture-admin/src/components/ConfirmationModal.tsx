@@ -7,6 +7,8 @@ interface ConfirmationModalProps {
   onConfirm: () => void;
   title: string;
   message: string;
+  confirmText?: string;
+  cancelText?: string;
 }
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -15,6 +17,8 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   onConfirm,
   title,
   message,
+  confirmText = 'Delete',
+  cancelText = 'Cancel',
 }) => {
   if (!isOpen) return null;
 
@@ -46,7 +50,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
               onClick={onClose}
               className="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-gray-200"
             >
-              Cancel
+              {cancelText}
             </button>
             <button
               onClick={() => {
@@ -55,7 +59,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
               }}
               className="px-5 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 shadow-lg shadow-red-200 transition-all transform hover:-translate-y-0.5 focus:ring-2 focus:ring-red-500"
             >
-              Delete
+              {confirmText}
             </button>
           </div>
         </div>
