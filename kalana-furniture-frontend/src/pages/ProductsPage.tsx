@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import Header from './Header';
+import Header from '../components/Header';
 import { allProducts } from '../data/mockdata';
 
 const categories = ['All', ...Array.from(new Set(allProducts.map(p => p.category)))];
@@ -50,7 +50,7 @@ const ProductsPage = () => {
     <div>
       <Header />
     </div>
-    <div className="bg-[url('/wood-bg.jpg')] pt-20 bg-cover bg-fixed">
+    <div className="bg-[url('/wood-bg.jpg')] pt-20 bg-cover bg-fixed min-h-screen">
       <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12 border border-wood-brown rounded-lg p-6 bg-wood-brown bg-opacity-60">
           <h1 className="font-serif text-4xl font-bold text-white tracking-tight sm:text-5xl">All Products</h1>
@@ -93,18 +93,35 @@ const ProductsPage = () => {
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">Price Range</label>
                 <div className="flex items-center justify-between mt-1">
-                  <span>Rs.{priceRange[0]}</span>
-                  <span>Rs.{priceRange[1]}</span>
+                  <span>Rs {priceRange[0]}</span>
+                  <span>Rs {priceRange[1]}</span>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="1000"
-                  step="10"
-                  value={priceRange[1]}
-                  className="w-full"
-                  onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-                />
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-xs text-gray-600">Minimum Price</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1000"
+                      step="10"
+                      value={priceRange[0]}
+                      className="w-full"
+                      onChange={(e) => setPriceRange([Number(e.target.value), Math.max(Number(e.target.value), priceRange[1])])}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600">Maximum Price</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1000"
+                      step="10"
+                      value={priceRange[1]}
+                      className="w-full"
+                      onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+                    />
+                  </div>
+                </div>
               </div>
               
               {/* Sorting */}
@@ -113,6 +130,7 @@ const ProductsPage = () => {
                 <select
                   id="sort"
                   className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                  value={sortOrder}
                   onChange={(e) => setSortOrder(e.target.value)}
                 >
                   <option value="">Default</option>

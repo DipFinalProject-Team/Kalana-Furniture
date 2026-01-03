@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { FaShippingFast, FaUser, FaMapMarkerAlt, FaPhone, FaEnvelope, FaMoneyBillWave } from 'react-icons/fa';
 import { useCart } from '../contexts/CartContext';
-import Header from './Header';
+import Header from '../components/Header';
 import { useNavigate } from 'react-router-dom';
-import SnowAnimation from './SnowAnimation'; // Reusing the snow animation for a consistent feel
+import SnowAnimation from '../components/SnowAnimation'; // Reusing the snow animation for a consistent feel
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -24,7 +24,7 @@ const CheckoutPage = () => {
   };
 
   const subtotal = cartItems.reduce((acc: number, item) => acc + item.price * item.quantity, 0);
-  const shippingFee = subtotal > 500 ? 0 : 50; // Free shipping for orders over $500
+  const shippingFee = subtotal > 500 ? 0 : 50; // Free shipping for orders over Rs 500
   const total = subtotal + shippingFee - appliedDiscount;
 
   const handleConfirmOrder = () => {

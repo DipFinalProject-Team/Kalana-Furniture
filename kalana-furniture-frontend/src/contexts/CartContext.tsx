@@ -111,7 +111,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     const promoCodes = {
       'SAVE10': { discount: 0.1, type: 'percentage' }, // 10% off
       'SAVE20': { discount: 0.2, type: 'percentage' }, // 20% off
-      'FIXED50': { discount: 50, type: 'fixed' }, // $50 off
+      'FIXED50': { discount: 50, type: 'fixed' }, // Rs 50 off
       'WOODLOVER': { discount: 0.15, type: 'percentage' }, // 15% off
     };
 

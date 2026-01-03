@@ -1,19 +1,19 @@
 import { Routes, Route, useNavigate } from 'react-router-dom';
-import LoginPage from './components/LoginPage';
-import RegistrationPage from './components/RegistrationPage';
-import ForgotPasswordPage from './components/ForgotPasswordPage';
-import HomePage from './components/HomePage';
-import UserProfile from './components/UserProfile';
-import Cart from './components/Cart';
-import OrderHistoryPage from './components/OrderHistory';
-import ProductsPage from './components/ProductsPage';
-import CategoryProducts from './components/CategoryProducts';
+import LoginPage from './pages/LoginPage';
+import RegistrationPage from './pages/RegistrationPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import HomePage from './pages/HomePage';
+import UserProfile from './pages/UserProfile';
+import Cart from './pages/Cart';
+import OrderHistoryPage from './pages/OrderHistory';
+import ProductsPage from './pages/ProductsPage';
+import CategoryProducts from './pages/CategoryProducts';
 import SnowAnimation from './components/SnowAnimation';
 import { CartProvider } from './contexts/CartContext';
-import ProductDetailsPage from './components/ProductDetailsPage';
-import OffersPage from './components/OffersPage';
-import ReviewPage from './components/ReviewPage';
-import CheckoutPage from './components/CheckoutPage';
+import ProductDetailsPage from './pages/ProductDetailsPage';
+import OffersPage from './pages/OffersPage';
+import ReviewPage from './pages/ReviewPage';
+import CheckoutPage from './pages/CheckoutPage';
 
 function App() {
   const navigate = useNavigate();

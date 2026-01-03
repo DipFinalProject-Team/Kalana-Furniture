@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import Header from './Header';
+import Header from '../components/Header';
 import { mockOrders } from '../data/orders';
 import type { Order, OrderItem } from '../data/orders';
-import Toast from './Toast';
+import Toast from '../components/Toast';
 
 const OrderModal = ({ order, onClose, showToast }: { order: Order; onClose: () => void; showToast: (message: string, type: 'success' | 'error') => void }) => {
   const handleCancelOrder = () => {

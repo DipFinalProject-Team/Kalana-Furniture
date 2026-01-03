@@ -11,8 +11,8 @@ import {
   FaEye,
   FaEyeSlash,
 } from "react-icons/fa";
-import SnowAnimation from "./SnowAnimation";
-import Header from './Header';
+import SnowAnimation from "../components/SnowAnimation";
+import Header from '../components/Header';
 
 const UserProfile = () => {
   const [profileData, setProfileData] = useState({

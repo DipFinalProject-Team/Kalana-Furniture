@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { FaTrash, FaPlus, FaMinus, FaShoppingCart, FaCreditCard, FaTag } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import SnowAnimation from './SnowAnimation';
+import SnowAnimation from '../components/SnowAnimation';
 import { useCart } from '../contexts/CartContext';
-import Header from './Header';
+import Header from '../components/Header';
 
 const Cart = () => {
   const navigate = useNavigate();

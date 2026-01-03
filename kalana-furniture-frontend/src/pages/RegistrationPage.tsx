@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import PasswordStrengthMeter from './PasswordStrengthMeter.tsx';
+import PasswordStrengthMeter from '../components/PasswordStrengthMeter.tsx';
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 type RegistrationPageProps = {

@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
-import Header from "./Header";
+import Header from "../components/Header";
 import { allProducts } from '../data/mockdata';
 
 const ProductDetailsPage = () => {
