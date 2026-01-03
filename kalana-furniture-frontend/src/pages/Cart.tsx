@@ -39,7 +39,8 @@ const Cart = () => {
     <div>
       <Header />
     </div>
-    <div className="min-h-screen bg-gradient-to-br from-wood-brown via-nav-brown to-wood-accent py-[140px] px-4 relative overflow-hidden">
+    <div className="min-h-screen bg-[url('/wood-bg.jpg')] bg-cover bg-center bg-fixed py-[140px] px-4 relative overflow-hidden">
+      <div className="absolute inset-0 bg-black/60"></div>
       <SnowAnimation
         containerClass="absolute inset-0 pointer-events-none overflow-hidden"
         numFlakes={25}

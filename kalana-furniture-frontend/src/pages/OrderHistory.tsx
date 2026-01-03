@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { FaHistory } from 'react-icons/fa';
 import Header from '../components/Header';
 import { mockOrders } from '../data/orders';
 import type { Order, OrderItem } from '../data/orders';
@@ -14,59 +15,83 @@ const OrderModal = ({ order, onClose, showToast }: { order: Order; onClose: () =
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
-      <div className="bg-gradient-to-br from-wood-light to-white rounded-2xl shadow-2xl border-4 border-wood-brown p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto relative">
-        {/* Decorative top border */}
-        <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-wood-accent via-wood-brown to-wood-accent rounded-t-2xl"></div>
-        
-        <div className="flex justify-between items-center border-b-2 border-wood-accent pb-6 mb-8">
-          <h2 className="text-4xl font-serif font-bold text-wood-brown">Order Details</h2>
-          <button onClick={onClose} className="text-wood-brown hover:text-wood-accent text-4xl font-bold transition-colors">&times;</button>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex justify-center items-center p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-100 flex justify-between items-start sticky top-0 bg-white z-10">
+          <div>
+            <h2 className="text-2xl font-serif font-bold text-wood-brown">Order Details</h2>
+            <p className="text-sm text-gray-500 mt-1">ID: {order.id}</p>
+          </div>
         </div>
-        
-        <div className="mb-8 bg-wood-light p-6 rounded-xl shadow-inner">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <div className="p-6 space-y-8">
+          {/* Order Status & Info */}
+          <div className="grid grid-cols-2 gap-6 bg-gray-50 p-5 rounded-xl border border-gray-100">
             <div>
-              <p className="text-lg"><span className="font-serif font-semibold text-wood-brown">Order ID:</span> <span className="text-gray-800">{order.id}</span></p>
-              <p className="text-lg"><span className="font-serif font-semibold text-wood-brown">Date:</span> <span className="text-gray-800">{order.date}</span></p>
+              <p className="text-xs uppercase tracking-wider text-gray-500 mb-1 font-semibold">Order Date</p>
+              <p className="font-medium text-gray-900">{order.date}</p>
             </div>
             <div>
-              <p className="text-lg"><span className="font-serif font-semibold text-wood-brown">Status:</span> <span className={`font-bold ${order.status === 'Completed' ? 'text-green-600' : order.status === 'Pending' ? 'text-yellow-600' : 'text-red-600'}`}>{order.status}</span></p>
-              <p className="text-2xl font-serif font-bold text-wood-accent mt-2"><span className="font-serif font-semibold text-wood-brown">Total:</span> Rs.{order.total.toFixed(2)}</p>
+              <p className="text-xs uppercase tracking-wider text-gray-500 mb-1 font-semibold">Status</p>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                order.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                order.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+                {order.status}
+              </span>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wider text-gray-500 mb-1 font-semibold">Total Amount</p>
+              <p className="font-serif font-bold text-xl text-wood-brown">Rs. {order.total.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wider text-gray-500 mb-1 font-semibold">Payment Method</p>
+              <p className="font-medium text-gray-900">Credit Card</p>
+            </div>
+          </div>
+
+          {/* Order Items */}
+          <div>
+            <h3 className="text-lg font-serif font-bold text-gray-900 mb-4">Items Purchased</h3>
+            <div className="space-y-4">
+              {order.items.map((item: OrderItem) => (
+                <div key={item.id} className="flex gap-4 items-center p-3 rounded-lg border border-gray-100 hover:border-wood-accent/30 transition-colors bg-white shadow-sm">
+                  <img 
+                    src={item.images[0]} 
+                    alt={item.name} 
+                    className="w-16 h-16 object-cover rounded-md bg-gray-100"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <Link to={`/product/${item.id}`} className="font-medium text-gray-900 hover:text-wood-brown transition-colors truncate block">
+                      {item.name}
+                    </Link>
+                    <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-gray-900">Rs. {(item.price * item.quantity).toFixed(2)}</p>
+                    <p className="text-xs text-gray-500">Rs. {item.price} each</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
-        
-        <div className="space-y-6 mb-8">
-          <h3 className="text-2xl font-serif font-semibold text-wood-brown border-b-2 border-wood-accent pb-2">Items Purchased</h3>
-          {order.items.map((item: OrderItem) => (
-            <div key={item.id} className="flex items-center justify-between p-4 rounded-xl bg-white shadow-md hover:shadow-lg transition-shadow border border-wood-accent">
-              <div className="flex items-center gap-6">
-                <img src={item.images[0]} alt={item.name} className="w-20 h-20 object-cover rounded-lg border-2 border-wood-brown" />
-                <div>
-                  <Link to={`/product/${item.id}`} className="font-serif font-bold text-xl text-wood-brown hover:text-wood-accent transition-colors">
-                    {item.name}
-                  </Link>
-                  <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
-                </div>
-              </div>
-              <p className="font-serif font-bold text-xl text-wood-accent">Rs.{(item.price * item.quantity).toFixed(2)}</p>
-            </div>
-          ))}
-        </div>
-        
-        <div className="flex justify-end gap-6 mt-10">
+
+        {/* Footer */}
+        <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 rounded-b-xl">
           {order.status === 'Pending' && (
             <button
               onClick={handleCancelOrder}
-              className="bg-red-600 text-white px-8 py-3 rounded-full font-serif font-semibold hover:bg-red-700 transition-all transform hover:scale-105 shadow-lg"
+              className="px-4 py-2 text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 font-medium transition-colors"
             >
               Cancel Order
             </button>
           )}
           <button
             onClick={onClose}
-            className="bg-wood-accent text-white px-8 py-3 rounded-full font-serif font-semibold hover:bg-wood-accent-hover transition-all transform hover:scale-105 shadow-lg"
+            className="px-6 py-2 bg-wood-brown text-white rounded-lg hover:bg-wood-accent font-medium transition-colors shadow-sm"
           >
             Close
           </button>
@@ -99,9 +124,15 @@ const OrderHistoryPage = () => {
   return (
     <>
       <Header />
-      <div className="bg-gray-50 py-[150px] min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-4xl font-extrabold text-gray-900 mb-10 text-center">Your Order History</h1>
+      <div className="bg-[url('/wood-bg.jpg')] bg-cover bg-center bg-fixed py-[150px] min-h-screen relative">
+        <div className="absolute inset-0 bg-black/60"></div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-start mb-8">
+            <h1 className="font-sans text-4xl font-bold text-white mb-4 drop-shadow-lg flex items-center justify-center">
+              <FaHistory className="mr-4 text-wood-accent" />
+              Your Order History
+            </h1>
+          </div>
           <div className="bg-white shadow-xl rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">

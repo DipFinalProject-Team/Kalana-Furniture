@@ -234,14 +234,8 @@ const UserProfile = () => {
     <div>
       <Header />
     </div>
-    <div className="min-h-screen bg-gradient-to-br from-wood-brown via-nav-brown to-wood-accent py-[140px] px-4 relative overflow-hidden">
-      {/* Floating decorative elements */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-20 left-10 w-32 h-32 bg-wood-accent/10 rounded-full animate-blob"></div>
-        <div className="absolute bottom-20 right-10 w-24 h-24 bg-wood-brown/10 rounded-full animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-wood-light/10 rounded-full animate-blob animation-delay-4000"></div>
-        <div className="absolute top-40 right-1/4 w-20 h-20 bg-wood-accent/5 rounded-full animate-float"></div>
-      </div>
+    <div className="min-h-screen bg-[url('/wood-bg.jpg')] bg-cover bg-center bg-fixed py-[140px] px-4 relative overflow-hidden">
+      <div className="absolute inset-0 bg-black/60"></div>
       <SnowAnimation
         containerClass="absolute inset-0 pointer-events-none overflow-hidden"
         numFlakes={25}
@@ -253,9 +247,10 @@ const UserProfile = () => {
         maxSize={20}
         opacity={0.5}
       />
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto relative z-10">
         <div className="text-start mb-4">
-          <h1 className="font-sans text-4xl font-bold text-white mb-4 drop-shadow-lg">
+          <h1 className="font-sans text-4xl font-bold text-white mb-4 drop-shadow-lg flex items-center justify-center">
+            <FaUser className="mr-4 text-wood-accent" />
             Your Profile
           </h1>
         </div>
