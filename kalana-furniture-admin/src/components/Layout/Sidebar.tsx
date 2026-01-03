@@ -11,6 +11,8 @@ import {
   LuStar,
   LuSettings,
   LuLogOut,
+  LuFileText,
+  LuCheck,
 } from 'react-icons/lu';
 import ConfirmationModal from '../ConfirmationModal';
 
@@ -25,6 +27,8 @@ const Sidebar: React.FC = () => {
   { path: '/orders', name: 'Orders', icon: LuShoppingCart },
   { path: '/customers', name: 'Customers', icon: LuUsers },
   { path: '/inventory', name: 'Inventory', icon: LuClipboardList },
+  { path: '/approvals', name: 'Approvals', icon: LuCheck },
+  { path: '/invoices', name: 'Invoices', icon: LuFileText },
   { path: '/promotions', name: 'Promos', icon: LuTag },
   { path: '/reviews', name: 'Reviews', icon: LuStar },
   { path: '/settings', name: 'Settings', icon: LuSettings },

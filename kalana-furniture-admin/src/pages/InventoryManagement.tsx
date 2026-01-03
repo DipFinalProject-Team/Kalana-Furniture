@@ -1,7 +1,22 @@
-import React, { useState } from 'react';
-import { FaSearch, FaFilter, FaBoxOpen, FaExclamationTriangle, FaTimesCircle, FaEdit, FaCheck, FaPlus, FaMinus, FaHistory } from 'react-icons/fa';
-import { inventoryData } from '../data/mockData';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FaSearch, FaFilter, FaBoxOpen, FaExclamationTriangle, FaTimesCircle, FaEdit, FaCheck, FaPlus, FaMinus, FaHistory, FaCartPlus, FaClipboardList } from 'react-icons/fa';
+import { inventoryData, purchaseOrders as initialPurchaseOrders, suppliers, productSuppliers } from '../data/mockData';
 import Toast from '../components/Toast';
+
+interface PurchaseOrder {
+  id: string;
+  productName: string;
+  quantity: number;
+  expectedDelivery: string;
+  pricePerUnit: number;
+  status: 'Pending' | 'Accepted' | 'Rejected' | 'Dispatched' | 'Delivered' | 'Completed';
+  orderDate: string;
+  actualDeliveryDate?: string;
+  deliveryNotes?: string;
+  supplierId?: string;
+  supplierName?: string;
+}
 
 interface InventoryItem {
   id: number;
@@ -16,11 +31,25 @@ interface InventoryItem {
 }
 
 const InventoryManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [inventory, setInventory] = useState<InventoryItem[]>(inventoryData);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editStockValue, setEditStockValue] = useState<number>(0);
+
+  // Purchase Order State
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [showOrdersList, setShowOrdersList] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
+  const [showOrderDetailsModal, setShowOrderDetailsModal] = useState(false);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(initialPurchaseOrders as PurchaseOrder[]);
+  const [newOrder, setNewOrder] = useState({
+    productId: '',
+    quantity: 1,
+    expectedDelivery: '',
+    supplierId: ''
+  });
 
   // Toast State
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error'; isVisible: boolean }>({
@@ -28,6 +57,15 @@ const InventoryManagement: React.FC = () => {
     type: 'success',
     isVisible: false,
   });
+
+  useEffect(() => {
+    // Load purchase orders from localStorage
+    const savedOrders = localStorage.getItem('kalana_purchase_orders');
+    if (savedOrders) {
+      const parsedOrders = JSON.parse(savedOrders);
+      setPurchaseOrders([...initialPurchaseOrders, ...parsedOrders]);
+    }
+  }, []);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type, isVisible: true });
@@ -66,6 +104,102 @@ const InventoryManagement: React.FC = () => {
     setEditStockValue(item.stock);
   };
 
+  const openOrderModal = (item?: InventoryItem) => {
+    if (item) {
+      // Navigate to create order page for specific product
+      navigate('/create-order', { state: { productId: item.id } });
+    } else {
+      // Open modal for general order creation
+      setNewOrder({
+        productId: '',
+        quantity: 1,
+        expectedDelivery: '',
+        supplierId: ''
+      });
+      setShowOrderModal(true);
+    }
+  };
+
+  const handleCreateOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    const product = inventory.find(p => p.id.toString() === newOrder.productId);
+    if (!product) {
+      showToast('Please select a product', 'error');
+      return;
+    }
+
+    if (!newOrder.supplierId) {
+      showToast('Please select a supplier', 'error');
+      return;
+    }
+
+    const supplierInfo = productSuppliers.find(
+      ps => ps.productId === product.id && ps.supplierId === newOrder.supplierId
+    );
+    const supplier = suppliers.find(s => s.id === newOrder.supplierId);
+
+    const order: PurchaseOrder = {
+      id: `PO-${Math.floor(Math.random() * 1000)}`,
+      productName: product.productName,
+      quantity: newOrder.quantity,
+      expectedDelivery: newOrder.expectedDelivery,
+      pricePerUnit: supplierInfo ? supplierInfo.unitPrice : product.price,
+      status: 'Pending',
+      orderDate: new Date().toISOString().split('T')[0],
+      supplierId: newOrder.supplierId,
+      supplierName: supplier ? supplier.name : 'Unknown Supplier'
+    };
+
+    const updatedOrders = [order, ...purchaseOrders];
+    setPurchaseOrders(updatedOrders);
+    
+    setShowOrderModal(false);
+    setNewOrder({ productId: '', quantity: 1, expectedDelivery: '', supplierId: '' });
+    showToast('Purchase Order created successfully!', 'success');
+  };
+
+  const handleViewOrderDetails = (order: PurchaseOrder) => {
+    if (['Dispatched', 'Delivered', 'Completed'].includes(order.status)) {
+      setSelectedOrder(order);
+      setShowOrderDetailsModal(true);
+    }
+  };
+
+  const handleConfirmDelivery = (orderId: string) => {
+    const order = purchaseOrders.find(o => o.id === orderId);
+    if (!order) return;
+
+    // 1. Update Order Status
+    const updatedOrders = purchaseOrders.map(o => 
+      o.id === orderId ? { ...o, status: 'Completed' as const } : o
+    );
+    setPurchaseOrders(updatedOrders);
+
+    // 2. Update Inventory Stock
+    const product = inventory.find(p => p.productName === order.productName);
+    if (product) {
+      handleStockUpdate(product.id, product.stock + order.quantity);
+    }
+
+    // 3. Generate Supplier Invoice
+    const newInvoice = {
+      id: `INV-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,
+      orderId: order.id,
+      amount: order.quantity * order.pricePerUnit,
+      date: new Date().toISOString().split('T')[0],
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // +30 days
+      status: 'Pending',
+      paymentDate: null
+    };
+
+    const savedInvoices = localStorage.getItem('kalana_invoices');
+    const currentInvoices = savedInvoices ? JSON.parse(savedInvoices) : [];
+    localStorage.setItem('kalana_invoices', JSON.stringify([...currentInvoices, newInvoice]));
+
+    setShowOrderDetailsModal(false);
+    showToast('Delivery confirmed! Stock updated and invoice generated.', 'success');
+  };
+
   const filteredInventory = inventory.filter(item => {
     const matchesSearch = 
       item.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -95,6 +229,13 @@ const InventoryManagement: React.FC = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <button
+            onClick={() => setShowOrdersList(true)}
+            className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
+          >
+            <FaClipboardList /> View Orders
+          </button>
+
           <div className="relative">
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
@@ -123,7 +264,7 @@ const InventoryManagement: React.FC = () => {
       </div>
 
       {/* Dashboard Widgets */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
           <div className="p-4 bg-blue-100 text-blue-600 rounded-full">
             <FaBoxOpen size={24} />
@@ -131,6 +272,16 @@ const InventoryManagement: React.FC = () => {
           <div>
             <p className="text-gray-500 text-sm">Total Products</p>
             <h3 className="text-2xl font-bold text-gray-800">{totalProducts}</h3>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+          <div className="p-4 bg-purple-100 text-purple-600 rounded-full">
+            <FaClipboardList size={24} />
+          </div>
+          <div>
+            <p className="text-gray-500 text-sm">Purchase Orders</p>
+            <h3 className="text-2xl font-bold text-gray-800">{purchaseOrders.length}</h3>
           </div>
         </div>
 
@@ -264,13 +415,22 @@ const InventoryManagement: React.FC = () => {
                         </button>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => startEditing(item)}
-                        className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                        title="Update Stock"
-                      >
-                        <FaEdit />
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => openOrderModal(item)}
+                          className="p-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors"
+                          title="Create Purchase Order"
+                        >
+                          <FaCartPlus />
+                        </button>
+                        <button
+                          onClick={() => startEditing(item)}
+                          className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                          title="Update Stock"
+                        >
+                          <FaEdit />
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -285,6 +445,323 @@ const InventoryManagement: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Purchase Orders Section */}
+      {purchaseOrders.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Purchase Orders</h2>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm uppercase tracking-wider">
+                  <th className="p-4 font-semibold">Order ID</th>
+                  <th className="p-4 font-semibold">Product</th>
+                  <th className="p-4 font-semibold">Supplier</th>
+                  <th className="p-4 font-semibold">Quantity</th>
+                  <th className="p-4 font-semibold">Price/Unit</th>
+                  <th className="p-4 font-semibold">Expected Delivery</th>
+                  <th className="p-4 font-semibold">Status</th>
+                  <th className="p-4 font-semibold">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {purchaseOrders.map((order) => (
+                  <tr 
+                    key={order.id} 
+                    className={`hover:bg-gray-50 ${['Dispatched', 'Delivered', 'Completed'].includes(order.status) ? 'cursor-pointer' : ''}`}
+                    onClick={() => handleViewOrderDetails(order)}
+                  >
+                    <td className="p-4 font-mono text-sm text-gray-600">{order.id}</td>
+                    <td className="p-4 font-medium text-gray-800">{order.productName}</td>
+                    <td className="p-4 text-gray-600 text-sm">{order.supplierName || '-'}</td>
+                    <td className="p-4 text-gray-600">{order.quantity}</td>
+                    <td className="p-4 text-gray-600">Rs. {order.pricePerUnit}</td>
+                    <td className="p-4 text-gray-600">{order.expectedDelivery}</td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        order.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                        order.status === 'Accepted' ? 'bg-blue-100 text-blue-700' :
+                        order.status === 'Dispatched' ? 'bg-purple-100 text-purple-700' :
+                        order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
+                        order.status === 'Completed' ? 'bg-gray-100 text-gray-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="p-4 text-gray-500 text-sm">{order.orderDate}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Create Order Modal */}
+      {showOrderModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-800">Create Purchase Order</h2>
+              <button 
+                onClick={() => setShowOrderModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FaTimesCircle size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateOrder} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Product</label>
+                <select
+                  required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-wood-brown"
+                  value={newOrder.productId}
+                  onChange={(e) => setNewOrder({ ...newOrder, productId: e.target.value })}
+                >
+                  <option value="">Select Product</option>
+                  {inventory.map(item => (
+                    <option key={item.id} value={item.id}>{item.productName} (Stock: {item.stock})</option>
+                  ))}
+                </select>
+              </div>
+
+              {newOrder.productId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
+                  <select
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-wood-brown"
+                    value={newOrder.supplierId}
+                    onChange={(e) => {
+                      const supplierId = e.target.value;
+                      const supplierInfo = productSuppliers.find(
+                        ps => ps.productId.toString() === newOrder.productId && ps.supplierId === supplierId
+                      );
+                      
+                      let expectedDelivery = newOrder.expectedDelivery;
+                      if (supplierInfo) {
+                        const deliveryDate = new Date();
+                        deliveryDate.setDate(deliveryDate.getDate() + supplierInfo.estimatedDeliveryTime);
+                        expectedDelivery = deliveryDate.toISOString().split('T')[0];
+                      }
+
+                      setNewOrder({ 
+                        ...newOrder, 
+                        supplierId,
+                        expectedDelivery
+                      });
+                    }}
+                  >
+                    <option value="">Select Supplier</option>
+                    {productSuppliers
+                      .filter(ps => ps.productId.toString() === newOrder.productId)
+                      .map(ps => {
+                        const supplier = suppliers.find(s => s.id === ps.supplierId);
+                        return (
+                          <option key={ps.supplierId} value={ps.supplierId}>
+                            {supplier?.name} - Rs. {ps.unitPrice} (Est. {ps.estimatedDeliveryTime} days)
+                          </option>
+                        );
+                      })}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-wood-brown"
+                  value={newOrder.quantity}
+                  onChange={(e) => setNewOrder({ ...newOrder, quantity: parseInt(e.target.value) })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Expected Delivery Date</label>
+                <input
+                  type="date"
+                  required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-wood-brown"
+                  value={newOrder.expectedDelivery}
+                  onChange={(e) => setNewOrder({ ...newOrder, expectedDelivery: e.target.value })}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowOrderModal(false)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-wood-brown text-white rounded-lg hover:bg-opacity-90 transition-colors"
+                  style={{ backgroundColor: '#8B4513' }}
+                >
+                  Create Order
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Orders List Modal */}
+      {showOrdersList && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-800">Purchase Orders</h2>
+              <button 
+                onClick={() => setShowOrdersList(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FaTimesCircle size={24} />
+              </button>
+            </div>
+            
+            {purchaseOrders.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm uppercase tracking-wider">
+                      <th className="p-4 font-semibold">Order ID</th>
+                      <th className="p-4 font-semibold">Product</th>
+                      <th className="p-4 font-semibold">Supplier</th>
+                      <th className="p-4 font-semibold">Quantity</th>
+                      <th className="p-4 font-semibold">Price/Unit</th>
+                      <th className="p-4 font-semibold">Expected Delivery</th>
+                      <th className="p-4 font-semibold">Status</th>
+                      <th className="p-4 font-semibold">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {purchaseOrders.map((order) => (
+                      <tr 
+                        key={order.id} 
+                        className={`hover:bg-gray-50 ${['Dispatched', 'Delivered', 'Completed'].includes(order.status) ? 'cursor-pointer' : ''}`}
+                        onClick={() => handleViewOrderDetails(order)}
+                      >
+                        <td className="p-4 font-mono text-sm text-gray-600">{order.id}</td>
+                        <td className="p-4 font-medium text-gray-800">{order.productName}</td>
+                        <td className="p-4 text-gray-600 text-sm">{order.supplierName || '-'}</td>
+                        <td className="p-4 text-gray-600">{order.quantity}</td>
+                        <td className="p-4 text-gray-600">Rs. {order.pricePerUnit}</td>
+                        <td className="p-4 text-gray-600">{order.expectedDelivery}</td>
+                        <td className="p-4">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            order.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                            order.status === 'Accepted' ? 'bg-blue-100 text-blue-700' :
+                            order.status === 'Dispatched' ? 'bg-purple-100 text-purple-700' :
+                            order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
+                            order.status === 'Completed' ? 'bg-gray-100 text-gray-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {order.status}
+                          </span>
+                        </td>
+                        <td className="p-4 text-gray-500 text-sm">{order.orderDate}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                <FaClipboardList className="mx-auto text-gray-300 mb-3" size={48} />
+                <p className="text-gray-500">No purchase orders found.</p>
+                <p className="text-sm text-gray-400 mt-1">Create a new order from the inventory list.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Order Details Modal */}
+      {showOrderDetailsModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-800">Order Details: {selectedOrder.id}</h2>
+              <button 
+                onClick={() => setShowOrderDetailsModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FaTimesCircle size={24} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Product</p>
+                  <p className="font-medium text-gray-800">{selectedOrder.productName}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Supplier</p>
+                  <p className="font-medium text-gray-800">{selectedOrder.supplierName || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Status</p>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    selectedOrder.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                    selectedOrder.status === 'Accepted' ? 'bg-blue-100 text-blue-700' :
+                    selectedOrder.status === 'Dispatched' ? 'bg-purple-100 text-purple-700' :
+                    selectedOrder.status === 'Delivered' ? 'bg-green-100 text-green-700' :
+                    selectedOrder.status === 'Completed' ? 'bg-gray-100 text-gray-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {selectedOrder.status}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Quantity</p>
+                  <p className="font-medium text-gray-800">{selectedOrder.quantity}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Expected Delivery</p>
+                  <p className="font-medium text-gray-800">{selectedOrder.expectedDelivery}</p>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 pt-4">
+                <h3 className="font-semibold text-gray-800 mb-2">Delivery Information</h3>
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <p className="text-sm text-gray-500">Actual Delivery Date</p>
+                    <p className="font-medium text-gray-800">{selectedOrder.actualDeliveryDate || 'Not yet delivered'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Delivery Notes</p>
+                    <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                      {selectedOrder.deliveryNotes || 'No notes provided.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {selectedOrder.status === 'Delivered' && (
+                <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
+                  <button
+                    onClick={() => handleConfirmDelivery(selectedOrder.id)}
+                    className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <FaCheck /> Confirm Receipt & Update Stock
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

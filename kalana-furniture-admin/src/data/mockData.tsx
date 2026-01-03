@@ -331,6 +331,55 @@ export const customersData = [
   },
 ];
 
+export const suppliers = [
+  {
+    id: 'APP-001',
+    name: 'EcoWood Furnishings',
+    contactPerson: 'Sarah Jenkins',
+    username: 'ecowood_sarah',
+    email: 'sarah@ecowood.com',
+    phone: '+1 (555) 123-4567',
+    categories: 'Chairs, Tables, Sustainable Wood',
+    message: 'We specialize in sustainably sourced timber furniture with a focus on modern minimalist designs.',
+    joinedDate: '2024-01-02',
+    status: 'Active'
+  },
+  { 
+    id: 'SUP-002', 
+    name: 'WoodWorks Co.',
+    contactPerson: 'David Miller',
+    email: 'david@woodworks.com',
+    phone: '+1 (555) 234-5678',
+    categories: 'Wooden Chairs, Tables',
+    message: 'Expert craftsmanship in solid wood furniture, delivering quality and durability for over 20 years.',
+    joinedDate: '2023-03-10',
+    status: 'Active'
+  },
+  { 
+    id: 'SUP-003', 
+    name: 'Global Furnishings',
+    contactPerson: 'Maria Garcia',
+    email: 'maria@globalfurnishings.com',
+    phone: '+1 (555) 876-5432',
+    categories: 'Imported Goods, Accessories',
+    message: 'Your gateway to international furniture trends, sourcing unique pieces from around the globe.',
+    joinedDate: '2023-06-20',
+    status: 'Active'
+  },
+];
+
+export const productSuppliers = [
+  { productId: 1, supplierId: 'SUP-001', unitPrice: 1100, estimatedDeliveryTime: 7 },
+  { productId: 1, supplierId: 'SUP-002', unitPrice: 1150, estimatedDeliveryTime: 5 },
+  { productId: 2, supplierId: 'SUP-001', unitPrice: 750, estimatedDeliveryTime: 10 },
+  { productId: 2, supplierId: 'SUP-003', unitPrice: 780, estimatedDeliveryTime: 8 },
+  { productId: 3, supplierId: 'SUP-002', unitPrice: 220, estimatedDeliveryTime: 4 },
+  { productId: 4, supplierId: 'SUP-001', unitPrice: 1400, estimatedDeliveryTime: 14 },
+  { productId: 4, supplierId: 'SUP-003', unitPrice: 1450, estimatedDeliveryTime: 10 },
+  { productId: 5, supplierId: 'SUP-001', unitPrice: 280, estimatedDeliveryTime: 5 },
+  { productId: 6, supplierId: 'SUP-002', unitPrice: 400, estimatedDeliveryTime: 6 },
+];
+
 export const inventoryData = [
   {
     id: 1,
@@ -502,5 +551,120 @@ export const ordersList = [
     items: [
       { name: 'Luxury King Bed', quantity: 1, price: 1500 }
     ]
+  }
+];
+
+export const purchaseOrders = [
+  {
+    id: 'PO-001',
+    productName: 'Modern Sofa Set',
+    quantity: 5,
+    expectedDelivery: '2024-02-01',
+    pricePerUnit: 1200,
+    status: 'Delivered',
+    orderDate: '2024-01-15',
+    actualDeliveryDate: '2024-02-02',
+    deliveryNotes: 'Delivered to warehouse A, received by John.'
+  },
+  {
+    id: 'PO-002',
+    productName: 'Oak Dining Table',
+    quantity: 3,
+    expectedDelivery: '2024-02-10',
+    pricePerUnit: 800,
+    status: 'Pending',
+    orderDate: '2024-01-18'
+  },
+  {
+    id: 'PO-003',
+    productName: 'Ergonomic Office Chair',
+    quantity: 10,
+    expectedDelivery: '2024-02-15',
+    pricePerUnit: 250,
+    status: 'Accepted',
+    orderDate: '2024-01-20'
+  },
+  {
+    id: 'PO-004',
+    productName: 'King Size Bed Frame',
+    quantity: 2,
+    expectedDelivery: '2024-02-20',
+    pricePerUnit: 900,
+    status: 'Dispatched',
+    orderDate: '2024-01-22',
+    deliveryNotes: 'Shipped via Cargo Express. Tracking #123456'
+  },
+  {
+    id: 'PO-005',
+    productName: 'Bedside Lamp',
+    quantity: 50,
+    expectedDelivery: '2024-01-20',
+    pricePerUnit: 3500,
+    status: 'Completed',
+    orderDate: '2023-12-25',
+    actualDeliveryDate: '2024-01-21',
+    deliveryNotes: 'All items received in good condition.'
+  }
+];
+
+export const supplierInvoices = [
+  {
+    id: 'INV-2024-001',
+    orderId: 'PO-001',
+    supplierName: 'Kalana Furniture Suppliers',
+    amount: 6000,
+    date: '2024-01-15',
+    dueDate: '2024-02-15',
+    status: 'Paid',
+    paymentDate: '2024-01-20'
+  },
+  {
+    id: 'INV-2024-002',
+    orderId: 'PO-005',
+    supplierName: 'Kalana Furniture Suppliers',
+    amount: 175000,
+    date: '2023-12-25',
+    dueDate: '2024-01-25',
+    status: 'Pending',
+    paymentDate: null
+  }
+];
+
+export const supplierApplications = [
+  {
+    id: 'APP-001',
+    companyName: 'EcoWood Furnishings',
+    contactPerson: 'Sarah Jenkins',
+    username: 'ecowood_sarah',
+    email: 'sarah@ecowood.com',
+    phone: '+1 (555) 123-4567',
+    categories: 'Chairs, Tables, Sustainable Wood',
+    message: 'We specialize in sustainably sourced timber furniture with a focus on modern minimalist designs.',
+    date: '2024-01-02',
+    status: 'Pending'
+  },
+  {
+    id: 'APP-002',
+    companyName: 'MetalCraft Industries',
+    contactPerson: 'Mike Ross',
+    username: 'metalcraft_mike',
+    email: 'mike@metalcraft.com',
+    phone: '+1 (555) 987-6543',
+    categories: 'Metal Frames, Industrial Style',
+    message: 'Leading manufacturer of industrial-grade metal furniture components.',
+    date: '2024-01-03',
+    status: 'Pending'
+  },
+  {
+    id: 'APP-003',
+    companyName: 'SoftTouch Fabrics',
+    contactPerson: 'Emily Chen',
+    username: 'softtouch_emily',
+    email: 'emily@softtouch.com',
+    phone: '+1 (555) 456-7890',
+    categories: 'Upholstery, Cushions',
+    message: 'Premium fabric supplier for luxury furniture upholstery.',
+    date: '2024-01-04',
+    status: 'Pending'
   }
 ];
