@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiLogOut, FiTrash2, FiAlertTriangle } from 'react-icons/fi';
 import Modal from '../components/Modal';
+import { supplierService } from '../services/api';
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();
@@ -12,26 +13,44 @@ const Settings: React.FC = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDeleteAccount = () => {
-    // In a real app, call API to delete account
-    console.log('Account deletion requested');
-    setIsDeleteModalOpen(false);
-    // Redirect to login or show success message
-    navigate('/login');
+  const confirmDeleteAccount = async () => {
+    try {
+      await supplierService.deleteAccount();
+      // Clear any auth tokens or user data
+      localStorage.removeItem('supplierToken');
+      localStorage.removeItem('supplier_user');
+      
+      setIsDeleteModalOpen(false);
+      // Redirect to login or show success message
+      navigate('/login');
+    } catch (error) {
+      console.error('Account deletion failed:', error);
+      // Handle error - could show a toast or error message
+      alert('Failed to delete account. Please try again.');
+    }
   };
 
   const handleLogout = () => {
     setIsLogoutModalOpen(true);
   };
 
-  const confirmLogout = () => {
-    // Clear any auth tokens or user data
-    localStorage.removeItem('supplier_token'); // Example key
-    localStorage.removeItem('supplier_user');
-    
-    setIsLogoutModalOpen(false);
-    // Redirect to login
-    navigate('/login');
+  const confirmLogout = async () => {
+    try {
+      await supplierService.logout();
+      // Clear any auth tokens or user data
+      localStorage.removeItem('supplierToken');
+      localStorage.removeItem('supplier_user');
+      
+      setIsLogoutModalOpen(false);
+      // Redirect to login
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Still clear local data and redirect even if API call fails
+      localStorage.removeItem('supplierToken');
+      localStorage.removeItem('supplier_user');
+      navigate('/login');
+    }
   };
 
   return (

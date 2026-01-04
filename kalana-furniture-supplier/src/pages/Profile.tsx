@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
-import { FiUser, FiMapPin, FiPhone, FiMail, FiCreditCard, FiLock, FiSave, FiCamera, FiCheck, FiAlertCircle, FiEye, FiEyeOff } from 'react-icons/fi';
+import React, { useState, useRef, useEffect } from 'react';
+import { FiUser, FiPhone, FiMail, FiCreditCard, FiLock, FiSave, FiCamera, FiCheck, FiAlertCircle, FiEye, FiEyeOff, FiTag } from 'react-icons/fi';
+import { AxiosError } from 'axios';
 import Modal from '../components/Modal';
 import Toast from '../components/Toast';
-import { supplierProfile } from '../data/mockdata';
+import { supplierService } from '../services/api';
 
 const Profile: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,16 +31,53 @@ const Profile: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form State
-  const [profileData, setProfileData] = useState(supplierProfile);
+  const [profileData, setProfileData] = useState({
+    companyName: '',
+    contactPerson: '',
+    contactNumber: '',
+    email: '',
+    categories: '',
+    message: ''
+  });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [passwordErrors, setPasswordErrors] = useState<{ [key: string]: string }>({});
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await supplierService.verifyToken();
+        if (response.success && response.supplier) {
+          const supplier = response.supplier;
+          setProfileData({
+            companyName: supplier.companyName || '',
+            contactPerson: supplier.contactPerson || '',
+            contactNumber: supplier.phone || '',
+            email: supplier.email || '',
+            categories: supplier.categories || '',
+            message: supplier.message || ''
+          });
+          if (supplier.profileImage) {
+            setProfileImage(supplier.profileImage);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch profile:', error);
+        showToast('Failed to load profile data', 'error');
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const validateProfile = () => {
     const newErrors: { [key: string]: string } = {};
     
     if (!profileData.companyName.trim()) {
       newErrors.companyName = 'Company name is required';
+    }
+
+    if (!profileData.contactPerson.trim()) {
+      newErrors.contactPerson = 'Contact person is required';
     }
 
     if (!profileData.contactNumber.trim()) {
@@ -52,10 +90,6 @@ const Profile: React.FC = () => {
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email)) {
       newErrors.email = 'Invalid email address';
-    }
-
-    if (!profileData.address.trim()) {
-      newErrors.address = 'Address is required';
     }
 
     setErrors(newErrors);
@@ -152,14 +186,36 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const previousImage = profileImage;
+      // Show preview immediately
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfileImage(reader.result as string);
       };
       reader.readAsDataURL(file);
+
+      // Upload to server
+      try {
+        const response = await supplierService.uploadProfileImage(file);
+        if (response.success) {
+          showToast('Profile image updated successfully', 'success');
+          setProfileImage(response.imageUrl);
+          // Update localStorage
+          const currentUser = JSON.parse(localStorage.getItem('supplierUser') || '{}');
+          const updatedUser = { ...currentUser, profileImage: response.imageUrl };
+          localStorage.setItem('supplierUser', JSON.stringify(updatedUser));
+        } else {
+          setProfileImage(previousImage);
+          showToast('Failed to upload image', 'error');
+        }
+      } catch (error) {
+        console.error('Image upload failed:', error);
+        setProfileImage(previousImage);
+        showToast('Failed to upload image', 'error');
+      }
     }
   };
 
@@ -172,9 +228,27 @@ const Profile: React.FC = () => {
       title: 'Confirm Changes',
       message: 'Are you sure you want to update your profile information?',
       type: 'info',
-      onConfirm: () => {
-        // API call would go here
-        showToast('Profile updated successfully!', 'success');
+      onConfirm: async () => {
+        try {
+          const response = await supplierService.updateProfile({
+            companyName: profileData.companyName,
+            contactPerson: profileData.contactPerson,
+            phone: profileData.contactNumber,
+            categories: profileData.categories,
+            message: profileData.message
+          });
+          
+          if (response.success) {
+             showToast('Profile updated successfully!', 'success');
+             // Update local storage if needed
+             const currentUser = JSON.parse(localStorage.getItem('supplierUser') || '{}');
+             const updatedUser = { ...currentUser, ...response.supplier };
+             localStorage.setItem('supplierUser', JSON.stringify(updatedUser));
+          }
+        } catch (error) {
+          console.error('Profile update failed:', error);
+          showToast('Failed to update profile', 'error');
+        }
       }
     });
     setIsModalOpen(true);
@@ -189,13 +263,28 @@ const Profile: React.FC = () => {
       title: 'Update Password',
       message: 'Are you sure you want to change your password? You will need to use the new password next time you login.',
       type: 'warning',
-      onConfirm: () => {
-        // API call would go here
-        showToast('Password changed successfully!', 'success');
-        setPassword('');
-        setCurrentPassword('');
-        setConfirmPassword('');
-        setPasswordStrength(0);
+      onConfirm: async () => {
+        try {
+          const response = await supplierService.changePassword({
+            currentPassword,
+            newPassword: password
+          });
+
+          if (response.success) {
+            showToast('Password changed successfully!', 'success');
+            setPassword('');
+            setCurrentPassword('');
+            setConfirmPassword('');
+            setPasswordStrength(0);
+          }
+        } catch (error: unknown) {
+          console.error('Password change failed:', error);
+          let msg = 'Failed to change password';
+          if (error instanceof AxiosError && error.response?.data?.message) {
+            msg = error.response.data.message;
+          }
+          showToast(msg, 'error');
+        }
       }
     });
     setIsModalOpen(true);
@@ -256,6 +345,22 @@ const Profile: React.FC = () => {
                 {errors.companyName && <p className="text-red-500 text-xs mt-1">{errors.companyName}</p>}
               </div>
 
+              {/* Contact Person */}
+              <div className="col-span-1 md:col-span-2">
+                <label className="block text-sm font-medium text-stone-600 mb-1">Contact Person</label>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    name="contactPerson"
+                    value={profileData.contactPerson}
+                    onChange={handleInputChange}
+                    className={`w-full pl-10 p-2 border rounded-md focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none ${errors.contactPerson ? 'border-red-500' : 'border-stone-300'}`}
+                  />
+                  <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                </div>
+                {errors.contactPerson && <p className="text-red-500 text-xs mt-1">{errors.contactPerson}</p>}
+              </div>
+
               {/* Contact Number */}
               <div>
                 <label className="block text-sm font-medium text-stone-600 mb-1">Contact Number</label>
@@ -288,33 +393,34 @@ const Profile: React.FC = () => {
                 {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
               </div>
 
-              {/* Address */}
+              {/* Categories */}
               <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-stone-600 mb-1">Address</label>
+                <label className="block text-sm font-medium text-stone-600 mb-1">Product Categories</label>
                 <div className="relative">
-                  <textarea 
-                    name="address"
-                    value={profileData.address}
+                  <input 
+                    type="text"
+                    name="categories"
+                    value={profileData.categories}
                     onChange={handleInputChange}
-                    className={`w-full pl-10 p-2 border rounded-md focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none min-h-[80px] ${errors.address ? 'border-red-500' : 'border-stone-300'}`}
+                    className="w-full pl-10 p-2 border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+                    placeholder="e.g. Chairs, Tables, Lighting"
                   />
-                  <FiMapPin className="absolute left-3 top-3 text-stone-400" />
+                  <FiTag className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
                 </div>
-                {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
               </div>
 
-              {/* Bank Details (Optional) */}
+              {/* Additional Information */}
               <div className="col-span-1 md:col-span-2">
                 <label className="block text-sm font-medium text-stone-600 mb-1">
-                  Bank Details <span className="text-stone-400 font-normal">(Optional)</span>
+                  Additional Information
                 </label>
                 <div className="relative">
                   <textarea 
-                    name="bankDetails"
-                    value={profileData.bankDetails}
+                    name="message"
+                    value={profileData.message}
                     onChange={handleInputChange}
                     className="w-full pl-10 p-2 border border-stone-300 rounded-md focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none min-h-[80px]" 
-                    placeholder="Bank Name, Account Number, Branch, etc."
+                    placeholder="Tell us briefly about your products and manufacturing capacity..."
                   />
                   <FiCreditCard className="absolute left-3 top-3 text-stone-400" />
                 </div>

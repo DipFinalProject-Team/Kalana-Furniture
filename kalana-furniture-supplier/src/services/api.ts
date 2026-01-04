@@ -19,12 +19,12 @@ api.interceptors.request.use((config) => {
 });
 
 export const supplierService = {
-  register: async (data: any) => {
+  register: async (data: unknown) => {
     const response = await api.post('/suppliers/register', data);
     return response.data;
   },
 
-  login: async (credentials: any) => {
+  login: async (credentials: unknown) => {
     const response = await api.post('/suppliers/login', credentials);
     return response.data;
   },
@@ -35,7 +35,33 @@ export const supplierService = {
   },
 
   logout: async () => {
-    // Client-side logout
-    localStorage.removeItem('supplierToken');
+    const response = await api.post('/suppliers/logout');
+    return response.data;
+  },
+
+  deleteAccount: async () => {
+    const response = await api.delete('/suppliers/account');
+    return response.data;
+  },
+
+  updateProfile: async (data: unknown) => {
+    const response = await api.put('/suppliers/profile', data);
+    return response.data;
+  },
+
+  changePassword: async (data: unknown) => {
+    const response = await api.put('/suppliers/password', data);
+    return response.data;
+  },
+
+  uploadProfileImage: async (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await api.post('/suppliers/profile-image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
   }
 };

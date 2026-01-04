@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import Modal from './Modal';
 import { 
   FiGrid, 
-  FiShoppingCart, 
-  FiTruck, 
+  FiShoppingCart,  
   FiFileText, 
   FiUser, 
   FiSettings,
@@ -18,8 +17,52 @@ interface SidebarProps {
   toggleSidebar: () => void;
 }
 
+interface User {
+  contactPerson?: string;
+  companyName?: string;
+  profileImage?: string;
+  // Add other properties as needed
+}
+
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  // Get user information from localStorage
+  const getUserInfo = (): User | null => {
+    const userData = localStorage.getItem('supplierUser');
+    if (userData) {
+      try {
+        return JSON.parse(userData);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        return null;
+      }
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    // Set initial user
+    setUser(getUserInfo());
+
+    // Check for updates every second
+    const interval = setInterval(() => {
+      const newUser = getUserInfo();
+      setUser((prevUser: User | null) => {
+        if (JSON.stringify(prevUser) !== JSON.stringify(newUser)) {
+          return newUser;
+        }
+        return prevUser;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const userName = user?.contactPerson || 'User';
+  const companyName = user?.companyName || 'Company';
+  const userInitial = userName.charAt(0).toUpperCase();
 
   const handleLogout = () => {
     // Add actual logout logic here (e.g., clear tokens, redirect)
@@ -97,12 +140,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
       {/* Footer / User Info (Optional) */}
       <div className="p-4 border-t border-wood-accent/20">
         <div className={`flex items-center gap-3 ${isOpen ? '' : 'justify-center'}`}>
-          <div className="w-10 h-10 rounded-full bg-wood-accent text-nav-brown flex items-center justify-center font-bold text-lg shrink-0">
-            K
-          </div>
+          {user?.profileImage ? (
+            <img src={user.profileImage} alt="Profile" className="w-10 h-10 rounded-full object-cover shrink-0" />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-wood-accent text-nav-brown flex items-center justify-center font-bold text-lg shrink-0">
+              {userInitial}
+            </div>
+          )}
           <div className={`overflow-hidden transition-all duration-200 flex-1 ${isOpen ? 'w-auto opacity-100' : 'w-0 opacity-0 hidden'}`}>
-            <p className="text-sm font-medium text-wood-light truncate">Kalana Admin</p>
-            <p className="text-xs text-wood-light/60 truncate">Supplier Portal</p>
+            <p className="text-sm font-medium text-wood-light truncate">{userName}</p>
+            <p className="text-xs text-wood-light/60 truncate">{companyName}</p>
           </div>
           
           {/* Logout Button */}
