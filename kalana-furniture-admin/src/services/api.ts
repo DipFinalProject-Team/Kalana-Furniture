@@ -142,6 +142,42 @@ export interface AdminCredentials {
   password: string;
 }
 
+export interface SupplierApplication {
+  id: string;
+  company_name: string;
+  contact_person: string;
+  email: string;
+  phone: string;
+  categories: string;
+  message?: string;
+  status: string;
+  created_at: string;
+  approved_at?: string;
+  rejected_at?: string;
+}
+
+export const supplierService = {
+  getPendingApplications: async (): Promise<SupplierApplication[]> => {
+    const response = await api.get('/suppliers/pending');
+    return response.data;
+  },
+
+  getApprovedSuppliers: async (): Promise<SupplierApplication[]> => {
+    const response = await api.get('/suppliers/approved');
+    return response.data;
+  },
+
+  approveSupplier: async (id: string): Promise<{ success: boolean; message: string; supplier: SupplierApplication }> => {
+    const response = await api.put(`/suppliers/${id}/approve`);
+    return response.data;
+  },
+
+  rejectSupplier: async (id: string): Promise<{ success: boolean; message: string; supplier: SupplierApplication }> => {
+    const response = await api.put(`/suppliers/${id}/reject`);
+    return response.data;
+  }
+};
+
 export const adminService = {
   login: async (credentials: AdminCredentials): Promise<{ success: boolean; token?: string; message?: string }> => {
     const response = await api.post('/admin/login', credentials);

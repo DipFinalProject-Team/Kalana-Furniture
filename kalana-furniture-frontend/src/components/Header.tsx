@@ -1,9 +1,24 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
+import ConfirmationModal from './ConfirmationModal';
+import { useState } from 'react';
 
 const Header = () => {
   const { getTotalItems } = useCart();
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const cartItemCount = getTotalItems();
+
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleConfirmLogout = async () => {
+    await logout();
+    navigate('/');
+  };
   return (
     <header className="bg-white shadow-md fixed w-full z-50">
       <div className="max-w-7xl mx-auto px-8">
@@ -34,10 +49,20 @@ const Header = () => {
             <Link to="/products" className="text-gray-600 hover:text-wood-accent transition duration-300">Products</Link>
             <Link to="/offers" className="text-gray-600 hover:text-wood-accent transition duration-300">Offers</Link>
             <div className="border-l border-gray-300 h-6"></div>
-            <Link to="/login" className="text-gray-600 hover:text-wood-accent transition duration-300">Login</Link>
-            <Link to="/register" className="bg-wood-accent text-white font-bold py-2 px-4 rounded-md hover:bg-wood-accent-hover transition duration-300">
-              Register
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <span className="hidden sm:inline">Welcome, {user?.name}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="text-gray-600 hover:text-wood-accent transition duration-300">Login</Link>
+                <Link to="/register" className="bg-wood-accent text-white font-bold py-2 px-4 rounded-md hover:bg-wood-accent-hover transition duration-300">
+                  Register
+                </Link>
+              </>
+            )}
             <div className="border-l border-gray-300 h-6"></div>
             <Link to="/cart" className="relative text-gray-600 hover:text-wood-accent transition duration-300" title="Shopping Cart">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -59,6 +84,17 @@ const Header = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </Link>
+            {isAuthenticated && (
+              <button
+                onClick={handleLogoutClick}
+                className="text-gray-600 hover:text-wood-accent transition duration-300 flex items-center gap-1"
+                title="Logout"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-red-500 hover:text-wood-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            )}
           </div>
           <div className="md:hidden">
             <button>
@@ -67,6 +103,16 @@ const Header = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={handleConfirmLogout}
+        title="Confirm Logout"
+        message="Are you sure you want to logout? You will need to login again to access your account."
+        confirmText="Logout"
+        cancelText="Cancel"
+      />
     </header>
   );
 };

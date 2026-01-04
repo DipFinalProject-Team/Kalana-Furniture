@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { FaUser, FaEnvelope, FaPhone, FaBuilding, FaArrowLeft, FaList, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { supplierService } from "../services/api";
+import Toast from "./Toast";
 
 const SupplierRegistrationPage = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     companyName: "",
     contactPerson: "",
@@ -16,9 +19,9 @@ const SupplierRegistrationPage = () => {
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -76,15 +79,26 @@ const SupplierRegistrationPage = () => {
 
     setIsSubmitting(true);
 
-    // Simulate API call
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
       const { confirmPassword, ...submissionData } = formData;
       void confirmPassword;
-      console.log("Partnership Request:", submissionData);
-      setIsSubmitted(true);
-    } catch (error) {
+      
+      const response = await supplierService.register(submissionData);
+      
+      if (response.success) {
+        setToast({ message: "Registration successful! Please wait for admin approval.", type: 'success' });
+        // Navigate to login immediately after successful registration
+        navigate('/login');
+      } else {
+        setToast({ message: response.message || "Registration failed", type: 'error' });
+      }
+    } catch (error: unknown) {
       console.error("Submission failed:", error);
+      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Registration failed. Please try again.";
+      setToast({ 
+        message: errorMessage, 
+        type: 'error' 
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -92,6 +106,14 @@ const SupplierRegistrationPage = () => {
 
   return (
     <div className="min-h-screen flex bg-white font-sans">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          isVisible={true}
+          onClose={() => setToast(null)}
+        />
+      )}
       {/* Left Side - Visual & Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-wood-brown overflow-hidden">
         <div 
@@ -136,26 +158,7 @@ const SupplierRegistrationPage = () => {
             <p className="text-gray-500">Fill out the form below to apply for a supplier account.</p>
           </div>
 
-          {isSubmitted ? (
-            <div className="space-y-6">
-              <div className="p-6 bg-green-50 border border-green-100 rounded-xl text-green-800">
-                <div className="flex items-center mb-2">
-                  <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  <span className="font-bold">Application Received</span>
-                </div>
-                <p className="text-sm opacity-90">Thank you for your interest! Our procurement team will review your application and contact you at <span className="font-semibold">{formData.email}</span> within 2-3 business days.</p>
-              </div>
-              <Link 
-                to="/" 
-                className="flex items-center justify-center w-full py-4 px-4 bg-white border-2 border-wood-brown text-wood-brown font-bold rounded-xl hover:bg-wood-brown hover:text-white transition-all duration-200"
-              >
-                <FaArrowLeft className="mr-2" /> Back to Login
-              </Link>
-            </div>
-          ) : (
-            <form className="space-y-5" onSubmit={handleSubmit}>
+          <form className="space-y-5" onSubmit={handleSubmit}>
               {/* Company Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="companyName">
@@ -400,14 +403,13 @@ const SupplierRegistrationPage = () => {
 
               <div className="text-center pt-4">
                 <Link 
-                  to="/" 
+                  to="/login" 
                   className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-wood-brown transition-colors"
                 >
                   <FaArrowLeft className="mr-2" /> Back to Login
                 </Link>
               </div>
             </form>
-          )}
         </div>
       </div>
     </div>

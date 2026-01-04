@@ -1,8 +1,61 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { dashboardStats, recentSupplyOrders, lowStockRequests } from '../data/mockdata';
-import { FaBoxOpen, FaClipboardList, FaCheckCircle, FaMoneyBillWave, FaShoppingCart } from 'react-icons/fa';
+import { FaBoxOpen, FaClipboardList, FaCheckCircle, FaMoneyBillWave, FaShoppingCart, FaClock, FaExclamationTriangle } from 'react-icons/fa';
 
 const Dashboard: React.FC = () => {
+  const [supplierStatus, setSupplierStatus] = useState<string>('');
+
+  useEffect(() => {
+    const supplierData = localStorage.getItem('supplierUser');
+    if (supplierData) {
+      try {
+        const supplier = JSON.parse(supplierData);
+        setSupplierStatus(supplier.status || '');
+      } catch (error) {
+        console.error('Error parsing supplier data:', error);
+      }
+    }
+  }, []);
+
+  // Show waiting message for non-approved suppliers
+  if (supplierStatus === 'pending') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
+          <div className="mb-6">
+            <FaClock className="mx-auto h-16 w-16 text-amber-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Account Pending Approval</h2>
+          <p className="text-gray-600 mb-6">
+            Our account is pending approval. Please wait for admin approval.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (supplierStatus === 'rejected') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
+          <div className="mb-6">
+            <FaExclamationTriangle className="mx-auto h-16 w-16 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Account Rejected</h2>
+          <p className="text-gray-600 mb-6">
+            Unfortunately, your supplier application has been rejected.
+            Please contact our support team for more information.
+          </p>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <span className="text-red-800 text-sm">
+              Contact support@kalanafurniture.com for assistance.
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <h1 className="text-3xl font-serif text-amber-900 mb-6">Dashboard</h1>

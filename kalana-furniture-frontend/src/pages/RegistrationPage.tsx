@@ -1,12 +1,17 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter.tsx';
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { useAuth } from '../contexts/AuthContext';
+import Toast from '../components/Toast';
 
 type RegistrationPageProps = {
   onSwitchToLogin: () => void;
 };
 
 const RegistrationPage = ({ onSwitchToLogin }: RegistrationPageProps) => {
+  const { register } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -19,6 +24,8 @@ const RegistrationPage = ({ onSwitchToLogin }: RegistrationPageProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [toast, setToast] = useState<{type: 'success' | 'error', message: string} | null>(null);
+  const [showLoadingScreen, setShowLoadingScreen] = useState(false);
 
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
@@ -52,7 +59,7 @@ const RegistrationPage = ({ onSwitchToLogin }: RegistrationPageProps) => {
     }
 
     // Phone validation (optional but if provided, validate format)
-    if (formData.phone && !/^\+?[\d\s\-\(\)]{10,}$/.test(formData.phone.replace(/\s/g, ''))) {
+    if (formData.phone && !/^\+?[\d\s\-()]{10,}$/.test(formData.phone.replace(/\s/g, ''))) {
       newErrors.phone = 'Please enter a valid phone number';
     }
 
@@ -82,20 +89,51 @@ const RegistrationPage = ({ onSwitchToLogin }: RegistrationPageProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     setIsSubmitting(true);
-    
-    // Simulate API call
+    setToast(null);
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Registration successful:', formData);
-      // Here you would typically handle the registration logic
-    } catch (error) {
-      console.error('Registration failed:', error);
+      const result = await register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone,
+        address: formData.address
+      });
+
+      if (result.success) {
+        if (result.requiresConfirmation) {
+          setToast({ type: 'success', message: result.message });
+          // Keep form data for user to try again after email confirmation
+        } else {
+          setToast({ type: 'success', message: 'Registration successful! Welcome to Kalana Furniture.' });
+          // Clear form
+          setFormData({
+            name: '',
+            email: '',
+            password: '',
+            confirmPassword: '',
+            phone: '',
+            address: ''
+          });
+          // Show loading screen and redirect after a short delay
+          setTimeout(() => {
+            setShowLoadingScreen(true);
+            setTimeout(() => {
+              navigate('/login');
+            }, 2000); // Show loading screen for 2 seconds
+          }, 1000); // Wait 1 second after showing success toast
+        }
+      } else {
+        setToast({ type: 'error', message: result.message });
+      }
+    } catch {
+      setToast({ type: 'error', message: 'Registration failed. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -242,6 +280,38 @@ const RegistrationPage = ({ onSwitchToLogin }: RegistrationPageProps) => {
           </p>
         </div>
       </div>
+
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {showLoadingScreen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
+          <div className="text-center">
+            <div className="relative mb-8">
+              <div className="w-24 h-24 border-4 border-wood-light rounded-full animate-spin border-t-wood-brown mx-auto"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-16 h-16 bg-wood-brown rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-wood-brown mb-4">Account Created Successfully!</h2>
+            <p className="text-gray-600 mb-8">Redirecting you to login...</p>
+            <div className="flex justify-center space-x-2">
+              <div className="w-3 h-3 bg-wood-accent rounded-full animate-bounce"></div>
+              <div className="w-3 h-3 bg-wood-accent rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-3 h-3 bg-wood-accent rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

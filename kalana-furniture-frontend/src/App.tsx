@@ -10,6 +10,7 @@ import ProductsPage from './pages/ProductsPage';
 import CategoryProducts from './pages/CategoryProducts';
 import SnowAnimation from './components/SnowAnimation';
 import { CartProvider } from './contexts/CartContext';
+import { AuthProvider } from './contexts/AuthContext';
 import ProductDetailsPage from './pages/ProductDetailsPage';
 import OffersPage from './pages/OffersPage';
 import ReviewPage from './pages/ReviewPage';
@@ -20,27 +21,29 @@ function App() {
 
 
   return (
-    <CartProvider>
-      <div className="relative">
-        <SnowAnimation />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage onSwitchToRegister={() => navigate('/register')} onForgotPassword={() => navigate('/forgot-password')} />} />
-          <Route path="/register" element={<RegistrationPage onSwitchToLogin={() => navigate('/login')} />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage onSwitchToLogin={() => navigate('/login')} />} />
-          <Route path="/profile" element={<UserProfile />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/orders" element={<OrderHistoryPage />} />
-          <Route path="/products" element={<ProductsPage />} />
-          <Route path="/offers" element={<OffersPage />} />
-          <Route path="/category/:categoryName" element={<CategoryProducts />} />
-          <Route path="/product/:id" element={<ProductDetailsPage />} />
-          <Route path="/review/:id" element={<ReviewPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="*" element={<HomePage />} />
-        </Routes>
-      </div>
-    </CartProvider>
+    <AuthProvider>
+      <CartProvider>
+        <div className="relative">
+          <SnowAnimation />
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/login" element={<LoginPage onSwitchToRegister={() => navigate('/register')} onForgotPassword={() => navigate('/forgot-password')} />} />
+            <Route path="/register" element={<RegistrationPage onSwitchToLogin={() => navigate('/login')} />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage onSwitchToLogin={() => navigate('/login')} />} />
+            <Route path="/profile" element={<UserProfile />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/orders" element={<OrderHistoryPage />} />
+            <Route path="/products" element={<ProductsPage />} />
+            <Route path="/offers" element={<OffersPage />} />
+            <Route path="/category/:categoryName" element={<CategoryProducts />} />
+            <Route path="/product/:id" element={<ProductDetailsPage />} />
+            <Route path="/review/:id" element={<ReviewPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="*" element={<HomePage />} />
+          </Routes>
+        </div>
+      </CartProvider>
+    </AuthProvider>
   );
 }
 

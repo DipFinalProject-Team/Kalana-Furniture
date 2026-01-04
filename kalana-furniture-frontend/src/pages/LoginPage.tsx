@@ -1,5 +1,8 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { useAuth } from '../contexts/AuthContext';
+import Toast from '../components/Toast';
 
 type LoginPageProps = {
   onSwitchToRegister: () => void;
@@ -10,6 +13,8 @@ const LoginPage = ({
   onSwitchToRegister,
   onForgotPassword,
 }: LoginPageProps) => {
+  const { login } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -17,6 +22,8 @@ const LoginPage = ({
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [toast, setToast] = useState<{type: 'success' | 'error', message: string} | null>(null);
+  const [showLoadingScreen, setShowLoadingScreen] = useState(false);
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -62,14 +69,33 @@ const LoginPage = ({
     }
 
     setIsSubmitting(true);
+    setToast(null);
 
-    // Simulate API call
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      console.log("Login successful:", formData);
-      // Here you would typically handle the login logic
-    } catch (error) {
-      console.error("Login failed:", error);
+      const result = await login({
+        email: formData.email,
+        password: formData.password
+      });
+
+      if (result.success) {
+        setToast({ type: 'success', message: 'Login successful! Welcome back.' });
+        // Clear form
+        setFormData({
+          email: '',
+          password: ''
+        });
+        // Show loading screen and redirect after a short delay
+        setTimeout(() => {
+          setShowLoadingScreen(true);
+          setTimeout(() => {
+            navigate('/');
+          }, 2000); // Show loading screen for 2 seconds
+        }, 1000); // Wait 1 second after showing success toast
+      } else {
+        setToast({ type: 'error', message: result.message });
+      }
+    } catch {
+      setToast({ type: 'error', message: 'Login failed. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -183,6 +209,38 @@ const LoginPage = ({
           <p className="text-center text-wood-light">Your space, your style.</p>
         </div>
       </div>
+
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {showLoadingScreen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
+          <div className="text-center">
+            <div className="relative mb-8">
+              <div className="w-24 h-24 border-4 border-wood-light rounded-full animate-spin border-t-wood-brown mx-auto"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-16 h-16 bg-wood-brown rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-wood-brown mb-4">Welcome to Kalana Furniture!</h2>
+            <p className="text-gray-600 mb-8">Preparing your personalized experience...</p>
+            <div className="flex justify-center space-x-2">
+              <div className="w-3 h-3 bg-wood-accent rounded-full animate-bounce"></div>
+              <div className="w-3 h-3 bg-wood-accent rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-3 h-3 bg-wood-accent rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

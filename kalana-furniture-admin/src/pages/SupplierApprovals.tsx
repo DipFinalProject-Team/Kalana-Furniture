@@ -1,58 +1,73 @@
-import React, { useState } from 'react';
-import { supplierApplications, suppliers } from '../data/mockData';
-import { FaCheck, FaTimes, FaEye, FaBuilding, FaUser, FaEnvelope, FaPhone, FaList, FaCalendarAlt, FaUserCheck } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { supplierService, type SupplierApplication } from '../services/api';
+import { FaCheck, FaTimes, FaEye, FaBuilding, FaUser, FaEnvelope, FaPhone, FaList, FaCalendarAlt, FaUserCheck, FaSpinner } from 'react-icons/fa';
 import Toast from '../components/Toast';
 import ConfirmationModal from '../components/ConfirmationModal';
 
-interface Application {
-  id: string;
-  companyName?: string;
-  name?: string;
-  contactPerson: string;
-  username?: string;
-  email: string;
-  phone: string;
-  categories: string;
-  message?: string;
-  date?: string;
-  status: string;
-  joinedDate?: string;
-}
-
 const SupplierApprovals: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
-  const [applications, setApplications] = useState<Application[]>(supplierApplications);
-  const [approvedSuppliers, setApprovedSuppliers] = useState<Application[]>(suppliers);
-  const [selectedApp, setSelectedApp] = useState<Application | null>(null);
+  const [applications, setApplications] = useState<SupplierApplication[]>([]);
+  const [approvedSuppliers, setApprovedSuppliers] = useState<SupplierApplication[]>([]);
+  const [selectedApp, setSelectedApp] = useState<SupplierApplication | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleViewDetails = (app: Application) => {
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [pendingApps, approvedApps] = await Promise.all([
+        supplierService.getPendingApplications(),
+        supplierService.getApprovedSuppliers()
+      ]);
+      setApplications(pendingApps);
+      setApprovedSuppliers(approvedApps);
+    } catch (err) {
+      console.error('Error fetching supplier data:', err);
+      setError('Failed to load supplier data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewDetails = (app: SupplierApplication) => {
     setSelectedApp(app);
     setIsDetailsModalOpen(true);
   };
 
-  const handleActionClick = (app: Application, type: 'approve' | 'reject') => {
+  const handleActionClick = (app: SupplierApplication, type: 'approve' | 'reject') => {
     setSelectedApp(app);
     setActionType(type);
     setIsConfirmModalOpen(true);
   };
 
-  const handleConfirmAction = () => {
+  const handleConfirmAction = async () => {
     if (!selectedApp || !actionType) return;
 
-    if (actionType === 'approve') {
-      // Move from pending to approved
-      const newSupplier = { ...selectedApp, status: 'Active', joinedDate: new Date().toISOString().split('T')[0] };
-      setApprovedSuppliers([...approvedSuppliers, newSupplier]);
-      setApplications(applications.filter(app => app.id !== selectedApp.id));
-      setToast({ message: `Supplier ${selectedApp.companyName || selectedApp.name} approved successfully!`, type: 'success' });
-    } else {
-      // Reject
-      setApplications(applications.filter(app => app.id !== selectedApp.id));
-      setToast({ message: `Application for ${selectedApp.companyName || selectedApp.name} rejected.`, type: 'error' });
+    try {
+      if (actionType === 'approve') {
+        await supplierService.approveSupplier(selectedApp.id);
+        setApplications(applications.filter(app => app.id !== selectedApp.id));
+        // Add to approved list
+        const approvedSupplier = { ...selectedApp, status: 'approved', approved_at: new Date().toISOString() };
+        setApprovedSuppliers([approvedSupplier, ...approvedSuppliers]);
+        setToast({ message: `Supplier ${selectedApp.company_name} approved successfully!`, type: 'success' });
+      } else {
+        await supplierService.rejectSupplier(selectedApp.id);
+        setApplications(applications.filter(app => app.id !== selectedApp.id));
+        setToast({ message: `Application for ${selectedApp.company_name} rejected.`, type: 'error' });
+      }
+    } catch (err) {
+      console.error('Error processing supplier action:', err);
+      setToast({ message: `Failed to ${actionType} supplier. Please try again.`, type: 'error' });
     }
 
     setIsConfirmModalOpen(false);
@@ -112,7 +127,26 @@ const SupplierApprovals: React.FC = () => {
       )}
 
       {activeTab === 'pending' ? (
-        applications.length === 0 ? (
+        loading ? (
+          <div className="flex justify-center items-center py-16">
+            <FaSpinner className="animate-spin text-wood-brown text-2xl" />
+            <span className="ml-2 text-gray-600">Loading applications...</span>
+          </div>
+        ) : error ? (
+          <div className="text-center py-16 bg-white rounded-xl shadow-sm border border-red-200">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaTimes className="text-red-400 text-2xl" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-700 mb-2">Error Loading Applications</h3>
+            <p className="text-gray-500 mb-4">{error}</p>
+            <button
+              onClick={fetchData}
+              className="px-4 py-2 bg-wood-brown text-white rounded-lg hover:bg-nav-brown transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        ) : applications.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-xl shadow-sm border border-wood-brown/10">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <FaCheck className="text-gray-400 text-2xl" />
@@ -134,9 +168,9 @@ const SupplierApprovals: React.FC = () => {
                     </span>
                   </div>
                   
-                  <h3 className="text-xl font-bold text-gray-900 mb-1">{app.companyName || app.name}</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-1">{app.company_name}</h3>
                   <p className="text-sm text-gray-500 mb-4 flex items-center gap-2">
-                    <FaUser className="w-3 h-3" /> {app.contactPerson}
+                    <FaUser className="w-3 h-3" /> {app.contact_person}
                   </p>
 
                   <div className="space-y-2 text-sm text-gray-600 mb-6">
@@ -150,7 +184,7 @@ const SupplierApprovals: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <FaCalendarAlt className="text-gray-400 w-4 h-4" />
-                      <span>Applied: {app.date}</span>
+                      <span>Applied: {new Date(app.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
                 </div>
@@ -175,51 +209,61 @@ const SupplierApprovals: React.FC = () => {
         )
       ) : (
         // Approved Suppliers List
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {approvedSuppliers.map((supplier) => (
-            <div key={supplier.id} className="bg-white rounded-xl shadow-md border border-green-100 overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col">
-              <div className="p-6 flex-1">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center text-green-700">
-                    <FaUserCheck className="text-xl" />
-                  </div>
-                  <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
-                    Active
-                  </span>
-                </div>
-                
-                <h3 className="text-xl font-bold text-gray-900 mb-1">{supplier.companyName || supplier.name}</h3>
-                <p className="text-sm text-gray-500 mb-4 flex items-center gap-2">
-                  <FaUser className="w-3 h-3" /> {supplier.contactPerson}
-                </p>
-
-                <div className="space-y-2 text-sm text-gray-600 mb-6">
-                  <div className="flex items-center gap-2">
-                    <FaEnvelope className="text-gray-400 w-4 h-4" />
-                    <span className="truncate">{supplier.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <FaPhone className="text-gray-400 w-4 h-4" />
-                    <span>{supplier.phone}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <FaList className="text-gray-400 w-4 h-4" />
-                    <span className="truncate">{supplier.categories}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 p-4 border-t border-gray-100">
-                <button
-                  onClick={() => handleViewDetails(supplier)}
-                  className="w-full py-2 px-4 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium text-sm flex items-center justify-center gap-2 transition-colors"
-                >
-                  <FaEye /> View Details
-                </button>
-              </div>
+        approvedSuppliers.length === 0 ? (
+          <div className="text-center py-16 bg-white rounded-xl shadow-sm border border-wood-brown/10">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FaUserCheck className="text-green-400 text-2xl" />
             </div>
-          ))}
-        </div>
+            <h3 className="text-xl font-bold text-gray-700 mb-2">No Approved Suppliers</h3>
+            <p className="text-gray-500">There are no approved suppliers yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {approvedSuppliers.map((supplier) => (
+              <div key={supplier.id} className="bg-white rounded-xl shadow-md border border-green-100 overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col">
+                <div className="p-6 flex-1">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center text-green-700">
+                      <FaUserCheck className="text-xl" />
+                    </div>
+                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
+                      Active
+                    </span>
+                  </div>
+                  
+                  <h3 className="text-xl font-bold text-gray-900 mb-1">{supplier.company_name}</h3>
+                  <p className="text-sm text-gray-500 mb-4 flex items-center gap-2">
+                    <FaUser className="w-3 h-3" /> {supplier.contact_person}
+                  </p>
+
+                  <div className="space-y-2 text-sm text-gray-600 mb-6">
+                    <div className="flex items-center gap-2">
+                      <FaEnvelope className="text-gray-400 w-4 h-4" />
+                      <span className="truncate">{supplier.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FaPhone className="text-gray-400 w-4 h-4" />
+                      <span>{supplier.phone}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FaList className="text-gray-400 w-4 h-4" />
+                      <span className="truncate">{supplier.categories}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-4 border-t border-gray-100">
+                  <button
+                    onClick={() => handleViewDetails(supplier)}
+                    className="w-full py-2 px-4 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium text-sm flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <FaEye /> View Details
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
       )}
 
       {/* Details Modal */}
@@ -250,11 +294,11 @@ const SupplierApprovals: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-6 rounded-xl border border-gray-100">
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Company Name</p>
-                    <p className="text-gray-900 font-medium">{selectedApp.companyName || selectedApp.name}</p>
+                    <p className="text-gray-900 font-medium">{selectedApp.company_name}</p>
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Product Categories</p>
-                    <p className="text-gray-900 font-medium">{selectedApp.categories || 'N/A'}</p>
+                    <p className="text-gray-900 font-medium">{selectedApp.categories}</p>
                   </div>
                   <div className="md:col-span-2">
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-1">About / Message</p>
@@ -271,14 +315,8 @@ const SupplierApprovals: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-6 rounded-xl border border-gray-100">
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Contact Person</p>
-                    <p className="text-gray-900 font-medium">{selectedApp.contactPerson}</p>
+                    <p className="text-gray-900 font-medium">{selectedApp.contact_person}</p>
                   </div>
-                  {selectedApp.username && (
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Username</p>
-                      <p className="text-gray-900 font-medium">{selectedApp.username}</p>
-                    </div>
-                  )}
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Email Address</p>
                     <p className="text-gray-900 font-medium">{selectedApp.email}</p>
@@ -287,12 +325,10 @@ const SupplierApprovals: React.FC = () => {
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Phone Number</p>
                     <p className="text-gray-900 font-medium">{selectedApp.phone}</p>
                   </div>
-                  {selectedApp.joinedDate && (
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Joined Date</p>
-                      <p className="text-gray-900 font-medium">{selectedApp.joinedDate}</p>
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Application Date</p>
+                    <p className="text-gray-900 font-medium">{new Date(selectedApp.created_at).toLocaleDateString()}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -324,8 +360,8 @@ const SupplierApprovals: React.FC = () => {
         title={actionType === 'approve' ? "Approve Supplier" : "Reject Application"}
         message={
           actionType === 'approve' 
-            ? `Are you sure you want to approve ${selectedApp?.companyName || selectedApp?.name}? They will receive an email with their login credentials.`
-            : `Are you sure you want to reject the application from ${selectedApp?.companyName || selectedApp?.name}? This action cannot be undone.`
+            ? `Are you sure you want to approve ${selectedApp?.company_name}? They will be able to login to the supplier portal.`
+            : `Are you sure you want to reject the application from ${selectedApp?.company_name}? This action cannot be undone.`
         }
         confirmText={actionType === 'approve' ? "Approve" : "Reject"}
       />

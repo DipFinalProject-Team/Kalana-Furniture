@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { FaEye, FaEyeSlash, FaUser, FaLock } from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { supplierService } from "../services/api";
+import Toast from "./Toast";
 
 const SupplierLoginPage = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -10,6 +13,7 @@ const SupplierLoginPage = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -53,12 +57,28 @@ const SupplierLoginPage = () => {
 
     setIsSubmitting(true);
 
-    // Simulate API call
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      console.log("Supplier Login successful:", formData);
-    } catch (error) {
+      const response = await supplierService.login(formData);
+      
+      if (response.success && response.token) {
+        localStorage.setItem('supplierToken', response.token);
+        localStorage.setItem('supplierUser', JSON.stringify(response.supplier));
+        setToast({ message: "Login successful!", type: 'success' });
+        
+        // Redirect to dashboard after a short delay
+        setTimeout(() => {
+          navigate('/');
+        }, 1000);
+      } else {
+        setToast({ message: response.message || "Login failed", type: 'error' });
+      }
+    } catch (error: unknown) {
       console.error("Login failed:", error);
+      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Login failed. Please check your credentials.";
+      setToast({ 
+        message: errorMessage, 
+        type: 'error' 
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -66,6 +86,14 @@ const SupplierLoginPage = () => {
 
   return (
     <div className="min-h-screen flex bg-white font-sans">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          isVisible={true}
+          onClose={() => setToast(null)}
+        />
+      )}
       {/* Left Side - Visual & Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-wood-brown overflow-hidden">
         <div 

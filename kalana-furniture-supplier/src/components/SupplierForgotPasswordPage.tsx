@@ -96,7 +96,7 @@ const SupplierForgotPasswordPage = () => {
                 <p className="text-sm opacity-90">If an account exists for <span className="font-semibold">{email}</span>, we've sent password reset instructions.</p>
               </div>
               <Link 
-                to="/" 
+                to="/login" 
                 className="flex items-center justify-center w-full py-4 px-4 bg-white border-2 border-wood-brown text-wood-brown font-bold rounded-xl hover:bg-wood-brown hover:text-white transition-all duration-200"
               >
                 <FaArrowLeft className="mr-2" /> Back to Login
@@ -160,7 +160,7 @@ const SupplierForgotPasswordPage = () => {
 
               <div className="text-center pt-6 border-t border-gray-200">
                 <Link 
-                  to="/" 
+                  to="/login" 
                   className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-wood-brown transition-colors"
                 >
                   <FaArrowLeft className="mr-2" /> Back to Login
