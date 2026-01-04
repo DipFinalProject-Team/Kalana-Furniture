@@ -137,6 +137,47 @@ export const productService = {
   }
 };
 
+export interface Promotion {
+  id: number;
+  code: string;
+  description: string;
+  type: string;
+  value: number;
+  startDate: string;
+  endDate: string;
+  appliesTo: string;
+  isActive: boolean;
+}
+
+interface BackendPromotion {
+  id: number;
+  code: string;
+  description: string;
+  type: string;
+  value: number;
+  start_date: string;
+  end_date: string;
+  applies_to: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Helper to map backend promotion to frontend promotion
+const mapPromotion = (data: BackendPromotion): Promotion => {
+  return {
+    id: data.id,
+    code: data.code,
+    description: data.description,
+    type: data.type,
+    value: Number(data.value),
+    startDate: data.start_date,
+    endDate: data.end_date,
+    appliesTo: data.applies_to,
+    isActive: data.is_active,
+  };
+};
+
 export interface AdminCredentials {
   email: string;
   password: string;
@@ -196,5 +237,54 @@ export const adminService = {
   changePassword: async (data: { currentPassword: string; newPassword: string }): Promise<{ success: boolean; message: string }> => {
     const response = await api.post('/admin/change-password', data);
     return response.data;
+  }
+};
+
+export const promotionService = {
+  getAll: async (): Promise<Promotion[]> => {
+    const response = await api.get('/promotions');
+    return response.data.map(mapPromotion);
+  },
+
+  getById: async (id: number): Promise<Promotion> => {
+    const response = await api.get(`/promotions/${id}`);
+    return mapPromotion(response.data);
+  },
+
+  create: async (promotion: Omit<Promotion, 'id'>): Promise<Promotion> => {
+    const response = await api.post('/promotions', {
+      code: promotion.code,
+      description: promotion.description,
+      type: promotion.type,
+      value: promotion.value,
+      startDate: promotion.startDate,
+      endDate: promotion.endDate,
+      appliesTo: promotion.appliesTo,
+      isActive: promotion.isActive,
+    });
+    return mapPromotion(response.data);
+  },
+
+  update: async (id: number, promotion: Omit<Promotion, 'id'>): Promise<Promotion> => {
+    const response = await api.put(`/promotions/${id}`, {
+      code: promotion.code,
+      description: promotion.description,
+      type: promotion.type,
+      value: promotion.value,
+      startDate: promotion.startDate,
+      endDate: promotion.endDate,
+      appliesTo: promotion.appliesTo,
+      isActive: promotion.isActive,
+    });
+    return mapPromotion(response.data);
+  },
+
+  toggleStatus: async (id: number): Promise<Promotion> => {
+    const response = await api.put(`/promotions/${id}/toggle`);
+    return mapPromotion(response.data);
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/promotions/${id}`);
   }
 };

@@ -1,23 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaPlus, FaEdit, FaTrash, FaTag, FaCalendarAlt, FaPercent, FaCheck, FaTimes } from 'react-icons/fa';
-import { promotionsData } from '../data/mockData';
+import { promotionService } from '../services/api';
+import type { Promotion } from '../services/api';
 import ConfirmationModal from '../components/ConfirmationModal';
 import Toast from '../components/Toast';
 
-interface Promotion {
-  id: number;
-  code: string;
-  description: string;
-  type: string;
-  value: number;
-  startDate: string;
-  endDate: string;
-  appliesTo: string;
-  isActive: boolean;
-}
-
 const Promotions: React.FC = () => {
-  const [promotions, setPromotions] = useState<Promotion[]>(promotionsData);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   
@@ -48,6 +38,29 @@ const Promotions: React.FC = () => {
     isActive: true,
   });
 
+  // Fetch promotions on component mount
+  useEffect(() => {
+    const fetchPromotions = async () => {
+      try {
+        setLoading(true);
+        console.log('Fetching promotions...');
+        
+        const data = await promotionService.getAll();
+        console.log('Promotions fetched:', data);
+        setPromotions(data);
+      } catch (error) {
+        console.error('Error fetching promotions:', error);
+        showToast('Failed to load promotions', 'error');
+        // Set loading to false even on error
+        setLoading(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPromotions();
+  }, []);
+
   const handleOpenModal = (promotion?: Promotion) => {
     if (promotion) {
       setEditingId(promotion.id);
@@ -73,21 +86,34 @@ const Promotions: React.FC = () => {
     setEditingId(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingId) {
-      setPromotions(promotions.map(p => p.id === editingId ? { ...formData, id: editingId } : p));
-      showToast('Promotion updated successfully!', 'success');
-    } else {
-      setPromotions([...promotions, { ...formData, id: Date.now() }]);
-      showToast('Promotion created successfully!', 'success');
+    try {
+      if (editingId) {
+        const updatedPromotion = await promotionService.update(editingId, formData);
+        setPromotions(promotions.map(p => p.id === editingId ? updatedPromotion : p));
+        showToast('Promotion updated successfully!', 'success');
+      } else {
+        const newPromotion = await promotionService.create(formData);
+        setPromotions([...promotions, newPromotion]);
+        showToast('Promotion created successfully!', 'success');
+      }
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error saving promotion:', error);
+      showToast('Failed to save promotion', 'error');
     }
-    handleCloseModal();
   };
 
-  const toggleStatus = (id: number) => {
-    setPromotions(promotions.map(p => p.id === id ? { ...p, isActive: !p.isActive } : p));
-    showToast('Promotion status updated!', 'success');
+  const toggleStatus = async (id: number) => {
+    try {
+      const updatedPromotion = await promotionService.toggleStatus(id);
+      setPromotions(promotions.map(p => p.id === id ? updatedPromotion : p));
+      showToast('Promotion status updated!', 'success');
+    } catch (error) {
+      console.error('Error toggling status:', error);
+      showToast('Failed to update status', 'error');
+    }
   };
 
   const handleDeleteClick = (id: number) => {
@@ -95,12 +121,18 @@ const Promotions: React.FC = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteId) {
-      setPromotions(promotions.filter(p => p.id !== deleteId));
-      showToast('Promotion deleted successfully!', 'success');
-      setIsDeleteModalOpen(false);
-      setDeleteId(null);
+      try {
+        await promotionService.delete(deleteId);
+        setPromotions(promotions.filter(p => p.id !== deleteId));
+        showToast('Promotion deleted successfully!', 'success');
+        setIsDeleteModalOpen(false);
+        setDeleteId(null);
+      } catch (error) {
+        console.error('Error deleting promotion:', error);
+        showToast('Failed to delete promotion', 'error');
+      }
     }
   };
 
@@ -133,8 +165,13 @@ const Promotions: React.FC = () => {
       </div>
 
       {/* Promotions List */}
-      <div className="grid gap-4">
-        {promotions.map((promo) => (
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-wood-brown"></div>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {promotions.map((promo) => (
           <div key={promo.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-4 flex-1">
               <div className={`p-4 rounded-full ${promo.isActive ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
@@ -188,7 +225,8 @@ const Promotions: React.FC = () => {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
 
       {/* Modal */}
       {isModalOpen && (
@@ -233,11 +271,12 @@ const Promotions: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Discount Value</label>
                 <input
                   type="number"
+                  placeholder='0'
                   required
                   min="0"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-wood-brown"
-                  value={formData.value}
-                  onChange={(e) => setFormData({...formData, value: Number(e.target.value)})}
+                  value={formData.value || ''}
+                  onChange={(e) => setFormData({...formData, value: e.target.value ? Number(e.target.value) : 0})}
                 />
               </div>
 
