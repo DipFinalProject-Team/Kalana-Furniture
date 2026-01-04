@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { FaEye, FaEyeSlash, FaUser, FaLock } from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
-type AdminLoginPageProps = {
-  // onForgotPassword: () => void; // Removed unused prop
-};
-
-const AdminLoginPage = ({}: AdminLoginPageProps) => {
+const AdminLoginPage = () => {
+  const { login } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -57,12 +56,17 @@ const AdminLoginPage = ({}: AdminLoginPageProps) => {
 
     setIsSubmitting(true);
 
-    // Simulate API call
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      console.log("Admin Login successful:", formData);
+      const result = await login(formData.email, formData.password);
+
+      if (result.success) {
+        navigate('/admin');
+      } else {
+        setErrors({ general: result.message || 'Login failed' });
+      }
     } catch (error) {
       console.error("Login failed:", error);
+      setErrors({ general: 'An unexpected error occurred. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -94,6 +98,12 @@ const AdminLoginPage = ({}: AdminLoginPageProps) => {
           </div>
 
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {errors.general && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-red-600 text-sm text-center">{errors.general}</p>
+              </div>
+            )}
+
             <div>
               <label
                 className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1"

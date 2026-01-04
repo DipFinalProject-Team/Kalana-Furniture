@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   LuLayoutDashboard,
   LuChartBar,
@@ -18,27 +19,37 @@ import ConfirmationModal from '../ConfirmationModal';
 
 const Sidebar: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { logout } = useAuth();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const navItems = [
-  { path: '/', name: 'Dashboard', icon: LuLayoutDashboard },
-  { path: '/analytics', name: 'Analytics', icon: LuChartBar },
-  { path: '/products', name: 'Products', icon: LuPackage },
-  { path: '/orders', name: 'Orders', icon: LuShoppingCart },
-  { path: '/customers', name: 'Customers', icon: LuUsers },
-  { path: '/inventory', name: 'Inventory', icon: LuClipboardList },
-  { path: '/approvals', name: 'Approvals', icon: LuCheck },
-  { path: '/invoices', name: 'Invoices', icon: LuFileText },
-  { path: '/promotions', name: 'Promos', icon: LuTag },
-  { path: '/reviews', name: 'Reviews', icon: LuStar },
-  { path: '/settings', name: 'Settings', icon: LuSettings },
+  { path: '/admin', name: 'Dashboard', icon: LuLayoutDashboard },
+  { path: '/admin/analytics', name: 'Analytics', icon: LuChartBar },
+  { path: '/admin/products', name: 'Products', icon: LuPackage },
+  { path: '/admin/orders', name: 'Orders', icon: LuShoppingCart },
+  { path: '/admin/customers', name: 'Customers', icon: LuUsers },
+  { path: '/admin/inventory', name: 'Inventory', icon: LuClipboardList },
+  { path: '/admin/approvals', name: 'Approvals', icon: LuCheck },
+  { path: '/admin/invoices', name: 'Invoices', icon: LuFileText },
+  { path: '/admin/promotions', name: 'Promos', icon: LuTag },
+  { path: '/admin/reviews', name: 'Reviews', icon: LuStar },
+  { path: '/admin/settings', name: 'Settings', icon: LuSettings },
 ]
 
   const handleLogout = () => {
-    // Perform any logout logic here (e.g., clearing tokens)
-    console.log('Logging out...');
+    logout();
     setIsLogoutModalOpen(false);
     navigate('/login');
+  };
+
+  const isNavItemActive = (path: string) => {
+    if (path === '/admin') {
+      // Dashboard is active when at /admin (index route)
+      return location.pathname === '/admin';
+    }
+    // For other routes, check if current path starts with the nav path
+    return location.pathname.startsWith(path);
   };
 
   return (
@@ -63,9 +74,9 @@ const Sidebar: React.FC = () => {
           <NavLink
             key={item.path}
             to={item.path}
-            className={({ isActive }) =>
+            className={() =>
               `flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 ${
-                isActive
+                isNavItemActive(item.path)
                   ? 'bg-wood-accent text-nav-brown shadow-md font-bold'
                   : 'text-wood-light/80 hover:bg-wood-brown hover:text-white hover:pl-5'
               }`

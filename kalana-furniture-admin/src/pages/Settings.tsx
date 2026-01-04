@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FaLock, FaSave, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { adminService } from '../services/api';
 
 const Settings: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -13,6 +14,7 @@ const Settings: React.FC = () => {
     confirm: false
   });
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -38,7 +40,7 @@ const Settings: React.FC = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
 
@@ -57,15 +59,29 @@ const Settings: React.FC = () => {
       return;
     }
 
-    // Simulate API call
-    setTimeout(() => {
-      setMessage({ type: 'success', text: 'Password updated successfully' });
-      setFormData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
+    setIsLoading(true);
+    try {
+      const response = await adminService.changePassword({
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword
       });
-    }, 1000);
+
+      if (response.success) {
+        setMessage({ type: 'success', text: response.message });
+        setFormData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      } else {
+        setMessage({ type: 'error', text: response.message });
+      }
+    } catch (error: unknown) {
+      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to update password. Please try again.';
+      setMessage({ type: 'error', text: errorMessage });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const strength = getPasswordStrength(formData.newPassword);
@@ -190,10 +206,20 @@ const Settings: React.FC = () => {
             <div className="pt-4">
               <button
                 type="submit"
-                className="flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-3 bg-wood-brown text-white rounded-lg hover:bg-wood-brown-dark transition-colors font-medium"
+                disabled={isLoading}
+                className="flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-3 bg-wood-brown text-white rounded-lg hover:bg-wood-brown-dark transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <FaSave />
-                Update Password
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <FaSave />
+                    Update Password
+                  </>
+                )}
               </button>
             </div>
           </form>

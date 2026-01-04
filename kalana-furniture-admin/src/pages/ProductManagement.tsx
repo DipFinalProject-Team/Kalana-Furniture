@@ -1,25 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  FaPlus, FaSearch, FaEdit, FaTrash, FaFilter, FaImage, FaBoxOpen, FaTimes,
+  FaPlus, FaSearch, FaEdit, FaTrash, FaFilter, FaImage, FaBoxOpen, FaTimes, FaExclamationTriangle,
 } from 'react-icons/fa';
-import { inventoryData } from '../data/mockData';
-
-interface Product {
-  id: number;
-  productName: string;
-  sku: string;
-  category: string;
-  price: number;
-  stock: number;
-  status: string;
-  lastUpdated: string;
-  image: string;
-  description?: string;
-  images?: string[]; // For multiple images
-}
+import { productService, type Product } from '../services/api';
+import Toast from '../components/Toast';
 
 const ProductManagement: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>(inventoryData);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,9 +16,41 @@ const ProductManagement: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<number | null>(null);
+  const [priceFocused, setPriceFocused] = useState(false);
+  const [stockFocused, setStockFocused] = useState(false);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error'; isVisible: boolean }>({
+    message: '',
+    type: 'success',
+    isVisible: false
+  });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Categories derived from data
-  const categories = ['All', ...new Set(inventoryData.map(item => item.category))];
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type, isVisible: true });
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const data = await productService.getAll();
+      setProducts(data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load products');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Categories
+  const categories = ['All', 'Living Room', 'Bedroom', 'Dining', 'Office'];
 
   // Filter products
   const filteredProducts = products.filter(product => {
@@ -44,11 +65,17 @@ const ProductManagement: React.FC = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (productToDelete) {
-      setProducts(products.filter(p => p.id !== productToDelete));
-      setIsDeleteModalOpen(false);
-      setProductToDelete(null);
+      try {
+        await productService.delete(productToDelete);
+        setProducts(products.filter(p => p.id !== productToDelete));
+        setIsDeleteModalOpen(false);
+        setProductToDelete(null);
+      } catch (err) {
+        console.error('Failed to delete product', err);
+        // Optionally show error toast
+      }
     }
   };
 
@@ -64,43 +91,110 @@ const ProductManagement: React.FC = () => {
         price: 0,
         stock: 0,
         status: 'In Stock',
-        image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', // Default placeholder
+        image: '', // Default placeholder
         images: []
       });
       setIsEditing(false);
     }
+    setNewFiles([]);
+    setPreviewUrls([]);
+    setPriceFocused(false);
+    setStockFocused(false);
     setIsModalOpen(true);
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Attempting to save product:', currentProduct);
     
-    const calculatedStatus = (currentProduct.stock || 0) > 10 ? 'In Stock' : (currentProduct.stock || 0) > 0 ? 'Low Stock' : 'Out of Stock';
-
-    if (isEditing && currentProduct.id) {
-      setProducts(products.map(p => p.id === currentProduct.id ? { 
-        ...currentProduct as Product, 
-        status: calculatedStatus,
-        lastUpdated: new Date().toISOString().split('T')[0] 
-      } : p));
-    } else {
-      const newProduct: Product = {
-        ...currentProduct as Product,
-        id: Math.max(...products.map(p => p.id)) + 1,
-        lastUpdated: new Date().toISOString().split('T')[0],
-        status: calculatedStatus
-      };
-      setProducts([...products, newProduct]);
+    // Basic validation
+    if (!currentProduct.productName || !currentProduct.sku) {
+      showToast('Product Name and SKU are required', 'error');
+      return;
     }
-    setIsModalOpen(false);
+
+    try {
+      setLoading(true);
+      if (isEditing && currentProduct.id) {
+        const updatedProduct = await productService.update(currentProduct.id, currentProduct, newFiles);
+        setProducts(products.map(p => p.id === currentProduct.id ? updatedProduct : p));
+        showToast('Product updated successfully', 'success');
+      } else {
+        console.log('Creating new product...');
+        const newProduct = await productService.create(currentProduct, newFiles);
+        console.log('Product created successfully:', newProduct);
+        setProducts([...products, newProduct]);
+        showToast('Product created successfully', 'success');
+      }
+      setIsModalOpen(false);
+    } catch (err: unknown) {
+      console.error('Failed to save product:', err);
+      let errorMessage = 'Failed to save product';
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (err && typeof err === 'object' && 'response' in err) {
+        const apiError = err as { response?: { data?: { error?: string } } };
+        errorMessage = apiError.response?.data?.error || errorMessage;
+      }
+      showToast(errorMessage, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setCurrentProduct({
       ...currentProduct,
-      [name]: name === 'price' || name === 'stock' ? Number(value) : value
+      [name]: (name === 'price' || name === 'stock') ? (value === '' ? 0 : Number(value)) : value
     });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      
+      // Validate file types and sizes
+      const validFiles = files.filter(file => {
+        if (!file.type.startsWith('image/')) {
+          showToast(`${file.name} is not a valid image file`, 'error');
+          return false;
+        }
+        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+          showToast(`${file.name} is too large (max 5MB)`, 'error');
+          return false;
+        }
+        return true;
+      });
+
+      if (validFiles.length === 0) return;
+
+      setNewFiles(prev => [...prev, ...validFiles]);
+      
+      const newPreviews = validFiles.map(file => URL.createObjectURL(file));
+      setPreviewUrls(prev => [...prev, ...newPreviews]);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    const existingCount = currentProduct.images?.length || 0;
+    
+    if (index < existingCount) {
+      // Remove existing image
+      setCurrentProduct(prev => ({
+        ...prev,
+        images: prev.images?.filter((_, i) => i !== index)
+      }));
+    } else {
+      // Remove new file
+      const newIndex = index - existingCount;
+      setNewFiles(prev => prev.filter((_, i) => i !== newIndex));
+      setPreviewUrls(prev => {
+        const urlToRemove = prev[newIndex];
+        URL.revokeObjectURL(urlToRemove); // Cleanup
+        return prev.filter((_, i) => i !== newIndex);
+      });
+    }
   };
 
   return (
@@ -147,58 +241,89 @@ const ProductManagement: React.FC = () => {
       </div>
 
       {/* Product Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredProducts.map((product) => (
-          <div key={product.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow group">
-            <div className="relative h-48 bg-gray-100">
-              <img 
-                src={product.image} 
-                alt={product.productName} 
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button 
-                  onClick={() => handleOpenModal(product)}
-                  className="p-2 bg-white text-blue-600 rounded-lg shadow-sm hover:bg-blue-50 transition-colors"
-                >
-                  <FaEdit />
-                </button>
-                <button 
-                  onClick={() => handleDelete(product.id)}
-                  className="p-2 bg-white text-red-600 rounded-lg shadow-sm hover:bg-red-50 transition-colors"
-                >
-                  <FaTrash />
-                </button>
-              </div>
-              <div className={`absolute top-3 left-3 px-2 py-1 rounded-full text-xs font-bold ${
-                product.stock === 0 ? 'bg-red-100 text-red-700' :
-                product.stock < 10 ? 'bg-yellow-100 text-yellow-700' :
-                'bg-green-100 text-green-700'
-              }`}>
-                {product.stock === 0 ? 'Out of Stock' : product.stock < 10 ? 'Low Stock' : 'In Stock'}
-              </div>
-            </div>
-            
-            <div className="p-4">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">{product.category}</p>
-                  <h3 className="font-bold text-gray-800 line-clamp-1">{product.productName}</h3>
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-wood-brown"></div>
+        </div>
+      ) : error ? (
+        <div className="flex flex-col justify-center items-center py-12">
+          <FaExclamationTriangle className="text-red-500 text-4xl mb-4" />
+          <p className="text-red-600 text-lg font-medium">{error}</p>
+          <button 
+            onClick={fetchProducts}
+            className="mt-4 px-4 py-2 bg-wood-brown text-white rounded-lg hover:bg-wood-brown-dark transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredProducts.map((product) => (
+            <div key={product.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow group">
+              <div className="relative h-48 bg-gray-100">
+                {product.image ? (
+                  <img 
+                    src={product.image} 
+                    alt={product.productName} 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400">
+                    <FaImage className="text-4xl" />
+                  </div>
+                )}
+                <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button 
+                    onClick={() => handleOpenModal(product)}
+                    className="p-2 bg-white text-blue-600 rounded-lg shadow-sm hover:bg-blue-50 transition-colors"
+                  >
+                    <FaEdit />
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(product.id)}
+                    className="p-2 bg-white text-red-600 rounded-lg shadow-sm hover:bg-red-50 transition-colors"
+                  >
+                    <FaTrash />
+                  </button>
                 </div>
-                <p className="font-bold text-wood-brown">Rs. {product.price}</p>
+                <div className={`absolute top-3 left-3 px-2 py-1 rounded-full text-xs font-bold ${
+                  product.stock === 0 ? 'bg-red-100 text-red-700' :
+                  product.stock < 10 ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-green-100 text-green-700'
+                }`}>
+                  {product.stock === 0 ? 'Out of Stock' : product.stock < 10 ? 'Low Stock' : 'In Stock'}
+                </div>
               </div>
               
-              <div className="flex items-center justify-between text-sm text-gray-500 mt-4 pt-4 border-t border-gray-50">
-                <span className="flex items-center gap-1">
-                  <FaBoxOpen className="text-gray-400" />
-                  {product.stock} units
-                </span>
-                <span className="text-xs">SKU: {product.sku}</span>
+              <div className="p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">{product.category}</p>
+                    <h3 className="font-bold text-gray-800 line-clamp-1">{product.productName}</h3>
+                  </div>
+                  <p className="font-bold text-wood-brown">Rs. {product.price}</p>
+                </div>
+                
+                <div className="flex items-center justify-between text-sm text-gray-500 mt-4 pt-4 border-t border-gray-50">
+                  <span className="flex items-center gap-1">
+                    <FaBoxOpen className="text-gray-400" />
+                    {product.stock} units
+                  </span>
+                  <span className="text-xs">SKU: {product.sku}</span>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      <Toast 
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+      />
 
       {/* Add/Edit Modal */}
       {isModalOpen && (
@@ -267,8 +392,11 @@ const ProductManagement: React.FC = () => {
                       required
                       min="0"
                       step="0.01"
-                      value={currentProduct.price}
+                      placeholder="0"
+                      value={(priceFocused && currentProduct.price === 0) ? '' : (currentProduct.price ?? 0)}
                       onChange={handleInputChange}
+                      onFocus={() => setPriceFocused(true)}
+                      onBlur={() => setPriceFocused(false)}
                       className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-wood-brown focus:ring-2 focus:ring-wood-brown/20 outline-none"
                     />
                   </div>
@@ -280,8 +408,11 @@ const ProductManagement: React.FC = () => {
                       name="stock"
                       required
                       min="0"
-                      value={currentProduct.stock}
+                      placeholder="0"
+                      value={(stockFocused && currentProduct.stock === 0) ? '' : (currentProduct.stock ?? 0)}
                       onChange={handleInputChange}
+                      onFocus={() => setStockFocused(true)}
+                      onBlur={() => setStockFocused(false)}
                       className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-wood-brown focus:ring-2 focus:ring-wood-brown/20 outline-none"
                     />
                   </div>
@@ -290,21 +421,39 @@ const ProductManagement: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Product Images</label>
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-wood-brown transition-colors cursor-pointer bg-gray-50">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  multiple 
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                />
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-wood-brown transition-colors cursor-pointer bg-gray-50"
+                >
                   <FaImage className="mx-auto text-4xl text-gray-400 mb-2" />
                   <p className="text-gray-600 font-medium">Click to upload images</p>
                   <p className="text-xs text-gray-400 mt-1">SVG, PNG, JPG or GIF (max. 800x400px)</p>
                 </div>
-                {/* Mock image preview */}
-                {currentProduct.image && (
+                
+                {/* Image Previews */}
+                {((currentProduct.images && currentProduct.images.length > 0) || previewUrls.length > 0) && (
                   <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
-                    <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
-                      <img src={currentProduct.image} alt="Preview" className="w-full h-full object-cover" />
-                    </div>
-                    {/* Placeholder for multiple images */}
-                    {[1, 2].map(i => (
-                      <div key={i} className="w-24 h-24 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 border border-gray-200 flex-shrink-0">
-                        <FaImage />
+                    {[...(currentProduct.images || []), ...previewUrls].map((img, index) => (
+                      <div key={index} className="relative w-24 h-24 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0 group">
+                        <img src={img} alt={`Preview ${index}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeImage(index);
+                          }}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <FaTimes size={10} />
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -314,9 +463,17 @@ const ProductManagement: React.FC = () => {
               <div className="flex justify-end gap-4 pt-4 border-t border-gray-100">
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-6 py-2 bg-wood-brown text-white rounded-lg hover:bg-wood-brown-dark transition-colors"
+                  disabled={loading}
+                  className={`flex items-center gap-2 px-6 py-2 bg-wood-brown text-white rounded-lg hover:bg-wood-brown-dark transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {isEditing ? 'Save Changes' : 'Create Product'}
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    isEditing ? 'Save Changes' : 'Create Product'
+                  )}
                 </button>
               </div>
             </form>

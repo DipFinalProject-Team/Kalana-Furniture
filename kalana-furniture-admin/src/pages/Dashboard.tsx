@@ -1,14 +1,37 @@
-import React from 'react';
-import { dashboardStats, inventoryData } from '../data/mockData';
+import React, { useEffect, useState } from 'react';
+import { dashboardStats } from '../data/mockData';
 import { FaExclamationTriangle, FaClock, FaArrowRight } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import { productService, type Product } from '../services/api';
 
 const Dashboard: React.FC = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const data = await productService.getAll();
+        setProducts(data);
+      } catch (error) {
+        console.error('Failed to load dashboard data', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
   // Get low stock items (stock < 10)
-  const lowStockItems = inventoryData.filter(item => item.stock < 10).slice(0, 5);
+  const lowStockItems = products.filter(item => item.stock < 10).slice(0, 5);
   
   // Get recently added items (simulated by taking the last few items)
-  const recentItems = [...inventoryData].reverse().slice(0, 5);
+  // In a real app, you'd sort by created_at
+  const recentItems = [...products].sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()).slice(0, 5);
+
+  if (loading) {
+    return <div className="p-6">Loading dashboard...</div>;
+  }
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen rounded-2xl">
