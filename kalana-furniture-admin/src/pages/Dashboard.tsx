@@ -22,8 +22,8 @@ const Dashboard: React.FC = () => {
     loadData();
   }, []);
 
-  // Get low stock items (stock < 10)
-  const lowStockItems = products.filter(item => item.stock < 10).slice(0, 5);
+  // Get low stock items (stock < 5)
+  const lowStockItems = products.filter(item => item.stock < 5).slice(0, 5);
   
   // Get recently added items (simulated by taking the last few items)
   // In a real app, you'd sort by created_at

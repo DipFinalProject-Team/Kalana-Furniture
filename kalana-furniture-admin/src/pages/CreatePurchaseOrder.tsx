@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FaSearch, FaArrowLeft, FaUser, FaEnvelope, FaPhone, FaCalendar, FaTags, FaCheck, FaEye, FaTimes } from 'react-icons/fa';
-import { suppliers, inventoryData } from '../data/mockData';
+import { adminService } from '../services/api';
+import type { InventoryItem, SupplierApplication } from '../services/api';
 import Toast from '../components/Toast';
 
 interface Supplier {
@@ -15,26 +16,15 @@ interface Supplier {
   status: string;
 }
 
-interface InventoryItem {
-  id: number;
-  productName: string;
-  sku: string;
-  category: string;
-  price: number;
-  stock: number;
-  status: string;
-  lastUpdated: string;
-  image: string;
-}
-
 const CreatePurchaseOrder: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const productId = location.state?.productId;
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [suppliersList, setSuppliersList] = useState<Supplier[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<string>('');
   const [expectedDelivery, setExpectedDelivery] = useState('');
   const [product, setProduct] = useState<InventoryItem | null>(null);
   const [showSupplierDetails, setShowSupplierDetails] = useState(false);
@@ -48,52 +38,76 @@ const CreatePurchaseOrder: React.FC = () => {
   });
 
   useEffect(() => {
-    if (productId) {
-      const foundProduct = inventoryData.find(p => p.id === productId);
-      setProduct(foundProduct || null);
-    }
+    const fetchData = async () => {
+      try {
+        // Fetch Product
+        if (productId) {
+          const inventory = await adminService.getInventory();
+          const foundProduct = inventory.find((p: InventoryItem) => p.id === productId);
+          if (foundProduct) {
+            setProduct(foundProduct);
+          }
+        }
+
+        // Fetch Suppliers
+        const approvedSuppliers = await adminService.getApprovedSuppliers();
+        const mappedSuppliers = approvedSuppliers.map((s: SupplierApplication) => ({
+          id: s.id,
+          name: s.company_name,
+          contactPerson: s.contact_person,
+          email: s.email,
+          phone: s.phone,
+          categories: s.categories,
+          joinedDate: new Date(s.created_at).toLocaleDateString(),
+          status: 'Active'
+        }));
+        setSuppliersList(mappedSuppliers);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        showToast('Failed to load data', 'error');
+      }
+    };
+
+    fetchData();
   }, [productId]);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type, isVisible: true });
   };
 
-  const filteredSuppliers = suppliers.filter(supplier =>
+  const filteredSuppliers = suppliersList.filter(supplier =>
     supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     supplier.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
     supplier.categories.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleCreateOrder = () => {
-    if (!selectedSupplier || !product || !expectedDelivery) {
+  const handleCreateOrder = async () => {
+    if (!selectedSupplier || !product || !expectedDelivery || !quantity) {
       showToast('Please fill in all required fields', 'error');
       return;
     }
 
-    // Create the purchase order
-    const order = {
-      id: `PO-${Math.floor(Math.random() * 1000)}`,
-      productName: product.productName,
-      quantity: quantity,
-      expectedDelivery: expectedDelivery,
-      pricePerUnit: product.price, // Using product price as default, can be adjusted
-      status: 'Pending',
-      orderDate: new Date().toISOString().split('T')[0],
-      supplierId: selectedSupplier.id,
-      supplierName: selectedSupplier.name
-    };
+    try {
+      const orderData = {
+        productId: product.id,
+        supplierId: parseInt(selectedSupplier.id),
+        quantity: parseInt(quantity),
+        expectedDelivery: expectedDelivery,
+        pricePerUnit: product.price
+      };
 
-    // Save to localStorage (simulating backend)
-    const savedOrders = localStorage.getItem('kalana_purchase_orders');
-    const currentOrders = savedOrders ? JSON.parse(savedOrders) : [];
-    localStorage.setItem('kalana_purchase_orders', JSON.stringify([...currentOrders, order]));
+      await adminService.createPurchaseOrder(orderData);
+      
+      showToast('Purchase Order created successfully!', 'success');
 
-    showToast('Purchase Order created successfully!', 'success');
-
-    // Navigate back to inventory after a short delay
-    setTimeout(() => {
-      navigate('/inventory');
-    }, 2000);
+      // Navigate back to inventory after a short delay
+      setTimeout(() => {
+        navigate('/admin/inventory');
+      }, 2000);
+    } catch (error) {
+      console.error('Error creating order:', error);
+      showToast('Failed to create order', 'error');
+    }
   };
 
   if (!product) {
@@ -102,7 +116,7 @@ const CreatePurchaseOrder: React.FC = () => {
         <div className="text-center">
           <p className="text-gray-500">Product not found. Please go back to inventory.</p>
           <button
-            onClick={() => navigate('/inventory')}
+            onClick={() => navigate('/admin/inventory')}
             className="mt-4 px-4 py-2 bg-wood-brown text-white rounded-lg hover:bg-opacity-90"
             style={{ backgroundColor: '#8B4513' }}
           >
@@ -125,7 +139,7 @@ const CreatePurchaseOrder: React.FC = () => {
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <button
-          onClick={() => navigate('/inventory')}
+          onClick={() => navigate('/admin/inventory')}
           className="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
         >
           <FaArrowLeft />
@@ -257,9 +271,10 @@ const CreatePurchaseOrder: React.FC = () => {
               <input
                 type="number"
                 min="1"
+                placeholder='0'
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-wood-brown"
                 value={quantity}
-                onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                onChange={(e) => setQuantity(e.target.value)}
               />
             </div>
 
@@ -276,14 +291,14 @@ const CreatePurchaseOrder: React.FC = () => {
             <div className="pt-4 border-t border-gray-100">
               <div className="flex justify-between items-center mb-4">
                 <span className="text-gray-600">Estimated Total:</span>
-                <span className="font-bold text-gray-800">Rs. {quantity * product.price}</span>
+                <span className="font-bold text-gray-800">Rs. {quantity ? parseInt(quantity) * product.price : 0}</span>
               </div>
 
               <button
                 onClick={handleCreateOrder}
-                disabled={!selectedSupplier || !expectedDelivery}
+                disabled={!selectedSupplier || !expectedDelivery || !quantity}
                 className="w-full py-3 bg-wood-brown text-white rounded-lg hover:bg-opacity-90 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                style={{ backgroundColor: selectedSupplier && expectedDelivery ? '#8B4513' : undefined }}
+                style={{ backgroundColor: selectedSupplier && expectedDelivery && quantity ? '#8B4513' : undefined }}
               >
                 Create Purchase Order
               </button>

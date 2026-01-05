@@ -179,6 +179,176 @@ exports.login = async (req, res) => {
   }
 };
 
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    // Check if supplier exists
+    const { data: supplier, error: supplierError } = await supabase
+      .from('suppliers')
+      .select('id, email, status')
+      .eq('email', email)
+      .single();
+
+    if (supplierError || !supplier) {
+      // Don't reveal if email exists or not for security
+      return res.status(200).json({
+        success: true,
+        message: 'If an account with that email exists, we\'ve sent a password reset link to it.'
+      });
+    }
+
+    // Check if supplier is approved
+    if (supplier.status !== 'approved') {
+      return res.status(200).json({
+        success: true,
+        message: 'If an account with that email exists, we\'ve sent a password reset link to it.'
+      });
+    }
+
+    // Generate reset token
+    const resetToken = jwt.sign(
+      { 
+        email: supplier.email,
+        type: 'password_reset',
+        sub: supplier.id
+      },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    // Use the origin from the request to ensure the link points to the correct frontend port
+    const origin = req.get('origin') || process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetLink = `${origin}/supplier/reset-password?token=${resetToken}`;
+    
+    // Send email via Supabase
+    const { error: emailError } = await supabase.auth.admin.inviteUserByEmail(email, {
+      redirectTo: resetLink
+    });
+
+    // Note: Since we are managing suppliers in a custom table and not using Supabase Auth users directly for suppliers,
+    // we can't use Supabase's built-in password reset email easily without creating Auth users.
+    // However, we can use Supabase Edge Functions or a third-party email service (like Resend, SendGrid) here.
+    
+    // For this implementation, assuming we want to use Supabase's email capability, 
+    // we'll use a workaround or just log that we need an email service.
+    // Since we don't have an email service configured, I will simulate the "Real Mode" by NOT returning the link
+    // but logging it to the server console so the admin can see it (or for debugging).
+    
+    // In a true production environment, replace this console.log with:
+    // await sendEmail({ to: email, subject: 'Reset Password', html: `Click here: <a href="${resetLink}">Reset Password</a>` });
+    
+    console.log(`[EMAIL SERVICE] Sending password reset link to ${email}: ${resetLink}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'If an account with that email exists, we\'ve sent a password reset link to it.'
+    });
+  } catch (error) {
+    console.error('Supplier forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process password reset request'
+    });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token and new password are required'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long'
+      });
+    }
+
+    // Verify token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset token'
+      });
+    }
+
+    if (decoded.type !== 'password_reset') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid token type'
+      });
+    }
+
+    // Check if supplier exists
+    const { data: supplier, error: supplierError } = await supabase
+      .from('suppliers')
+      .select('id, email, status')
+      .eq('id', decoded.sub)
+      .single();
+
+    if (supplierError || !supplier) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid reset token'
+      });
+    }
+
+    // Check if supplier is approved
+    if (supplier.status !== 'approved') {
+      return res.status(400).json({
+        success: false,
+        message: 'Account is not approved'
+      });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update password
+    const { error: updateError } = await supabase
+      .from('suppliers')
+      .update({ password: hashedPassword })
+      .eq('id', supplier.id);
+
+    if (updateError) {
+      console.error('Password update error:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to update password'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Password updated successfully'
+    });
+  } catch (error) {
+    console.error('Supplier reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reset password'
+    });
+  }
+};
+
 exports.verifyToken = async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -281,110 +451,6 @@ exports.deleteAccount = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Internal server error'
-    });
-  }
-};
-
-exports.getPendingApplications = async (req, res) => {
-  try {
-    const { data: applications, error } = await supabase
-      .from('suppliers')
-      .select('*')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    res.status(200).json(applications);
-  } catch (error) {
-    console.error('Get pending applications error:', error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.getApprovedSuppliers = async (req, res) => {
-  try {
-    const { data: suppliers, error } = await supabase
-      .from('suppliers')
-      .select('*')
-      .eq('status', 'approved')
-      .order('approved_at', { ascending: false });
-
-    if (error) throw error;
-
-    res.status(200).json(suppliers);
-  } catch (error) {
-    console.error('Get approved suppliers error:', error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.approveSupplier = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const { data: supplier, error: updateError } = await supabase
-      .from('suppliers')
-      .update({ status: 'approved', approved_at: new Date().toISOString() })
-      .eq('id', id)
-      .eq('status', 'pending')
-      .select()
-      .single();
-
-    if (updateError) throw updateError;
-
-    if (!supplier) {
-      return res.status(404).json({
-        success: false,
-        message: 'Supplier not found or already processed'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Supplier approved successfully',
-      supplier: supplier
-    });
-  } catch (error) {
-    console.error('Approve supplier error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to approve supplier'
-    });
-  }
-};
-
-exports.rejectSupplier = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const { data: supplier, error: updateError } = await supabase
-      .from('suppliers')
-      .update({ status: 'rejected', rejected_at: new Date().toISOString() })
-      .eq('id', id)
-      .eq('status', 'pending')
-      .select()
-      .single();
-
-    if (updateError) throw updateError;
-
-    if (!supplier) {
-      return res.status(404).json({
-        success: false,
-        message: 'Supplier not found or already processed'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Supplier application rejected',
-      supplier: supplier
-    });
-  } catch (error) {
-    console.error('Reject supplier error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to reject supplier'
     });
   }
 };
@@ -538,6 +604,487 @@ exports.uploadProfileImage = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to upload profile image'
+    });
+  }
+};
+
+exports.getPurchaseOrders = async (req, res) => {
+  try {
+    const supplierId = req.supplier.sub;
+
+    const { data: orders, error } = await supabase
+      .from('purchase_orders')
+      .select(`
+        *,
+        products (
+          productName,
+          sku
+        )
+      `)
+      .eq('supplier_id', supplierId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const formattedOrders = orders.map(order => ({
+      id: order.id,
+      productName: order.products?.productName || 'Unknown Product',
+      quantity: order.quantity,
+      totalAmount: order.quantity * order.price_per_unit,
+      status: order.status,
+      orderDate: order.created_at,
+      deliveryDate: order.expected_delivery,
+      actualDeliveryDate: order.actual_delivery_date,
+      deliveryNotes: order.delivery_notes
+    }));
+
+    res.status(200).json({
+      success: true,
+      orders: formattedOrders
+    });
+  } catch (error) {
+    console.error('Get purchase orders error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch purchase orders'
+    });
+  }
+};
+
+exports.updatePurchaseOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, actualDeliveryDate, deliveryNotes } = req.body;
+    const supplierId = req.supplier.sub;
+
+    const updates = { status };
+
+    // When marking as dispatched, also save actual delivery date and notes
+    if (status === 'Dispatched') {
+      if (!actualDeliveryDate) {
+        return res.status(400).json({
+          success: false,
+          message: 'Actual delivery date is required when marking as dispatched'
+        });
+      }
+      updates.actual_delivery_date = actualDeliveryDate;
+      if (deliveryNotes) {
+        updates.delivery_notes = deliveryNotes;
+      }
+    }
+
+    const { data: order, error } = await supabase
+      .from('purchase_orders')
+      .update(updates)
+      .eq('id', id)
+      .eq('supplier_id', supplierId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: 'Order status updated successfully',
+      order
+    });
+  } catch (error) {
+    console.error('Update order status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update order status'
+    });
+  }
+};
+
+exports.updatePurchaseOrderDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { deliveryDate, notes } = req.body;
+    const supplierId = req.supplier.sub;
+
+    const updates = {};
+    if (deliveryDate) updates.expected_delivery_date = deliveryDate;
+    if (notes) updates.notes = notes;
+
+    const { data: order, error } = await supabase
+      .from('purchase_orders')
+      .update(updates)
+      .eq('id', id)
+      .eq('supplier_id', supplierId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: 'Order details updated successfully',
+      order
+    });
+  } catch (error) {
+    console.error('Update order details error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update order details'
+    });
+  }
+};
+
+// Invoice Management Functions
+exports.getInvoices = async (req, res) => {
+  try {
+    const supplierId = parseInt(req.supplier.sub);
+
+    const { data: invoices, error } = await supabase
+      .from('invoices')
+      .select(`
+        id,
+        invoice_number,
+        amount,
+        total_amount,
+        issue_date,
+        due_date,
+        status,
+        notes,
+        purchase_order_id
+      `)
+      .eq('supplier_id', supplierId)
+      .order('issue_date', { ascending: false });
+
+    if (error) throw error;
+
+    // Format the response to match frontend interface
+    const formattedInvoices = invoices?.map(invoice => {
+      return {
+        id: invoice.invoice_number,
+        orderId: invoice.purchase_order_id ? `PO-${String(invoice.purchase_order_id).padStart(4, '0')}` : 'N/A',
+        amount: parseFloat(invoice.total_amount),
+        date: new Date(invoice.issue_date).toLocaleDateString(),
+        dueDate: new Date(invoice.due_date).toLocaleDateString(),
+        status: invoice.status === 'Paid' ? 'Paid' : 'Pending',
+        paymentDate: null
+      };
+    }) || [];
+
+    res.status(200).json({
+      success: true,
+      invoices: formattedInvoices
+    });
+
+  } catch (error) {
+    console.error('Get invoices error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch invoices'
+    });
+  }
+};
+
+exports.getInvoiceDetails = async (req, res) => {
+  try {
+    const supplierId = parseInt(req.supplier.sub);
+    const { id: invoiceNumber } = req.params;
+
+    // 1. Get Invoice
+    const { data: invoice, error: invoiceError } = await supabase
+      .from('invoices')
+      .select('id, supplier_id, purchase_order_id, invoice_number, amount, total_amount, issue_date, due_date, status, notes')
+      .eq('supplier_id', supplierId)
+      .eq('invoice_number', invoiceNumber)
+      .single();
+
+    if (invoiceError || !invoice) {
+      return res.status(404).json({
+        success: false,
+        message: 'Invoice not found'
+      });
+    }
+
+    // 2. Get Purchase Order
+    let purchaseOrder = null;
+    if (invoice.purchase_order_id) {
+      const { data: po, error: poError } = await supabase
+        .from('purchase_orders')
+        .select(`
+          *,
+          products (
+            productName
+          )
+        `)
+        .eq('id', invoice.purchase_order_id)
+        .single();
+      
+      if (!poError) {
+        purchaseOrder = po;
+      }
+    }
+
+    // Format the response
+    const formattedInvoice = {
+      id: invoice.invoice_number,
+      orderId: invoice.purchase_order_id ? `PO-${String(invoice.purchase_order_id).padStart(4, '0')}` : 'N/A',
+      amount: parseFloat(invoice.total_amount),
+      date: new Date(invoice.issue_date).toLocaleDateString(),
+      dueDate: new Date(invoice.due_date).toLocaleDateString(),
+      status: invoice.status === 'Paid' ? 'Paid' : 'Pending',
+      paymentDate: invoice.payment_date ? new Date(invoice.payment_date).toLocaleDateString() : null,
+      notes: invoice.notes,
+      items: purchaseOrder ? [{
+        product: purchaseOrder.products?.productName || 'Unknown Product',
+        quantity: purchaseOrder.quantity,
+        unitPrice: parseFloat(purchaseOrder.price_per_unit),
+        total: purchaseOrder.quantity * parseFloat(purchaseOrder.price_per_unit)
+      }] : []
+    };
+
+    res.status(200).json({
+      success: true,
+      invoice: formattedInvoice
+    });
+
+  } catch (error) {
+    console.error('Get invoice details error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch invoice details'
+    });
+  }
+};
+
+// Dashboard methods
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const supplierId = req.supplier.sub;
+
+    // Get total products supplied (distinct products with completed orders)
+    const { data: totalProductsData, error: totalProductsError } = await supabase
+      .from('purchase_orders')
+      .select('product_id')
+      .eq('supplier_id', supplierId)
+      .eq('status', 'Completed');
+
+    if (totalProductsError) throw totalProductsError;
+
+    const totalProductsSupplied = new Set(totalProductsData.map(item => item.product_id)).size;
+
+    // Get pending supply orders
+    const { count: pendingOrdersCount, error: pendingError } = await supabase
+      .from('purchase_orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('supplier_id', supplierId)
+      .in('status', ['Pending', 'Accepted']);
+
+    if (pendingError) throw pendingError;
+
+    // Get completed supplies
+    const { count: completedCount, error: completedError } = await supabase
+      .from('purchase_orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('supplier_id', supplierId)
+      .eq('status', 'Completed');
+
+    if (completedError) throw completedError;
+
+    // Get total earnings (sum of completed purchase orders)
+    const { data: earningsData, error: earningsError } = await supabase
+      .from('purchase_orders')
+      .select('quantity, price_per_unit')
+      .eq('supplier_id', supplierId)
+      .eq('status', 'Completed');
+
+    if (earningsError) throw earningsError;
+
+    const totalEarnings = earningsData.reduce((sum, order) => sum + (parseFloat(order.quantity) * parseFloat(order.price_per_unit)), 0);
+
+    // Get new purchase requests (orders from last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const { count: newRequestsCount, error: newRequestsError } = await supabase
+      .from('purchase_orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('supplier_id', supplierId)
+      .gte('created_at', sevenDaysAgo.toISOString());
+
+    if (newRequestsError) throw newRequestsError;
+
+    const stats = {
+      totalProductsSupplied,
+      pendingSupplyOrders: pendingOrdersCount || 0,
+      completedSupplies: completedCount || 0,
+      totalEarnings,
+      newPurchaseRequests: newRequestsCount || 0
+    };
+
+    res.status(200).json({
+      success: true,
+      stats
+    });
+
+  } catch (error) {
+    console.error('Get dashboard stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch dashboard stats'
+    });
+  }
+};
+
+exports.getRecentSupplyOrders = async (req, res) => {
+  try {
+    const supplierId = req.supplier.sub;
+
+    // Get recent purchase orders with product details
+    const { data: ordersData, error: ordersError } = await supabase
+      .from('purchase_orders')
+      .select(`
+        id,
+        quantity,
+        price_per_unit,
+        status,
+        order_date,
+        products (
+          productName,
+          sku,
+          category
+        )
+      `)
+      .eq('supplier_id', supplierId)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (ordersError) throw ordersError;
+
+    // Format the orders
+    const orders = ordersData.map(order => ({
+      id: order.id,
+      orderNumber: `PO-${order.id.toString().padStart(6, '0')}`,
+      customerName: 'Admin', // Since it's admin ordering from supplier
+      items: [{
+        productName: order.products.productName,
+        quantity: order.quantity,
+        price: parseFloat(order.price_per_unit)
+      }],
+      total: parseFloat(order.price_per_unit) * order.quantity,
+      status: order.status.toLowerCase(),
+      date: new Date(order.order_date).toLocaleDateString()
+    }));
+
+    res.status(200).json({
+      success: true,
+      orders
+    });
+
+  } catch (error) {
+    console.error('Get recent supply orders error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch recent supply orders'
+    });
+  }
+};
+
+exports.getLowStockRequests = async (req, res) => {
+  try {
+    const supplierId = req.supplier.sub;
+
+    // Get products supplied by this supplier that are low in stock
+    const { data: suppliedProducts, error: suppliedError } = await supabase
+      .from('purchase_orders')
+      .select('product_id')
+      .eq('supplier_id', supplierId);
+
+    if (suppliedError) throw suppliedError;
+
+    const productIds = [...new Set(suppliedProducts.map(po => po.product_id))];
+
+    if (productIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        requests: []
+      });
+    }
+
+    // Get products with low stock
+    const { data: lowStockProducts, error: lowStockError } = await supabase
+      .from('products')
+      .select('id, productName, sku, category, stock, status')
+      .in('id', productIds)
+      .or('stock.lt.10,status.eq.Out of Stock');
+
+    if (lowStockError) throw lowStockError;
+
+    const requests = lowStockProducts.map(product => ({
+      id: product.id,
+      productName: product.productName,
+      sku: product.sku,
+      category: product.category,
+      currentStock: product.stock,
+      status: product.status,
+      lastUpdated: new Date().toISOString() // Since updated_at not used, use current
+    }));
+
+    res.status(200).json({
+      success: true,
+      requests
+    });
+
+  } catch (error) {
+    console.error('Get low stock requests error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch low stock requests'
+    });
+  }
+};
+
+exports.getOrderTrends = async (req, res) => {
+  try {
+    const supplierId = req.supplier.sub;
+
+    // Get monthly order trends for the last 12 months
+    const trends = [];
+
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1; // JavaScript months are 0-indexed
+
+      // Get orders for this month
+      const startOfMonth = new Date(year, month - 1, 1);
+      const endOfMonth = new Date(year, month, 1);
+
+      const { count: orderCount, error } = await supabase
+        .from('purchase_orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('supplier_id', supplierId)
+        .gte('created_at', startOfMonth.toISOString())
+        .lt('created_at', endOfMonth.toISOString());
+
+      if (error) throw error;
+
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+      trends.push({
+        month: monthNames[month - 1],
+        year: year,
+        orders: orderCount || 0
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      trends
+    });
+
+  } catch (error) {
+    console.error('Get order trends error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch order trends'
     });
   }
 };

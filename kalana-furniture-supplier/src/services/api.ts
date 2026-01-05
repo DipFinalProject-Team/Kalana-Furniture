@@ -30,6 +30,16 @@ export const supplierService = {
     return response.data;
   },
 
+  forgotPassword: async (data: { email: string }) => {
+    const response = await api.post('/suppliers/forgot-password', data);
+    return response.data;
+  },
+
+  resetPassword: async (data: { token: string; newPassword: string }) => {
+    const response = await api.post('/suppliers/reset-password', data);
+    return response.data;
+  },
+
   verifyToken: async () => {
     const response = await api.get('/suppliers/verify');
     return response.data;
@@ -63,6 +73,55 @@ export const supplierService = {
         'Content-Type': 'multipart/form-data',
       },
     });
+    return response.data;
+  },
+
+  getDashboardStats: async () => {
+    const response = await api.get('/suppliers/dashboard/stats');
+    return response.data;
+  },
+
+  getRecentSupplyOrders: async () => {
+    const response = await api.get('/suppliers/dashboard/orders');
+    return response.data;
+  },
+
+  getLowStockRequests: async () => {
+    const response = await api.get('/suppliers/dashboard/low-stock');
+    return response.data;
+  },
+
+  getOrderTrends: async () => {
+    const response = await api.get('/suppliers/dashboard/trends');
+    return response.data;
+  },
+  getInvoices: async () => {
+    const response = await api.get('/suppliers/invoices');
+    return response.data;
+  },
+
+  getInvoiceDetails: async (id: string) => {
+    const response = await api.get(`/suppliers/invoices/${id}`);
+    return response.data;
+  },
+
+  // Order management methods
+  getPurchaseOrders: async () => {
+    const response = await api.get('/suppliers/orders');
+    return response.data;
+  },
+
+  updatePurchaseOrderStatus: async (id: string, status: string, actualDeliveryDate?: string, deliveryNotes?: string) => {
+    const response = await api.put(`/suppliers/orders/${id}/status`, { 
+      status, 
+      actualDeliveryDate, 
+      deliveryNotes 
+    });
+    return response.data;
+  },
+
+  updatePurchaseOrderDetails: async (id: string, data: { deliveryDate?: string; notes?: string }) => {
+    const response = await api.put(`/suppliers/orders/${id}/details`, data);
     return response.data;
   }
 };

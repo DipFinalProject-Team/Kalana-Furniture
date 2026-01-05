@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { invoices as mockInvoices, purchaseOrders, supplierProfile } from '../data/mockdata';
+import React, { useState, useEffect } from 'react';
+import { supplierService } from '../services/api';
 import { FaFileInvoiceDollar, FaDownload, FaCheckCircle, FaClock, FaHistory } from 'react-icons/fa';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Cookies from 'js-cookie';
 
 interface Invoice {
   id: string;
@@ -14,91 +15,164 @@ interface Invoice {
   paymentDate: string | null;
 }
 
+interface SupplierProfile {
+  companyName: string;
+  email: string;
+  phone: string;
+  contactPerson: string;
+}
+
 const Invoices: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'history'>('all');
-  const [invoices] = useState<Invoice[]>(mockInvoices);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [supplier, setSupplier] = useState<SupplierProfile | null>(null);
+
+  useEffect(() => {
+    const token = Cookies.get('supplierToken') || localStorage.getItem('supplierToken');
+    if (!token) {
+      setError('Please login to view invoices.');
+      setLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [invoicesData, verifyData] = await Promise.all([
+          supplierService.getInvoices(),
+          supplierService.verifyToken()
+        ]);
+        
+        if (invoicesData.success) {
+          setInvoices(invoicesData.invoices);
+        }
+        
+        if (verifyData.success) {
+          setSupplier(verifyData.supplier);
+        }
+      } catch (err: any) {
+        console.error('Error fetching data:', err);
+        if (err.response?.status === 401) {
+          setError('Session expired. Please login again.');
+        } else {
+          setError('Failed to load invoices. Please try again later.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const filteredInvoices = activeTab === 'all' 
     ? invoices 
     : invoices.filter(inv => inv.status === 'Paid');
 
-  const handleDownload = (id: string) => {
-    const invoice = invoices.find(inv => inv.id === id);
-    if (!invoice) return;
+  const handleDownload = async (id: string) => {
+    try {
+      const response = await supplierService.getInvoiceDetails(id);
+      if (!response.success || !response.invoice) {
+        console.error('Failed to fetch invoice details');
+        return;
+      }
 
-    const order = purchaseOrders.find(po => po.id === invoice.orderId);
-    
-    const doc = new jsPDF();
+      const invoice = response.invoice;
+      const doc = new jsPDF();
 
-    // Add Company Logo/Header
-    doc.setFontSize(20);
-    doc.setTextColor(40, 40, 40);
-    doc.text('INVOICE', 105, 20, { align: 'center' });
+      // Add Company Logo/Header
+      doc.setFontSize(20);
+      doc.setTextColor(40, 40, 40);
+      doc.text('INVOICE', 105, 20, { align: 'center' });
 
-    // Company Details (From)
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('From:', 14, 40);
-    doc.setFont('helvetica', 'normal');
-    doc.text(supplierProfile.companyName, 14, 45);
-    doc.text(supplierProfile.address, 14, 50);
-    doc.text(supplierProfile.email, 14, 55);
-    doc.text(supplierProfile.contactNumber, 14, 60);
+      // Company Details (From)
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('From:', 14, 40);
+      doc.setFont('helvetica', 'normal');
+      if (supplier) {
+        doc.text(supplier.companyName, 14, 45);
+        doc.text(supplier.contactPerson, 14, 50);
+        doc.text(supplier.email, 14, 55);
+        doc.text(supplier.phone || '', 14, 60);
+      }
 
-    // Invoice Details
-    doc.setFont('helvetica', 'bold');
-    doc.text('Invoice Details:', 120, 40);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Invoice ID: ${invoice.id}`, 120, 45);
-    doc.text(`Date: ${invoice.date}`, 120, 50);
-    doc.text(`Due Date: ${invoice.dueDate}`, 120, 55);
-    doc.text(`Status: ${invoice.status}`, 120, 60);
-    if (invoice.paymentDate) {
-        doc.text(`Payment Date: ${invoice.paymentDate}`, 120, 65);
+      // Invoice Details
+      doc.setFont('helvetica', 'bold');
+      doc.text('Invoice Details:', 120, 40);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Invoice ID: ${invoice.id}`, 120, 45);
+      doc.text(`Date: ${invoice.date}`, 120, 50);
+      doc.text(`Due Date: ${invoice.dueDate}`, 120, 55);
+      doc.text(`Status: ${invoice.status}`, 120, 60);
+      if (invoice.paymentDate) {
+          doc.text(`Payment Date: ${invoice.paymentDate}`, 120, 65);
+      }
+
+      // Bill To (To)
+      doc.setFont('helvetica', 'bold');
+      doc.text('Bill To:', 14, 75);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Kalana Furniture', 14, 80);
+      doc.text('Main Showroom & Warehouse', 14, 85);
+      
+      // Table
+      const tableColumn = ["Item", "Quantity", "Unit Price (LKR)", "Total (LKR)"];
+      const tableRows: any[] = [];
+
+      if (invoice.items && invoice.items.length > 0) {
+        invoice.items.forEach((item: any) => {
+          const row = [
+              item.product,
+              item.quantity.toString(),
+              item.unitPrice.toLocaleString(),
+              item.total.toLocaleString()
+          ];
+          tableRows.push(row);
+        });
+      } else {
+          tableRows.push(["Unknown Item", "-", "-", invoice.amount.toLocaleString()]);
+      }
+
+      autoTable(doc, {
+          startY: 95,
+          head: [tableColumn],
+          body: tableRows,
+          theme: 'grid',
+          headStyles: { fillColor: [217, 119, 6] }, // Amber-600
+          foot: [['', '', 'Total Amount:', `LKR ${invoice.amount.toLocaleString()}`]],
+          footStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold' }
+      });
+
+      // Footer
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const finalY = (doc as any).lastAutoTable.finalY || 95;
+      doc.setFontSize(10);
+      doc.text('Thank you for your business!', 105, finalY + 20, { align: 'center' });
+
+      doc.save(`Invoice_${invoice.id}.pdf`);
+    } catch (error) {
+      console.error('Error downloading invoice:', error);
     }
-
-    // Bill To (To)
-    doc.setFont('helvetica', 'bold');
-    doc.text('Bill To:', 14, 75);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Kalana Furniture', 14, 80);
-    doc.text('Main Showroom & Warehouse', 14, 85);
-    
-    // Table
-    const tableColumn = ["Item", "Quantity", "Unit Price (LKR)", "Total (LKR)"];
-    const tableRows = [];
-
-    if (order) {
-        const total = order.quantity * order.pricePerUnit;
-        const row = [
-            order.product,
-            order.quantity.toString(),
-            order.pricePerUnit.toLocaleString(),
-            total.toLocaleString()
-        ];
-        tableRows.push(row);
-    } else {
-        tableRows.push(["Unknown Item", "-", "-", invoice.amount.toLocaleString()]);
-    }
-
-    autoTable(doc, {
-        startY: 95,
-        head: [tableColumn],
-        body: tableRows,
-        theme: 'grid',
-        headStyles: { fillColor: [217, 119, 6] }, // Amber-600
-        foot: [['', '', 'Total Amount:', `LKR ${invoice.amount.toLocaleString()}`]],
-        footStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontStyle: 'bold' }
-    });
-
-    // Footer
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const finalY = (doc as any).lastAutoTable.finalY || 95;
-    doc.setFontSize(10);
-    doc.text('Thank you for your business!', 105, finalY + 20, { align: 'center' });
-
-    doc.save(`Invoice_${invoice.id}.pdf`);
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 flex justify-center items-center h-64">
+        <div className="text-xl text-gray-500">Loading invoices...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 flex justify-center items-center h-64">
+        <div className="text-xl text-red-500">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -172,9 +246,6 @@ const Invoices: React.FC = () => {
                 <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
                 <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Amount (LKR)</th>
                 <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                {activeTab === 'history' && (
-                   <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Date</th>
-                )}
                 <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -195,11 +266,6 @@ const Invoices: React.FC = () => {
                       {invoice.status}
                     </span>
                   </td>
-                  {activeTab === 'history' && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {invoice.paymentDate || '-'}
-                    </td>
-                  )}
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <button 
                       onClick={() => handleDownload(invoice.id)}

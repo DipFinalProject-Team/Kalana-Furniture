@@ -93,7 +93,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
     >
       {/* Logo Section */}
       <div className="h-32 flex items-center justify-center border-b border-wood-accent/20 relative bg-wood-brown/30">
-        <div className={`p-6 border-b border-wood-brown/30 flex justify-center transition-all duration-300 ease-in-out ${isOpen ? '' : 'p-3'}`}>
+        <div>
         <div className={`bg-wood-light rounded-full flex items-center justify-center shadow-inner overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'w-24 h-24' : 'w-12 h-12'}`}>
            <img src="/logo.png" alt="Logo" className={`h-auto object-contain transition-all duration-300 ease-in-out ${isOpen ? 'w-20' : 'w-10'}`} />
         </div>

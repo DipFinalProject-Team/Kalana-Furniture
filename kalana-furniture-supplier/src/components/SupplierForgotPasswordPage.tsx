@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { FaUser, FaArrowLeft } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import { supplierService } from '../services/api';
 
 const SupplierForgotPasswordPage = () => {
   const [email, setEmail] = useState('');
@@ -27,13 +28,24 @@ const SupplierForgotPasswordPage = () => {
     }
 
     setIsSubmitting(true);
-    // Simulate API call
+    setError('');
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Supplier password reset request for:', email);
-      setIsSubmitted(true);
-    } catch {
-      setError('Failed to send reset link. Please try again.');
+      const response = await supplierService.forgotPassword({ email });
+      
+      if (response.success) {
+        setIsSubmitted(true);
+      } else {
+        setError(response.message || 'Failed to send reset link. Please try again.');
+      }
+    } catch (err: unknown) {
+      console.error('Forgot password error:', err);
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string } } };
+        setError(axiosError.response?.data?.message || 'Failed to send reset link. Please try again.');
+      } else {
+        setError('Failed to send reset link. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -91,9 +103,10 @@ const SupplierForgotPasswordPage = () => {
                   <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                   </svg>
-                  <span className="font-bold">Check your inbox</span>
+                  <span className="font-bold">Check your email</span>
                 </div>
-                <p className="text-sm opacity-90">If an account exists for <span className="font-semibold">{email}</span>, we've sent password reset instructions.</p>
+                <p className="text-sm opacity-90 mb-4">If an account exists for <span className="font-semibold">{email}</span>, we've sent a password reset link to it.</p>
+                <p className="text-sm opacity-75">Please check your inbox and spam folder. The link will expire in 1 hour.</p>
               </div>
               <Link 
                 to="/login" 

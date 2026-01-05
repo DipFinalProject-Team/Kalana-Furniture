@@ -1,26 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaSearch, FaFilter, FaEye, FaBan, FaCheckCircle, FaEnvelope, FaPhone, FaCalendarAlt, FaShoppingBag, FaMapMarkerAlt, FaTimes } from 'react-icons/fa';
-import { customersData } from '../data/mockData';
+import { customerService, type Customer } from '../services/api';
 import ConfirmationModal from '../components/ConfirmationModal';
 import Toast from '../components/Toast';
 
-interface Customer {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  registrationDate: string;
-  totalOrders: number;
-  totalSpent: number;
-  status: string;
-  avatar: string;
-  address: string;
-}
-
 const CustomerManagement: React.FC = () => {
-  const [customers, setCustomers] = useState<Customer[]>(customersData);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Profile Modal State
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -37,6 +26,24 @@ const CustomerManagement: React.FC = () => {
     isVisible: false,
   });
 
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      const data = await customerService.getAll();
+      setCustomers(data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching customers:', err);
+      setError('Failed to load customers');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type, isVisible: true });
   };
@@ -51,19 +58,27 @@ const CustomerManagement: React.FC = () => {
     setIsBlockModalOpen(true);
   };
 
-  const confirmToggleStatus = () => {
+  const confirmToggleStatus = async () => {
     if (customerToToggle) {
-      const newStatus = customerToToggle.status === 'Active' ? 'Blocked' : 'Active';
-      setCustomers(customers.map(c => c.id === customerToToggle.id ? { ...c, status: newStatus } : c));
-      
-      // Update selected customer if open in modal
-      if (selectedCustomer && selectedCustomer.id === customerToToggle.id) {
-        setSelectedCustomer({ ...selectedCustomer, status: newStatus });
-      }
+      try {
+        const newStatus = customerToToggle.status === 'Active' ? 'Blocked' : 'Active';
+        await customerService.updateStatus(customerToToggle.id, newStatus);
+        
+        // Update local state
+        setCustomers(customers.map(c => c.id === customerToToggle.id ? { ...c, status: newStatus } : c));
+        
+        // Update selected customer if open in modal
+        if (selectedCustomer && selectedCustomer.id === customerToToggle.id) {
+          setSelectedCustomer({ ...selectedCustomer, status: newStatus });
+        }
 
-      showToast(`Customer ${newStatus === 'Active' ? 'activated' : 'blocked'} successfully!`, 'success');
-      setIsBlockModalOpen(false);
-      setCustomerToToggle(null);
+        showToast(`Customer ${newStatus === 'Active' ? 'activated' : 'blocked'} successfully!`, 'success');
+        setIsBlockModalOpen(false);
+        setCustomerToToggle(null);
+      } catch (err) {
+        console.error('Error updating customer status:', err);
+        showToast('Failed to update customer status', 'error');
+      }
     }
   };
 
@@ -146,78 +161,98 @@ const CustomerManagement: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredCustomers.map((customer) => (
-                <tr key={customer.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <img 
-                        src={customer.avatar} 
-                        alt={customer.name} 
-                        className="w-10 h-10 rounded-full object-cover border border-gray-200"
-                      />
-                      <div>
-                        <p className="font-bold text-gray-800">{customer.name}</p>
-                        <p className="text-xs text-gray-500">ID: #{customer.id}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <FaEnvelope className="text-gray-400 text-xs" /> {customer.email}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <FaPhone className="text-gray-400 text-xs" /> {customer.phone}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-4 text-gray-600 text-sm">
-                    {customer.registrationDate}
-                  </td>
-                  <td className="p-4 text-center">
-                    <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm font-medium">
-                      {customer.totalOrders}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 w-fit ${
-                      customer.status === 'Active' 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-red-100 text-red-700'
-                    }`}>
-                      {customer.status === 'Active' ? <FaCheckCircle size={10} /> : <FaBan size={10} />}
-                      {customer.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => handleViewProfile(customer)}
-                        className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="View Profile"
-                      >
-                        <FaEye />
-                      </button>
-                      <button
-                        onClick={() => handleToggleStatusClick(customer)}
-                        className={`p-2 rounded-lg transition-colors ${
-                          customer.status === 'Active' 
-                            ? 'text-red-500 hover:bg-red-50' 
-                            : 'text-green-500 hover:bg-green-50'
-                        }`}
-                        title={customer.status === 'Active' ? "Block Account" : "Activate Account"}
-                      >
-                        {customer.status === 'Active' ? <FaBan /> : <FaCheckCircle />}
-                      </button>
-                    </div>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center">
+                    <div className="text-gray-500">Loading customers...</div>
                   </td>
                 </tr>
-              ))}
+              ) : error ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center">
+                    <div className="text-red-500">{error}</div>
+                    <button 
+                      onClick={fetchCustomers}
+                      className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                      Retry
+                    </button>
+                  </td>
+                </tr>
+              ) : (
+                filteredCustomers.map((customer) => (
+                  <tr key={customer.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={customer.avatar} 
+                          alt={customer.name} 
+                          className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                        />
+                        <div>
+                          <p className="font-bold text-gray-800">{customer.name}</p>
+                          <p className="text-xs text-gray-500">ID: #{customer.id.slice(-8)}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <FaEnvelope className="text-gray-400 text-xs" /> {customer.email}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <FaPhone className="text-gray-400 text-xs" /> {customer.phone}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4 text-gray-600 text-sm">
+                      {customer.registrationDate}
+                    </td>
+                    <td className="p-4 text-center">
+                      <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm font-medium">
+                        {customer.totalOrders}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 w-fit ${
+                        customer.status === 'Active' 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        {customer.status === 'Active' ? <FaCheckCircle size={10} /> : <FaBan size={10} />}
+                        {customer.status}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleViewProfile(customer)}
+                          className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="View Profile"
+                        >
+                          <FaEye />
+                        </button>
+                        <button
+                          onClick={() => handleToggleStatusClick(customer)}
+                          className={`p-2 rounded-lg transition-colors ${
+                            customer.status === 'Active' 
+                              ? 'text-red-500 hover:bg-red-50' 
+                              : 'text-green-500 hover:bg-green-50'
+                          }`}
+                          title={customer.status === 'Active' ? "Block Account" : "Activate Account"}
+                        >
+                          {customer.status === 'Active' ? <FaBan /> : <FaCheckCircle />}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
         
-        {filteredCustomers.length === 0 && (
+        {!loading && !error && filteredCustomers.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500">No customers found matching your criteria.</p>
           </div>

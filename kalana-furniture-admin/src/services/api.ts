@@ -197,26 +197,47 @@ export interface SupplierApplication {
   rejected_at?: string;
 }
 
+export interface InventoryItem {
+  id: number;
+  productName: string;
+  sku: string;
+  category: string;
+  price: number;
+  stock: number;
+  status: string;
+  lastUpdated: string;
+  image: string;
+  description?: string;
+  images?: string[];
+}
+
+export interface PurchaseOrder {
+  id: string;
+  productName: string;
+  quantity: number;
+  expectedDelivery: string;
+  pricePerUnit: number;
+  status: 'Pending' | 'Accepted' | 'Rejected' | 'Dispatched' | 'Delivered' | 'Completed';
+  orderDate: string;
+  actualDeliveryDate?: string;
+  deliveryNotes?: string;
+  supplierId?: string;
+  supplierName?: string;
+}
+
+export interface Invoice {
+  id: string;
+  orderId: string;
+  supplierName: string;
+  amount: number;
+  date: string;
+  dueDate: string;
+  status: string;
+  paymentDate: string | null;
+}
+
 export const supplierService = {
-  getPendingApplications: async (): Promise<SupplierApplication[]> => {
-    const response = await api.get('/suppliers/pending');
-    return response.data;
-  },
-
-  getApprovedSuppliers: async (): Promise<SupplierApplication[]> => {
-    const response = await api.get('/suppliers/approved');
-    return response.data;
-  },
-
-  approveSupplier: async (id: string): Promise<{ success: boolean; message: string; supplier: SupplierApplication }> => {
-    const response = await api.put(`/suppliers/${id}/approve`);
-    return response.data;
-  },
-
-  rejectSupplier: async (id: string): Promise<{ success: boolean; message: string; supplier: SupplierApplication }> => {
-    const response = await api.put(`/suppliers/${id}/reject`);
-    return response.data;
-  }
+  // Supplier-specific functions can be added here if needed
 };
 
 export const adminService = {
@@ -236,6 +257,72 @@ export const adminService = {
 
   changePassword: async (data: { currentPassword: string; newPassword: string }): Promise<{ success: boolean; message: string }> => {
     const response = await api.post('/admin/change-password', data);
+    return response.data;  },
+
+  // Supplier management functions
+  getPendingApplications: async (): Promise<SupplierApplication[]> => {
+    const response = await api.get('/admin/suppliers/pending');
+    return response.data;
+  },
+
+  getApprovedSuppliers: async (): Promise<SupplierApplication[]> => {
+    const response = await api.get('/admin/suppliers/approved');
+    return response.data;
+  },
+
+  approveSupplier: async (id: string): Promise<{ success: boolean; message: string; supplier: SupplierApplication }> => {
+    const response = await api.put(`/admin/suppliers/${id}/approve`);
+    return response.data;
+  },
+
+  rejectSupplier: async (id: string): Promise<{ success: boolean; message: string; supplier: SupplierApplication }> => {
+    const response = await api.put(`/admin/suppliers/${id}/reject`);
+    return response.data;  },
+
+  // Inventory management functions
+  getInventory: async (): Promise<InventoryItem[]> => {
+    const response = await api.get('/admin/inventory');
+    return response.data.inventory;
+  },
+
+  updateStock: async (id: number, stock: number): Promise<{ success: boolean; message: string; product: InventoryItem }> => {
+    const response = await api.put(`/admin/inventory/${id}/stock`, { stock });
+    return response.data;
+  },
+
+  // Purchase order management functions
+  getPurchaseOrders: async (): Promise<PurchaseOrder[]> => {
+    const response = await api.get('/admin/purchase-orders');
+    return response.data.orders;
+  },
+
+  createPurchaseOrder: async (orderData: {
+    productId: number;
+    supplierId: number;
+    quantity: number;
+    expectedDelivery: string;
+    pricePerUnit: number;
+  }): Promise<{ success: boolean; message: string; order: PurchaseOrder }> => {
+    const response = await api.post('/admin/purchase-orders', orderData);
+    return response.data;
+  },
+
+  updatePurchaseOrderStatus: async (id: number, status: string, additionalData?: {
+    actualDeliveryDate?: string;
+    deliveryNotes?: string;
+  }): Promise<{ success: boolean; message: string; order: PurchaseOrder }> => {
+    const response = await api.put(`/admin/purchase-orders/${id}/status`, { status, ...additionalData });
+    return response.data;
+  },
+
+  // Invoice management functions
+  getInvoices: async (): Promise<Invoice[]> => {
+    const response = await api.get('/admin/invoices');
+    return response.data.invoices;
+  },
+
+  markInvoiceAsPaid: async (id: string): Promise<{ success: boolean; message: string; invoice: Invoice }> => {
+    const response = await api.put(`/admin/invoices/${id}/pay`);
     return response.data;
   }
 };
@@ -286,5 +373,36 @@ export const promotionService = {
 
   delete: async (id: number): Promise<void> => {
     await api.delete(`/promotions/${id}`);
+  }
+};
+
+// Customer Management
+export interface Customer {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  registrationDate: string;
+  totalOrders: number;
+  totalSpent: number;
+  status: string;
+  avatar: string;
+}
+
+export const customerService = {
+  getAll: async (): Promise<Customer[]> => {
+    const response = await api.get('/admin/customers');
+    return response.data.data;
+  },
+
+  updateStatus: async (id: string, status: 'Active' | 'Blocked'): Promise<Customer> => {
+    const response = await api.put(`/admin/customers/${id}/status`, { status });
+    return response.data.data;
+  },
+
+  getDetails: async (id: string): Promise<Customer> => {
+    const response = await api.get(`/admin/customers/${id}`);
+    return response.data.data;
   }
 };

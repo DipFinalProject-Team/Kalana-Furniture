@@ -1,21 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaFileInvoiceDollar, FaCheckCircle, FaClock, FaSearch, FaFilter, FaEye, FaTimesCircle } from 'react-icons/fa';
-import { supplierInvoices } from '../data/mockData';
+import { adminService } from '../services/api';
+import type { Invoice } from '../services/api';
 import Toast from '../components/Toast';
 
-interface Invoice {
-  id: string;
-  orderId: string;
-  supplierName: string;
-  amount: number;
-  date: string;
-  dueDate: string;
-  status: string;
-  paymentDate: string | null;
-}
-
 const SupplierInvoices: React.FC = () => {
-  const [invoices, setInvoices] = useState<Invoice[]>(supplierInvoices);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -26,21 +17,45 @@ const SupplierInvoices: React.FC = () => {
     isVisible: false,
   });
 
+  useEffect(() => {
+    fetchInvoices();
+  }, []);
+
+  const fetchInvoices = async () => {
+    try {
+      setLoading(true);
+      const data = await adminService.getInvoices();
+      setInvoices(data);
+    } catch (err) {
+      console.error('Error fetching invoices:', err);
+      showToast('Failed to load invoices', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type, isVisible: true });
   };
 
-  const handleMarkAsPaid = (id: string) => {
-    const updatedInvoices = invoices.map(inv => 
-      inv.id === id ? { ...inv, status: 'Paid', paymentDate: new Date().toISOString().split('T')[0] } : inv
-    );
-    setInvoices(updatedInvoices);
-    
-    if (selectedInvoice && selectedInvoice.id === id) {
-      setSelectedInvoice({ ...selectedInvoice, status: 'Paid', paymentDate: new Date().toISOString().split('T')[0] });
+  const handleMarkAsPaid = async (id: string) => {
+    try {
+      await adminService.markInvoiceAsPaid(id);
+      
+      // Update local state
+      setInvoices(invoices.map(inv => 
+        inv.id === id ? { ...inv, status: 'Paid', paymentDate: new Date().toISOString().split('T')[0] } : inv
+      ));
+      
+      if (selectedInvoice && selectedInvoice.id === id) {
+        setSelectedInvoice({ ...selectedInvoice, status: 'Paid', paymentDate: new Date().toISOString().split('T')[0] });
+      }
+      
+      showToast('Invoice marked as Paid successfully!', 'success');
+    } catch (err) {
+      console.error('Error marking invoice as paid:', err);
+      showToast('Failed to mark invoice as paid', 'error');
     }
-    
-    showToast('Invoice marked as Paid successfully!', 'success');
   };
 
   const filteredInvoices = invoices.filter(inv => {
@@ -145,51 +160,57 @@ const SupplierInvoices: React.FC = () => {
       {/* Invoices List */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm uppercase tracking-wider">
-                <th className="p-4 font-semibold">Invoice ID</th>
-                <th className="p-4 font-semibold">Order ID</th>
-                <th className="p-4 font-semibold">Supplier</th>
-                <th className="p-4 font-semibold">Amount</th>
-                <th className="p-4 font-semibold">Due Date</th>
-                <th className="p-4 font-semibold">Status</th>
-                <th className="p-4 font-semibold text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredInvoices.map((invoice) => (
-                <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="p-4 font-mono text-sm text-gray-600">{invoice.id}</td>
-                  <td className="p-4 font-mono text-sm text-gray-600">{invoice.orderId}</td>
-                  <td className="p-4 text-gray-800 font-medium">{invoice.supplierName}</td>
-                  <td className="p-4 font-bold text-gray-800">Rs. {invoice.amount.toLocaleString()}</td>
-                  <td className="p-4 text-gray-600">{invoice.dueDate}</td>
-                  <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
-                      {invoice.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    <button
-                      onClick={() => { setSelectedInvoice(invoice); setShowDetailsModal(true); }}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="View Details"
-                    >
-                      <FaEye />
-                    </button>
-                  </td>
+          {loading ? (
+            <div className="p-8 text-center">
+              <div className="text-gray-500">Loading invoices...</div>
+            </div>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm uppercase tracking-wider">
+                  <th className="p-4 font-semibold">Invoice Number</th>
+                  <th className="p-4 font-semibold">Order ID</th>
+                  <th className="p-4 font-semibold">Supplier</th>
+                  <th className="p-4 font-semibold">Amount</th>
+                  <th className="p-4 font-semibold">Due Date</th>
+                  <th className="p-4 font-semibold">Status</th>
+                  <th className="p-4 font-semibold text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredInvoices.map((invoice) => (
+                  <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-4 font-mono text-sm text-gray-600">{invoice.id}</td>
+                    <td className="p-4 font-mono text-sm text-gray-600">{invoice.orderId}</td>
+                    <td className="p-4 text-gray-800 font-medium">{invoice.supplierName}</td>
+                    <td className="p-4 font-bold text-gray-800">Rs. {invoice.amount.toLocaleString()}</td>
+                    <td className="p-4 text-gray-600">{invoice.dueDate}</td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
+                        {invoice.status}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <button
+                        onClick={() => { setSelectedInvoice(invoice); setShowDetailsModal(true); }}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="View Details"
+                      >
+                        <FaEye />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          
+          {!loading && filteredInvoices.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No invoices found matching your criteria.</p>
+            </div>
+          )}
         </div>
-        
-        {filteredInvoices.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No invoices found matching your criteria.</p>
-          </div>
-        )}
       </div>
 
       {/* Invoice Details Modal */}

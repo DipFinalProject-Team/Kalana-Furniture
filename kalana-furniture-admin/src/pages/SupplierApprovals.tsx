@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supplierService, type SupplierApplication } from '../services/api';
+import { adminService, type SupplierApplication } from '../services/api';
 import { FaCheck, FaTimes, FaEye, FaBuilding, FaUser, FaEnvelope, FaPhone, FaList, FaCalendarAlt, FaUserCheck, FaSpinner } from 'react-icons/fa';
 import Toast from '../components/Toast';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -25,8 +25,8 @@ const SupplierApprovals: React.FC = () => {
       setLoading(true);
       setError(null);
       const [pendingApps, approvedApps] = await Promise.all([
-        supplierService.getPendingApplications(),
-        supplierService.getApprovedSuppliers()
+        adminService.getPendingApplications(),
+        adminService.getApprovedSuppliers()
       ]);
       setApplications(pendingApps);
       setApprovedSuppliers(approvedApps);
@@ -54,14 +54,14 @@ const SupplierApprovals: React.FC = () => {
 
     try {
       if (actionType === 'approve') {
-        await supplierService.approveSupplier(selectedApp.id);
+        await adminService.approveSupplier(selectedApp.id);
         setApplications(applications.filter(app => app.id !== selectedApp.id));
         // Add to approved list
         const approvedSupplier = { ...selectedApp, status: 'approved', approved_at: new Date().toISOString() };
         setApprovedSuppliers([approvedSupplier, ...approvedSuppliers]);
         setToast({ message: `Supplier ${selectedApp.company_name} approved successfully!`, type: 'success' });
       } else {
-        await supplierService.rejectSupplier(selectedApp.id);
+        await adminService.rejectSupplier(selectedApp.id);
         setApplications(applications.filter(app => app.id !== selectedApp.id));
         setToast({ message: `Application for ${selectedApp.company_name} rejected.`, type: 'error' });
       }

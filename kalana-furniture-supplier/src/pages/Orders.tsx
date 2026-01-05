@@ -1,7 +1,19 @@
-import React, { useState } from 'react';
-import { purchaseOrders } from '../data/mockdata';
-import { FaCheck, FaTimes, FaTruck, FaBoxOpen, FaEye, FaSearch } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { supplierService } from '../services/api';
+import { FaCheck, FaTimes, FaTruck, FaBoxOpen, FaSearch } from 'react-icons/fa';
 import Toast from '../components/Toast';
+
+interface PurchaseOrderBackend {
+  id: number;
+  productName: string;
+  quantity: number;
+  totalAmount: number;
+  status: string;
+  orderDate: string;
+  deliveryDate: string | null;
+  actualDeliveryDate: string | null;
+  deliveryNotes: string | null;
+}
 
 interface PurchaseOrder {
   id: string;
@@ -16,7 +28,7 @@ interface PurchaseOrder {
 }
 
 const Orders: React.FC = () => {
-  const [orders, setOrders] = useState<PurchaseOrder[]>(purchaseOrders);
+  const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [filterStatus, setFilterStatus] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
@@ -26,29 +38,68 @@ const Orders: React.FC = () => {
     isVisible: false
   });
 
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = async () => {
+    try {
+      const response = await supplierService.getPurchaseOrders();
+      if (response.success) {
+        const mappedOrders = response.orders.map((order: PurchaseOrderBackend) => ({
+          id: order.id.toString(),
+          product: order.productName,
+          quantity: order.quantity,
+          expectedDelivery: order.deliveryDate ? new Date(order.deliveryDate).toISOString().split('T')[0] : '',
+          pricePerUnit: order.totalAmount ? Math.round(order.totalAmount / order.quantity) : 0,
+          status: order.status,
+          orderDate: new Date(order.orderDate).toISOString().split('T')[0],
+          actualDeliveryDate: order.actualDeliveryDate ? new Date(order.actualDeliveryDate).toISOString().split('T')[0] : '',
+          deliveryNotes: order.deliveryNotes || ''
+        }));
+        setOrders(mappedOrders);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      showToast('Failed to fetch orders', 'error');
+    }
+  };
+
   const showToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'success') => {
     setToast({ message, type, isVisible: true });
   };
 
-  const handleStatusUpdate = (id: string, newStatus: string) => {
+  const handleStatusUpdate = async (id: string, newStatus: string) => {
+    const order = orders.find(o => o.id === id);
+    
     if (newStatus === 'Dispatched') {
-      const order = orders.find(o => o.id === id);
       if (!order?.actualDeliveryDate) {
-        showToast('Please enter the Actual Delivery Date before marking as Delivered.', 'error');
+        showToast('Please enter the Actual Delivery Date before marking as Dispatched.', 'error');
         return;
       }
     }
 
-    const updatedOrders = orders.map(order => 
-      order.id === id ? { ...order, status: newStatus } : order
-    );
-    setOrders(updatedOrders);
-    
-    if (selectedOrder && selectedOrder.id === id) {
-      setSelectedOrder({ ...selectedOrder, status: newStatus });
+    try {
+      // Pass actual delivery date and notes when dispatching
+      const actualDeliveryDate = newStatus === 'Dispatched' ? order?.actualDeliveryDate : undefined;
+      const deliveryNotes = newStatus === 'Dispatched' ? order?.deliveryNotes : undefined;
+      
+      await supplierService.updatePurchaseOrderStatus(id, newStatus, actualDeliveryDate, deliveryNotes);
+      
+      const updatedOrders = orders.map(order => 
+        order.id === id ? { ...order, status: newStatus } : order
+      );
+      setOrders(updatedOrders);
+      
+      if (selectedOrder && selectedOrder.id === id) {
+        setSelectedOrder({ ...selectedOrder, status: newStatus });
+      }
+      
+      showToast(`Order status updated to ${newStatus}`, 'success');
+    } catch (error) {
+      console.error('Error updating status:', error);
+      showToast('Failed to update status', 'error');
     }
-    
-    showToast(`Order status updated to ${newStatus}`, 'success');
   };
 
   const handleDetailsUpdate = (id: string, field: 'actualDeliveryDate' | 'deliveryNotes', value: string) => {
@@ -129,7 +180,6 @@ const Orders: React.FC = () => {
                     <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Actual Delivery</th>
                     <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                    <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -149,14 +199,6 @@ const Orders: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate">{order.deliveryNotes || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setSelectedOrder(order); }}
-                          className="text-amber-600 hover:text-amber-900"
-                        >
-                          <FaEye />
-                        </button>
-                      </td>
                     </tr>
                   ))}
                 </tbody>
