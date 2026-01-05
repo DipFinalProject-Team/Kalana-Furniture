@@ -4,6 +4,7 @@ import { useCart } from '../contexts/CartContext';
 import Header from '../components/Header';
 import { useNavigate } from 'react-router-dom';
 import SnowAnimation from '../components/SnowAnimation'; // Reusing the snow animation for a consistent feel
+import Toast from '../components/Toast';
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ const CheckoutPage = () => {
   });
 
   const [isEditing, setIsEditing] = useState(false);
+  const [toast, setToast] = useState<{type: 'success' | 'error', message: string} | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -34,11 +36,13 @@ const CheckoutPage = () => {
       items: cartItems,
       total,
     });
-    
+
     // Show a confirmation message and navigate home
-    alert('Your order has been placed successfully!');
+    setToast({ type: 'success', message: 'Your order has been placed successfully!' });
     clearCart();
-    navigate('/');
+    setTimeout(() => {
+      navigate('/');
+    }, 2000); // Navigate after showing the toast
   };
 
   return (
@@ -180,6 +184,15 @@ const CheckoutPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </>
   );
 };

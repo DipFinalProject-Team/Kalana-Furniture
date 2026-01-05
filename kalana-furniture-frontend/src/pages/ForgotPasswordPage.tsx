@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import axios from 'axios';
 
 type ForgotPasswordPageProps = {
   onSwitchToLogin: () => void;
@@ -29,13 +30,24 @@ const ForgotPasswordPage = ({ onSwitchToLogin }: ForgotPasswordPageProps) => {
     }
 
     setIsSubmitting(true);
-    // Simulate API call
+    setError('');
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Password reset request for:', email);
-      setIsSubmitted(true);
-    } catch (err) {
-      setError('Failed to send reset link. Please try again.');
+      const response = await axios.post('http://localhost:3000/api/users/forgot-password', {
+        email: email
+      });
+
+      if (response.data.success) {
+        setIsSubmitted(true);
+      } else {
+        setError(response.data.message);
+      }
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.message || 'Failed to send reset link. Please try again.');
+      } else {
+        setError('Failed to send reset link. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }

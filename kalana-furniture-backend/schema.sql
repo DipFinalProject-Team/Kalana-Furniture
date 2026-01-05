@@ -6,6 +6,9 @@ create table public.users (
   id uuid references auth.users not null primary key,
   name text,
   email text,
+  phone text,
+  address text,
+  profile_picture text,
   role text default 'customer',
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );

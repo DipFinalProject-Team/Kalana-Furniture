@@ -2,6 +2,7 @@ import { Routes, Route, useNavigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import RegistrationPage from './pages/RegistrationPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import HomePage from './pages/HomePage';
 import UserProfile from './pages/UserProfile';
 import Cart from './pages/Cart';
@@ -30,6 +31,7 @@ function App() {
             <Route path="/login" element={<LoginPage onSwitchToRegister={() => navigate('/register')} onForgotPassword={() => navigate('/forgot-password')} />} />
             <Route path="/register" element={<RegistrationPage onSwitchToLogin={() => navigate('/login')} />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage onSwitchToLogin={() => navigate('/login')} />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/profile" element={<UserProfile />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/orders" element={<OrderHistoryPage />} />

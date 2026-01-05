@@ -126,6 +126,13 @@ exports.login = async (req, res) => {
     }
 
     // Check if supplier is approved
+    if (supplier.status === 'pending') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is pending admin approval. Please wait for approval before logging in.'
+      });
+    }
+
     if (supplier.status === 'rejected') {
       return res.status(403).json({
         success: false,

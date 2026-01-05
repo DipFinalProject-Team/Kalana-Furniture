@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { supplierService } from '../services/api';
+import Cookies from 'js-cookie';
 
 const MainLayout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -12,7 +13,7 @@ const MainLayout: React.FC = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem('supplierToken');
+        const token = Cookies.get('supplierToken') || localStorage.getItem('supplierToken');
         if (!token) {
           navigate('/login');
           return;
@@ -22,12 +23,18 @@ const MainLayout: React.FC = () => {
         if (response.success) {
           setIsAuthenticated(true);
         } else {
+          Cookies.remove('supplierToken');
           localStorage.removeItem('supplierToken');
+          Cookies.remove('supplierUser');
+          localStorage.removeItem('supplierUser');
           navigate('/login');
         }
       } catch (error) {
         console.error('Auth check failed:', error);
+        Cookies.remove('supplierToken');
         localStorage.removeItem('supplierToken');
+        Cookies.remove('supplierUser');
+        localStorage.removeItem('supplierUser');
         navigate('/login');
       } finally {
         setIsLoading(false);

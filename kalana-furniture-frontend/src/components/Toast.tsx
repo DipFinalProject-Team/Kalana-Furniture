@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
+import { FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
 
 interface ToastProps {
   message: string;
@@ -11,35 +11,33 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
-    }, 3000); // Auto-close after 3 seconds
+    }, 4000); // Auto-close after 4 seconds to match UserProfile
 
     return () => {
       clearTimeout(timer);
     };
   }, [onClose]);
 
-  const typeStyles = {
-    success: {
-      bg: 'bg-wood-brown',
-      text: 'text-wood-light',
-      icon: <FaCheckCircle className="text-wood-light" size={24} />,
-    },
-    error: {
-      bg: 'bg-red-700',
-      text: 'text-white',
-      icon: <FaTimesCircle className="text-white" size={24} />,
-    },
-  };
-
-  const styles = typeStyles[type];
-
   return (
-    <div 
-      className={`fixed top-20 right-5 z-50 p-4 rounded-lg shadow-2xl flex items-center gap-4 ${styles.bg} ${styles.text} animate-slide-in`}
-    >
-      {styles.icon}
-      <span className="font-semibold">{message}</span>
-      <button onClick={onClose} className="text-xl font-bold ml-auto pl-2">&times;</button>
+    <div className="fixed top-28 right-4 z-[60] animate-in slide-in-from-right-4 fade-in-0 duration-300">
+      <div className={`flex items-center space-x-3 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-lg ${
+        type === 'success'
+          ? 'bg-emerald-500/25 border-emerald-400/40 text-emerald-100 shadow-emerald-500/20'
+          : 'bg-red-500/25 border-red-400/40 text-red-100 shadow-red-500/20'
+      }`}>
+        {type === 'success' ? (
+          <FaCheckCircle className="text-emerald-400 text-xl flex-shrink-0" />
+        ) : (
+          <FaExclamationTriangle className="text-red-400 text-xl flex-shrink-0" />
+        )}
+        <span className="font-medium">{message}</span>
+        <button
+          onClick={onClose}
+          className="ml-4 text-white/70 hover:text-white transition-colors duration-200 text-lg"
+        >
+          ×
+        </button>
+      </div>
     </div>
   );
 };

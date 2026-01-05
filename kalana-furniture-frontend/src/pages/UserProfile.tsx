@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FaUser,
   FaPhone,
@@ -13,13 +14,18 @@ import {
 } from "react-icons/fa";
 import SnowAnimation from "../components/SnowAnimation";
 import Header from '../components/Header';
+import { useAuth } from '../hooks/useAuth';
+import { userService } from '../services/api';
 
 const UserProfile = () => {
+  const { user, updateUser, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState({
-    name: "John Doe",
-    phone: "+94",
-    address: "123 Furniture St, Wood City, WC 12345",
-    email: "john.doe@example.com",
+    name: "",
+    phone: "",
+    address: "",
+    email: "",
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -28,13 +34,36 @@ const UserProfile = () => {
     confirmPassword: "",
   });
 
-  const [profilePicture, setProfilePicture] = useState(
-    "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=150&q=80"
-  );
+  const [profilePicture, setProfilePicture] = useState("");
+
+  // Check authentication and redirect if not logged in
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate('/login');
+    }
+  }, [user, isLoading, navigate]);
+
+  // Load user profile data on component mount
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        name: user.name || "",
+        phone: user.phone || "",
+        address: user.address || "",
+        email: user.email || "",
+      });
+      // Set profile picture with fallback to first letter of name
+      const profilePic = user.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name?.charAt(0) || 'U')}&background=8B4513&color=fff&size=128`;
+      setProfilePicture(profilePic);
+      setLoading(false);
+    }
+  }, [user]);
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error'; visible: boolean }>({
     text: '',
     type: 'success',
@@ -101,11 +130,12 @@ const UserProfile = () => {
       case 'currentPassword':
         if (!value.trim()) return 'Current password is required';
         return '';
-      case 'newPassword':
+      case 'newPassword': {
         if (!value.trim()) return 'New password is required';
         const { isValid } = validatePassword(value);
         if (!isValid) return 'Password must be at least 8 characters';
         return '';
+      }
       case 'confirmPassword':
         if (!value.trim()) return 'Please confirm your new password';
         if (value !== allData.newPassword) return 'Passwords do not match';
@@ -140,20 +170,55 @@ const UserProfile = () => {
     });
   };
 
-  const handleProfilePictureChange = (
+  const handleProfilePictureChange = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setProfilePicture(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+      // Show loading state
+      setMessage({
+        text: 'Uploading profile picture...',
+        type: 'success',
+        visible: true,
+      });
+
+      try {
+        const formData = new FormData();
+        formData.append('profilePicture', file);
+
+        const response = await userService.uploadProfilePicture(formData);
+
+        if (response.success) {
+          setProfilePicture(response.imageUrl);
+          updateUser(response.user);
+          setMessage({
+            text: response.message || 'Profile picture updated successfully!',
+            type: 'success',
+            visible: true,
+          });
+          // Auto-hide message after 4 seconds
+          setTimeout(() => {
+            setMessage(prev => ({ ...prev, visible: false }));
+          }, 4000);
+        } else {
+          setMessage({
+            text: response.message || 'Failed to upload profile picture.',
+            type: 'error',
+            visible: true,
+          });
+        }
+      } catch (error) {
+        console.error('Profile picture upload error:', error);
+        setMessage({
+          text: 'Failed to upload profile picture. Please try again.',
+          type: 'error',
+          visible: true,
+        });
+      }
     }
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     // Validate all profile fields
     const errors: { [key: string]: string } = {};
     Object.keys(profileData).forEach(field => {
@@ -166,22 +231,44 @@ const UserProfile = () => {
     // Check if there are any errors
     if (Object.keys(errors).length > 0) {
       setMessage({
-        text: 'Something went wrong.',
+        text: 'Please fix the validation errors before saving.',
         type: 'error',
         visible: true,
       });
       return;
     }
 
-    // Simulate save
-    setMessage({
-      text: 'Profile updated successfully!',
-      type: 'success',
-      visible: true,
-    });
+    try {
+      const response = await userService.updateProfile(profileData);
+      if (response.success) {
+        updateUser(response.user);
+        setMessage({
+          text: response.message || 'Profile updated successfully!',
+          type: 'success',
+          visible: true,
+        });
+        // Auto-hide message after 4 seconds
+        setTimeout(() => {
+          setMessage(prev => ({ ...prev, visible: false }));
+        }, 4000);
+      } else {
+        setMessage({
+          text: response.message || 'Failed to update profile.',
+          type: 'error',
+          visible: true,
+        });
+      }
+    } catch (error) {
+      console.error('Profile update error:', error);
+      setMessage({
+        text: 'Failed to update profile. Please try again.',
+        type: 'error',
+        visible: true,
+      });
+    }
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     // Validate all password fields
     const errors: { [key: string]: string } = {};
     Object.keys(passwordData).forEach(field => {
@@ -201,18 +288,47 @@ const UserProfile = () => {
       return;
     }
 
-    // Simulate password change
-    setMessage({
-      text: 'Password changed successfully!',
-      type: 'success',
-      visible: true,
-    });
-    setPasswordData({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    });
-    setShowPasswordModal(false);
+    setIsChangingPassword(true);
+    try {
+      const response = await userService.changePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+
+      if (response.success) {
+        setMessage({
+          text: response.message || 'Password changed successfully!',
+          type: 'success',
+          visible: true,
+        });
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
+        setShowPasswordModal(false);
+        // Auto-hide message after 4 seconds
+        setTimeout(() => {
+          setMessage(prev => ({ ...prev, visible: false }));
+        }, 4000);
+      } else {
+        setMessage({
+          text: response.message || 'Failed to change password.',
+          type: 'error',
+          visible: true,
+        });
+      }
+    } catch (error: any) {
+      console.error('Password change error:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to change password. Please try again.';
+      setMessage({
+        text: errorMessage,
+        type: 'error',
+        visible: true,
+      });
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   const openPasswordModal = () => {
@@ -227,35 +343,60 @@ const UserProfile = () => {
       confirmPassword: "",
     });
     setPasswordErrors({});
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+    setIsChangingPassword(false);
   };
 
   return (
-    <>
     <div>
       <Header />
-    </div>
-    <div className="min-h-screen bg-[url('/wood-bg.jpg')] bg-cover bg-center bg-fixed py-[140px] px-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-black/60"></div>
-      <SnowAnimation
-        containerClass="absolute inset-0 pointer-events-none overflow-hidden"
-        numFlakes={25}
-        minDuration={8}
-        maxDuration={15}
-        minDelay={0}
-        maxDelay={5}
-        minSize={8}
-        maxSize={20}
-        opacity={0.5}
-      />
-      <div className="max-w-4xl mx-auto relative z-10">
-        <div className="text-start mb-4">
-          <h1 className="font-sans text-4xl font-bold text-white mb-4 drop-shadow-lg flex items-center justify-center">
-            <FaUser className="mr-4 text-wood-accent" />
-            Your Profile
-          </h1>
+      {loading || !user ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
+          <div className="text-center">
+            <div className="relative mb-8">
+              <div className="w-24 h-24 border-4 border-wood-light rounded-full animate-spin border-t-wood-brown mx-auto"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-16 h-16 bg-wood-brown rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-wood-brown mb-4">Loading Your Profile</h2>
+            <p className="text-gray-600 mb-8">Preparing your personalized experience...</p>
+            <div className="flex justify-center space-x-2">
+              <div className="w-3 h-3 bg-wood-accent rounded-full animate-bounce"></div>
+              <div className="w-3 h-3 bg-wood-accent rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-3 h-3 bg-wood-accent rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+          </div>
         </div>
+      ) : (
+        <div className="min-h-screen bg-[url('/wood-bg.jpg')] bg-cover bg-center bg-fixed py-[140px] px-4 relative overflow-hidden">
+          <div className="absolute inset-0 bg-black/60"></div>
+          <SnowAnimation
+            containerClass="absolute inset-0 pointer-events-none overflow-hidden"
+            numFlakes={25}
+            minDuration={8}
+            maxDuration={15}
+            minDelay={0}
+            maxDelay={5}
+            minSize={8}
+            maxSize={20}
+            opacity={0.5}
+          />
+          <div className="max-w-4xl mx-auto relative z-10">
+            <div className="text-start mb-4">
+              <h1 className="font-sans text-4xl font-bold text-white mb-4 drop-shadow-lg flex items-center justify-center">
+                <FaUser className="mr-4 text-wood-accent" />
+                Your Profile
+              </h1>
+            </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Profile Picture Section */}
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20  transition-all duration-500 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]">
             <div className="text-center">
@@ -430,14 +571,14 @@ const UserProfile = () => {
 
       {/* Styled Message Notification */}
       {message.visible && (
-        <div className="fixed top-28 right-4 z-50 animate-in slide-in-from-right-4 fade-in-0 duration-300">
+        <div className="fixed top-28 right-4 z-[60] animate-in slide-in-from-right-4 fade-in-0 duration-300">
           <div className={`flex items-center space-x-3 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-lg ${
             message.type === 'success'
-              ? 'bg-green-500/20 border-green-400/30 text-green-100'
-              : 'bg-red-500/20 border-red-400/30 text-red-100'
+              ? 'bg-emerald-500/25 border-emerald-400/40 text-emerald-100 shadow-emerald-500/20'
+              : 'bg-red-500/25 border-red-400/40 text-red-100 shadow-red-500/20'
           }`}>
             {message.type === 'success' ? (
-              <FaCheckCircle className="text-green-400 text-xl flex-shrink-0" />
+              <FaCheckCircle className="text-emerald-400 text-xl flex-shrink-0" />
             ) : (
               <FaExclamationTriangle className="text-red-400 text-xl flex-shrink-0" />
             )}
@@ -474,19 +615,28 @@ const UserProfile = () => {
                 <label className="block text-wood-light mb-2">
                   Current Password
                 </label>
-                <input
-                  type="password"
-                  value={passwordData.currentPassword}
-                  onChange={(e) =>
-                    handlePasswordChange("currentPassword", e.target.value)
-                  }
-                  className={`w-full px-4 py-3 bg-white/20 border rounded-lg text-white placeholder-wood-light focus:outline-none focus:ring-2 transition-all duration-300 ${
-                    passwordErrors.currentPassword
-                      ? 'border-red-400 focus:ring-red-400'
-                      : 'border-white/30 focus:ring-wood-accent'
-                  }`}
-                  placeholder="Enter current password"
-                />
+                <div className="relative">
+                  <input
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={passwordData.currentPassword}
+                    onChange={(e) =>
+                      handlePasswordChange("currentPassword", e.target.value)
+                    }
+                    className={`w-full px-4 py-3 pr-12 bg-white/20 border rounded-lg text-white placeholder-wood-light focus:outline-none focus:ring-2 transition-all duration-300 ${
+                      passwordErrors.currentPassword
+                        ? 'border-red-400 focus:ring-red-400'
+                        : 'border-white/30 focus:ring-wood-accent'
+                    }`}
+                    placeholder="Enter current password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  >
+                    {showCurrentPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
                 {passwordErrors.currentPassword && (
                   <p className="text-red-400 text-sm mt-1 flex items-center">
                     <FaExclamationTriangle className="mr-1" />
@@ -591,22 +741,32 @@ const UserProfile = () => {
             <div className="flex space-x-4 mt-8">
               <button
                 onClick={closePasswordModal}
-                className="flex-1 bg-gray-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-700 transform hover:scale-105 transition-all duration-300"
+                disabled={isChangingPassword}
+                className="flex-1 bg-gray-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-700 transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
                 Cancel
               </button>
               <button
                 onClick={handleChangePassword}
-                className="flex-1 bg-wood-accent text-white font-bold py-3 px-6 rounded-lg hover:bg-wood-accent-hover transform hover:scale-105 transition-all duration-300 shadow-lg"
+                disabled={isChangingPassword}
+                className="flex-1 bg-wood-accent text-white font-bold py-3 px-6 rounded-lg hover:bg-wood-accent-hover transform hover:scale-105 transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
               >
-                Update Password
+                {isChangingPassword ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Updating...
+                  </>
+                ) : (
+                  'Update Password'
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
+        </div>
+      )}
     </div>
-    </>
   );
 };
 

@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter.tsx';
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { useAuth } from '../contexts/AuthContext';
-import Toast from '../components/Toast';
+import { useAuth } from '../hooks/useAuth';
 
 type RegistrationPageProps = {
   onSwitchToLogin: () => void;
@@ -24,7 +23,6 @@ const RegistrationPage = ({ onSwitchToLogin }: RegistrationPageProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [toast, setToast] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [showLoadingScreen, setShowLoadingScreen] = useState(false);
 
   const validateForm = () => {
@@ -95,7 +93,6 @@ const RegistrationPage = ({ onSwitchToLogin }: RegistrationPageProps) => {
     }
 
     setIsSubmitting(true);
-    setToast(null);
 
     try {
       const result = await register({
@@ -108,10 +105,9 @@ const RegistrationPage = ({ onSwitchToLogin }: RegistrationPageProps) => {
 
       if (result.success) {
         if (result.requiresConfirmation) {
-          setToast({ type: 'success', message: result.message });
           // Keep form data for user to try again after email confirmation
+          setErrors({ registration: result.message });
         } else {
-          setToast({ type: 'success', message: 'Registration successful! Welcome to Kalana Furniture.' });
           // Clear form
           setFormData({
             name: '',
@@ -127,13 +123,13 @@ const RegistrationPage = ({ onSwitchToLogin }: RegistrationPageProps) => {
             setTimeout(() => {
               navigate('/login');
             }, 2000); // Show loading screen for 2 seconds
-          }, 1000); // Wait 1 second after showing success toast
+          });
         }
       } else {
-        setToast({ type: 'error', message: result.message });
+        setErrors({ registration: result.message });
       }
     } catch {
-      setToast({ type: 'error', message: 'Registration failed. Please try again.' });
+      setErrors({ registration: 'Registration failed. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -262,6 +258,10 @@ const RegistrationPage = ({ onSwitchToLogin }: RegistrationPageProps) => {
               />
               {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address}</p>}
             </div>
+
+            {errors.registration && (
+              <p className="text-red-500 text-sm mt-1">{errors.registration}</p>
+            )}
             
             <button 
               className="w-full bg-wood-accent text-white font-bold py-3 px-4 rounded-md hover:bg-wood-accent-hover transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" 
@@ -280,14 +280,6 @@ const RegistrationPage = ({ onSwitchToLogin }: RegistrationPageProps) => {
           </p>
         </div>
       </div>
-
-      {toast && (
-        <Toast
-          type={toast.type}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
 
       {showLoadingScreen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">

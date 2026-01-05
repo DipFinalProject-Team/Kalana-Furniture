@@ -94,6 +94,7 @@ exports.register = async (req, res) => {
           email: email,
           phone: phone,
           address: address,
+          profile_picture: null,
           role: 'customer'
         }
       });
@@ -166,6 +167,7 @@ exports.login = async (req, res) => {
           id: authData.user.id,
           name: authData.user.user_metadata?.name || 'User',
           email: authData.user.email,
+          profile_picture: null,
           role: 'customer'
         }
       });
@@ -182,6 +184,7 @@ exports.login = async (req, res) => {
         email: userData.email,
         phone: userData.phone,
         address: userData.address,
+        profile_picture: userData.profile_picture,
         role: userData.role
       }
     });
@@ -231,6 +234,7 @@ exports.verifyToken = async (req, res) => {
         email: userData?.email || user.email,
         phone: userData?.phone,
         address: userData?.address,
+        profile_picture: userData?.profile_picture,
         role: userData?.role || 'customer'
       }
     });
@@ -293,5 +297,210 @@ exports.createUserProfile = async (req, res) => {
     res.status(201).json(data[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateUserProfile = async (req, res) => {
+  try {
+    const userId = req.user.id; // From auth middleware
+    const { name, phone, address, email } = req.body;
+
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (phone !== undefined) updates.phone = phone;
+    if (address !== undefined) updates.address = address;
+    if (email !== undefined) updates.email = email;
+
+    const { data, error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', userId)
+      .select();
+
+    if (error) throw error;
+    if (data.length === 0) return res.status(404).json({ error: 'User not found' });
+
+    res.status(200).json({ success: true, user: data[0], message: 'Profile updated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Current password and new password are required' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 8 characters long' });
+    }
+
+    // Get user from Supabase Auth
+    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
+    if (userError || !userData.user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Update password in Supabase Auth
+    const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
+      password: newPassword
+    });
+
+    if (updateError) {
+      console.error('Password update error:', updateError);
+      return res.status(500).json({ success: false, message: 'Failed to update password' });
+    }
+
+    res.status(200).json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ success: false, message: 'Failed to change password' });
+  }
+};
+
+exports.uploadProfilePicture = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    // Upload to Cloudinary
+    const cloudinary = require('../config/cloudinary');
+    const streamifier = require('streamifier');
+
+    const uploadToCloudinary = (buffer) => {
+      return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { folder: 'kalana-furniture/profiles' },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result.secure_url);
+          }
+        );
+        streamifier.createReadStream(buffer).pipe(uploadStream);
+      });
+    };
+
+    const imageUrl = await uploadToCloudinary(req.file.buffer);
+
+    // Update user profile with image URL
+    const { data, error } = await supabase
+      .from('users')
+      .update({ profile_picture: imageUrl })
+      .eq('id', userId)
+      .select();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile picture updated successfully',
+      imageUrl: imageUrl,
+      user: data[0]
+    });
+  } catch (error) {
+    console.error('Upload profile picture error:', error);
+    res.status(500).json({ success: false, message: 'Failed to upload profile picture' });
+  }
+};
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    // Send password reset email via Supabase
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password`,
+    });
+
+    if (error) {
+      console.error('Forgot password error:', error);
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to send reset email. Please check your email address.'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'If an account with that email exists, we\'ve sent a password reset link to it.'
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process password reset request'
+    });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { password, accessToken, refreshToken } = req.body;
+
+    if (!password || !accessToken || !refreshToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password, access token, and refresh token are required'
+      });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters long'
+      });
+    }
+
+    // Set the session with the tokens
+    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken
+    });
+
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset link'
+      });
+    }
+
+    // Update the password
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: password
+    });
+
+    if (updateError) {
+      console.error('Password update error:', updateError);
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to update password'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Password updated successfully'
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reset password'
+    });
   }
 };

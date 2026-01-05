@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import React, { createContext, useState, useEffect, type ReactNode } from 'react';
 import { userService, type User, type LoginCredentials, type RegisterData } from '../services/api';
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -11,15 +11,7 @@ interface AuthContextType {
   updateUser: (userData: Partial<User>) => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -33,17 +25,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Check if user is already logged in on app start
     const checkAuthStatus = async () => {
       const token = localStorage.getItem('userToken');
-      if (token) {
-        try {
-          const response = await userService.verifyToken();
-          if (response.success && response.user) {
-            setUser(response.user);
-          } else {
+      const loginTime = localStorage.getItem('userLoginTime');
+      
+      if (token && loginTime) {
+        const loginTimestamp = parseInt(loginTime);
+        const currentTime = Date.now();
+        const oneDay = 24 * 60 * 60 * 1000; // 1 day in milliseconds
+        
+        // Check if login is still valid (less than 1 day old)
+        if (currentTime - loginTimestamp < oneDay) {
+          try {
+            const response = await userService.verifyToken();
+            if (response.success && response.user) {
+              setUser(response.user);
+            } else {
+              localStorage.removeItem('userToken');
+              localStorage.removeItem('userLoginTime');
+            }
+          } catch (error) {
+            console.error('Token verification failed:', error);
             localStorage.removeItem('userToken');
+            localStorage.removeItem('userLoginTime');
           }
-        } catch (error) {
-          console.error('Token verification failed:', error);
+        } else {
+          // Token expired, remove it
           localStorage.removeItem('userToken');
+          localStorage.removeItem('userLoginTime');
         }
       }
       setIsLoading(false);
@@ -57,6 +64,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await userService.login(credentials);
       if (response.success && response.token && response.user) {
         localStorage.setItem('userToken', response.token);
+        localStorage.setItem('userLoginTime', Date.now().toString());
         setUser(response.user);
         return { success: true, message: response.message };
       } else {
@@ -73,6 +81,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await userService.register(userData);
       if (response.success && response.token && response.user) {
         localStorage.setItem('userToken', response.token);
+        localStorage.setItem('userLoginTime', Date.now().toString());
         setUser(response.user);
         return { success: true, message: response.message };
       } else if (response.success && response.requiresConfirmation) {
@@ -93,6 +102,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Logout error:', error);
     } finally {
       localStorage.removeItem('userToken');
+      localStorage.removeItem('userLoginTime');
       setUser(null);
     }
   };

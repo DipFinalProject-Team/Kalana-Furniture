@@ -4,6 +4,7 @@ import { AxiosError } from 'axios';
 import Modal from '../components/Modal';
 import Toast from '../components/Toast';
 import { supplierService } from '../services/api';
+import Cookies from 'js-cookie';
 
 const Profile: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -204,8 +205,9 @@ const Profile: React.FC = () => {
           showToast('Profile image updated successfully', 'success');
           setProfileImage(response.imageUrl);
           // Update localStorage
-          const currentUser = JSON.parse(localStorage.getItem('supplierUser') || '{}');
+          const currentUser = JSON.parse(Cookies.get('supplierUser') || localStorage.getItem('supplierUser') || '{}');
           const updatedUser = { ...currentUser, profileImage: response.imageUrl };
+          Cookies.set('supplierUser', JSON.stringify(updatedUser), Cookies.get('supplierToken') ? { expires: 30 } : undefined);
           localStorage.setItem('supplierUser', JSON.stringify(updatedUser));
         } else {
           setProfileImage(previousImage);
@@ -241,8 +243,9 @@ const Profile: React.FC = () => {
           if (response.success) {
              showToast('Profile updated successfully!', 'success');
              // Update local storage if needed
-             const currentUser = JSON.parse(localStorage.getItem('supplierUser') || '{}');
+             const currentUser = JSON.parse(Cookies.get('supplierUser') || localStorage.getItem('supplierUser') || '{}');
              const updatedUser = { ...currentUser, ...response.supplier };
+             Cookies.set('supplierUser', JSON.stringify(updatedUser), Cookies.get('supplierToken') ? { expires: 30 } : undefined);
              localStorage.setItem('supplierUser', JSON.stringify(updatedUser));
           }
         } catch (error) {

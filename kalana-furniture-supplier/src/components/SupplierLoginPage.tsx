@@ -3,6 +3,7 @@ import { FaEye, FaEyeSlash, FaUser, FaLock } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { supplierService } from "../services/api";
 import Toast from "./Toast";
+import Cookies from 'js-cookie';
 
 const SupplierLoginPage = () => {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ const SupplierLoginPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -61,8 +63,13 @@ const SupplierLoginPage = () => {
       const response = await supplierService.login(formData);
       
       if (response.success && response.token) {
-        localStorage.setItem('supplierToken', response.token);
-        localStorage.setItem('supplierUser', JSON.stringify(response.supplier));
+        if (rememberMe) {
+          Cookies.set('supplierToken', response.token, { expires: 30 });
+          Cookies.set('supplierUser', JSON.stringify(response.supplier), { expires: 30 });
+        } else {
+          Cookies.set('supplierToken', response.token);
+          Cookies.set('supplierUser', JSON.stringify(response.supplier));
+        }
         setToast({ message: "Login successful!", type: 'success' });
         
         // Redirect to dashboard after a short delay
@@ -207,7 +214,12 @@ const SupplierLoginPage = () => {
             <div className="flex items-center justify-between">
               <label className="flex items-center cursor-pointer group">
                 <div className="relative flex items-center">
-                  <input type="checkbox" className="peer sr-only" />
+                  <input 
+                    type="checkbox" 
+                    className="peer sr-only" 
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                  />
                   <div className="w-5 h-5 border-2 border-gray-300 rounded transition-colors peer-checked:bg-wood-brown peer-checked:border-wood-brown"></div>
                   <svg className="absolute w-3 h-3 text-white left-1 opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { dashboardStats, recentSupplyOrders, lowStockRequests } from '../data/mockdata';
 import { FaBoxOpen, FaClipboardList, FaCheckCircle, FaMoneyBillWave, FaShoppingCart, FaClock, FaExclamationTriangle } from 'react-icons/fa';
+import Cookies from 'js-cookie';
 
 const Dashboard: React.FC = () => {
   const [supplierStatus, setSupplierStatus] = useState<string>('');
 
   useEffect(() => {
-    const supplierData = localStorage.getItem('supplierUser');
+    const supplierData = Cookies.get('supplierUser') || localStorage.getItem('supplierUser');
     if (supplierData) {
       try {
         const supplier = JSON.parse(supplierData);

@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { useAuth } from '../contexts/AuthContext';
-import Toast from '../components/Toast';
+import { useAuth } from '../hooks/useAuth';
 
 type LoginPageProps = {
   onSwitchToRegister: () => void;
@@ -22,7 +21,6 @@ const LoginPage = ({
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [toast, setToast] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [showLoadingScreen, setShowLoadingScreen] = useState(false);
 
   const validateForm = () => {
@@ -69,7 +67,6 @@ const LoginPage = ({
     }
 
     setIsSubmitting(true);
-    setToast(null);
 
     try {
       const result = await login({
@@ -78,7 +75,6 @@ const LoginPage = ({
       });
 
       if (result.success) {
-        setToast({ type: 'success', message: 'Login successful! Welcome back.' });
         // Clear form
         setFormData({
           email: '',
@@ -90,12 +86,12 @@ const LoginPage = ({
           setTimeout(() => {
             navigate('/');
           }, 2000); // Show loading screen for 2 seconds
-        }, 1000); // Wait 1 second after showing success toast
+        });
       } else {
-        setToast({ type: 'error', message: result.message });
+        setErrors({ login: result.message });
       }
     } catch {
-      setToast({ type: 'error', message: 'Login failed. Please try again.' });
+      setErrors({ login: 'Login failed. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -175,6 +171,10 @@ const LoginPage = ({
               )}
             </div>
 
+            {errors.login && (
+              <p className="text-red-500 text-sm mt-1">{errors.login}</p>
+            )}
+
             <button
               className="w-full bg-wood-accent text-white font-bold py-3 px-4 rounded-md hover:bg-wood-accent-hover transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               type="submit"
@@ -209,14 +209,6 @@ const LoginPage = ({
           <p className="text-center text-wood-light">Your space, your style.</p>
         </div>
       </div>
-
-      {toast && (
-        <Toast
-          type={toast.type}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
 
       {showLoadingScreen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">

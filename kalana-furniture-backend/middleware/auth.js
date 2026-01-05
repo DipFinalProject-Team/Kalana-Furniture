@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const supabase = require('../config/supabaseClient');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -68,4 +69,39 @@ const authenticateSupplier = (req, res, next) => {
   }
 };
 
-module.exports = { authenticateAdmin, authenticateSupplier };
+const authenticate = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Access denied. No token provided.'
+      });
+    }
+
+    const token = authHeader.split(' ')[1];
+    
+    // Verify with Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token'
+      });
+    }
+
+    req.user = user;
+    next();
+
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    res.status(401).json({
+      success: false,
+      message: 'Invalid token'
+    });
+  }
+};
+
+module.exports = { authenticateAdmin, authenticateSupplier, authenticate };

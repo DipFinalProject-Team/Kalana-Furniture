@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FiLogOut, FiTrash2, FiAlertTriangle } from 'react-icons/fi';
 import Modal from '../components/Modal';
 import { supplierService } from '../services/api';
+import Cookies from 'js-cookie';
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();
@@ -38,8 +39,10 @@ const Settings: React.FC = () => {
     try {
       await supplierService.logout();
       // Clear any auth tokens or user data
+      Cookies.remove('supplierToken');
       localStorage.removeItem('supplierToken');
-      localStorage.removeItem('supplier_user');
+      Cookies.remove('supplierUser');
+      localStorage.removeItem('supplierUser');
       
       setIsLogoutModalOpen(false);
       // Redirect to login
@@ -47,8 +50,10 @@ const Settings: React.FC = () => {
     } catch (error) {
       console.error('Logout failed:', error);
       // Still clear local data and redirect even if API call fails
+      Cookies.remove('supplierToken');
       localStorage.removeItem('supplierToken');
-      localStorage.removeItem('supplier_user');
+      Cookies.remove('supplierUser');
+      localStorage.removeItem('supplierUser');
       navigate('/login');
     }
   };

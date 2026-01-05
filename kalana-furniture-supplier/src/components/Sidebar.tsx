@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import Modal from './Modal';
 import { 
   FiGrid, 
@@ -11,6 +11,7 @@ import {
   FiChevronRight,
   FiLogOut
 } from 'react-icons/fi';
+import Cookies from 'js-cookie';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -27,10 +28,11 @@ interface User {
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const navigate = useNavigate();
 
   // Get user information from localStorage
   const getUserInfo = (): User | null => {
-    const userData = localStorage.getItem('supplierUser');
+    const userData = Cookies.get('supplierUser') || localStorage.getItem('supplierUser');
     if (userData) {
       try {
         return JSON.parse(userData);
@@ -65,10 +67,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
   const userInitial = userName.charAt(0).toUpperCase();
 
   const handleLogout = () => {
-    // Add actual logout logic here (e.g., clear tokens, redirect)
-    console.log('Logging out...');
+    // Clear tokens and user data
+    Cookies.remove('supplierToken');
+    localStorage.removeItem('supplierToken');
+    Cookies.remove('supplierUser');
+    localStorage.removeItem('supplierUser');
     setIsLogoutModalOpen(false);
-    window.location.href = '/login'; // Example redirect
+    navigate('/login');
   };
 
   const menuItems = [

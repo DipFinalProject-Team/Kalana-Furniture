@@ -24,6 +24,7 @@ export interface User {
   email: string;
   phone?: string;
   address?: string;
+  profile_picture?: string;
   role: string;
 }
 
@@ -66,8 +67,22 @@ export const userService = {
     return response.data;
   },
 
-  updateProfile: async (id: string, userData: Partial<User>): Promise<User> => {
-    const response = await api.put(`/users/${id}`, userData);
+  updateProfile: async (userData: Partial<User>): Promise<{ success: boolean; message: string; user: User }> => {
+    const response = await api.put('/users/profile', userData);
+    return response.data;
+  },
+
+  changePassword: async (passwordData: { currentPassword: string; newPassword: string }): Promise<{ success: boolean; message: string }> => {
+    const response = await api.put('/users/change-password', passwordData);
+    return response.data;
+  },
+
+  uploadProfilePicture: async (formData: FormData): Promise<{ success: boolean; message: string; imageUrl: string; user: User }> => {
+    const response = await api.post('/users/upload-profile-picture', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   }
 };
