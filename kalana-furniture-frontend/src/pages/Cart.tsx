@@ -3,11 +3,14 @@ import { FaTrash, FaPlus, FaMinus, FaShoppingCart, FaCreditCard, FaTag } from 'r
 import { useNavigate } from 'react-router-dom';
 import SnowAnimation from '../components/SnowAnimation';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../hooks/useAuth';
 import Header from '../components/Header';
+import AuthRequiredMessage from '../components/AuthRequiredMessage';
 
 const Cart = () => {
   const navigate = useNavigate();
   const { cartItems, updateQuantity, removeFromCart, getTotalPrice, appliedDiscount, promoMessage, applyPromoCode, removePromoCode } = useCart();
+  const { user, isLoading } = useAuth();
   
   const [localPromoCode, setLocalPromoCode] = useState('');
 
@@ -39,6 +42,20 @@ const Cart = () => {
     <div>
       <Header />
     </div>
+    {isLoading ? (
+      <div className="min-h-screen flex items-center justify-center bg-wood-light">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-wood-brown mx-auto mb-4"></div>
+          <p className="text-wood-brown">Loading...</p>
+        </div>
+      </div>
+    ) : !user ? (
+      <AuthRequiredMessage
+        title="Authentication Required"
+        message="Please log in to access your cart."
+        description="You need to be logged in to view your shopping cart, apply promo codes, and proceed to checkout."
+      />
+    ) : (
     <div className="min-h-screen bg-[url('/wood-bg.jpg')] bg-cover bg-center bg-fixed py-[140px] px-4 relative overflow-hidden">
       <div className="absolute inset-0 bg-black/60"></div>
       <SnowAnimation
@@ -166,6 +183,7 @@ const Cart = () => {
         )}
       </div>
     </div>
+    )}
   </>
   );
 };

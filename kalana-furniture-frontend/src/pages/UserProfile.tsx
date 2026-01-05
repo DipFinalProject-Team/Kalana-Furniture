@@ -16,11 +16,11 @@ import SnowAnimation from "../components/SnowAnimation";
 import Header from '../components/Header';
 import { useAuth } from '../hooks/useAuth';
 import { userService } from '../services/api';
+import AuthRequiredMessage from '../components/AuthRequiredMessage';
 
 const UserProfile = () => {
   const { user, updateUser, isLoading } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState({
     name: "",
     phone: "",
@@ -55,7 +55,6 @@ const UserProfile = () => {
       // Set profile picture with fallback to first letter of name
       const profilePic = user.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name?.charAt(0) || 'U')}&background=8B4513&color=fff&size=128`;
       setProfilePicture(profilePic);
-      setLoading(false);
     }
   }, [user]);
 
@@ -318,9 +317,9 @@ const UserProfile = () => {
           visible: true,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Password change error:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to change password. Please try again.';
+      const errorMessage = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || (error as { message?: string })?.message || 'Failed to change password. Please try again.';
       setMessage({
         text: errorMessage,
         type: 'error',
@@ -352,7 +351,7 @@ const UserProfile = () => {
   return (
     <div>
       <Header />
-      {loading || !user ? (
+      {isLoading ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
           <div className="text-center">
             <div className="relative mb-8">
@@ -374,6 +373,12 @@ const UserProfile = () => {
             </div>
           </div>
         </div>
+      ) : !user ? (
+        <AuthRequiredMessage
+          title="Authentication Required"
+          message="Please log in to access your profile."
+          description="You need to be logged in to view and manage your profile information, change your password, and access personalized features."
+        />
       ) : (
         <div className="min-h-screen bg-[url('/wood-bg.jpg')] bg-cover bg-center bg-fixed py-[140px] px-4 relative overflow-hidden">
           <div className="absolute inset-0 bg-black/60"></div>

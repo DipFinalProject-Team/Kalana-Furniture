@@ -4,7 +4,9 @@ import { FaHistory } from 'react-icons/fa';
 import Header from '../components/Header';
 import { mockOrders } from '../data/orders';
 import type { Order, OrderItem } from '../data/orders';
+import { useAuth } from '../hooks/useAuth';
 import Toast from '../components/Toast';
+import AuthRequiredMessage from '../components/AuthRequiredMessage';
 
 const OrderModal = ({ order, onClose, showToast }: { order: Order; onClose: () => void; showToast: (message: string, type: 'success' | 'error') => void }) => {
   const handleCancelOrder = () => {
@@ -103,6 +105,7 @@ const OrderModal = ({ order, onClose, showToast }: { order: Order; onClose: () =
 const OrderHistoryPage = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const { user, isLoading } = useAuth();
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -124,6 +127,20 @@ const OrderHistoryPage = () => {
   return (
     <>
       <Header />
+      {isLoading ? (
+        <div className="min-h-screen flex items-center justify-center bg-wood-light">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-wood-brown mx-auto mb-4"></div>
+            <p className="text-wood-brown">Loading...</p>
+          </div>
+        </div>
+      ) : !user ? (
+        <AuthRequiredMessage
+          title="Authentication Required"
+          message="Please log in to view your order history."
+          description="You need to be logged in to view your order history, track shipments, and manage your purchases."
+        />
+      ) : (
       <div className="bg-[url('/wood-bg.jpg')] bg-cover bg-center bg-fixed py-[150px] min-h-screen relative">
         <div className="absolute inset-0 bg-black/60"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -199,10 +216,11 @@ const OrderHistoryPage = () => {
             </div>
           )}
         </div>
-      </div>
 
-      {selectedOrder && <OrderModal order={selectedOrder} onClose={() => setSelectedOrder(null)} showToast={showToast} />}
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        {selectedOrder && <OrderModal order={selectedOrder} onClose={() => setSelectedOrder(null)} showToast={showToast} />}
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </div>
+      )}
     </>
   );
 };

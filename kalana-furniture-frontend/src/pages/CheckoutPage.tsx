@@ -5,9 +5,12 @@ import Header from '../components/Header';
 import { useNavigate } from 'react-router-dom';
 import SnowAnimation from '../components/SnowAnimation'; // Reusing the snow animation for a consistent feel
 import Toast from '../components/Toast';
+import { useAuth } from '../hooks/useAuth';
+import AuthRequiredMessage from '../components/AuthRequiredMessage';
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
+  const { user, isLoading } = useAuth();
   const { cartItems, clearCart, appliedDiscount } = useCart();
 
   const [deliveryDetails, setDeliveryDetails] = useState({
@@ -48,7 +51,36 @@ const CheckoutPage = () => {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gradient-to-br from-wood-brown via-nav-brown to-wood-accent py-[140px] px-4 relative overflow-hidden">
+      {isLoading ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
+          <div className="text-center">
+            <div className="relative mb-8">
+              <div className="w-24 h-24 border-4 border-wood-light rounded-full animate-spin border-t-wood-brown mx-auto"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-16 h-16 bg-wood-brown rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-wood-brown mb-4">Loading Checkout</h2>
+            <p className="text-gray-600 mb-8">Preparing your checkout experience...</p>
+            <div className="flex justify-center space-x-2">
+              <div className="w-3 h-3 bg-wood-accent rounded-full animate-bounce"></div>
+              <div className="w-3 h-3 bg-wood-accent rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-3 h-3 bg-wood-accent rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+          </div>
+        </div>
+      ) : !user ? (
+        <AuthRequiredMessage
+          title="Authentication Required"
+          message="Please log in to proceed with checkout."
+          description="You need to be logged in to complete your order and access checkout features."
+        />
+      ) : (
+        <div className="min-h-screen bg-gradient-to-br from-wood-brown via-nav-brown to-wood-accent py-[140px] px-4 relative overflow-hidden">
         <SnowAnimation
             containerClass="absolute inset-0 pointer-events-none overflow-hidden"
             numFlakes={25}
@@ -183,15 +215,16 @@ const CheckoutPage = () => {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Toast Notification */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
+        {/* Toast Notification */}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
+      </div>
       )}
     </>
   );

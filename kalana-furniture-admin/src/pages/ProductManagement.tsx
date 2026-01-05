@@ -92,7 +92,8 @@ const ProductManagement: React.FC = () => {
         stock: 0,
         status: 'In Stock',
         image: '', // Default placeholder
-        images: []
+        images: [],
+        description: ''
       });
       setIsEditing(false);
     }
@@ -420,6 +421,18 @@ const ProductManagement: React.FC = () => {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  name="description"
+                  value={currentProduct.description || ''}
+                  onChange={handleInputChange}
+                  rows={8}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-wood-brown focus:ring-2 focus:ring-wood-brown/20 outline-none resize-vertical"
+                  placeholder="Enter product description..."
+                />
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Product Images</label>
                 <input 
                   type="file" 
@@ -431,7 +444,7 @@ const ProductManagement: React.FC = () => {
                 />
                 <div 
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-wood-brown transition-colors cursor-pointer bg-gray-50"
+                  className="border-2 border-dashed border-gray-300 rounded-xl p-2 text-center hover:border-wood-brown transition-colors cursor-pointer bg-gray-50"
                 >
                   <FaImage className="mx-auto text-4xl text-gray-400 mb-2" />
                   <p className="text-gray-600 font-medium">Click to upload images</p>
