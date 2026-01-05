@@ -53,20 +53,94 @@ exports.getAllProducts = async (req, res) => {
   }
 };
 
+exports.getProductsByCategory = async (req, res) => {
+  try {
+    const { category } = req.params;
+    
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('category', category)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Supabase Error:', error);
+      throw error;
+    }
+
+    // Sanitize data: Remove large Base64 strings (legacy data) to speed up response
+    const sanitizedData = data.map(product => {
+      const newProduct = { ...product };
+      
+      // Filter images array
+      if (Array.isArray(newProduct.images)) {
+        newProduct.images = newProduct.images.filter(img => img && img.length < 1000);
+      }
+      
+      // Clear legacy image field if it's a large string
+      if (typeof newProduct.image === 'string' && newProduct.image.length > 1000) {
+        newProduct.image = null;
+      }
+      
+      return newProduct;
+    });
+
+    res.status(200).json(sanitizedData);
+  } catch (error) {
+    console.error('Server Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 exports.getProductById = async (req, res) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase
+    
+    // Get product
+    const { data: product, error: productError } = await supabase
       .from('products')
       .select('*')
       .eq('id', id)
       .single();
 
-    if (error) throw error;
-    if (!data) return res.status(404).json({ error: 'Product not found' });
-    
-    res.status(200).json(data);
+    if (productError) throw productError;
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+
+    // Get reviews for this product
+    const { data: reviews, error: reviewsError } = await supabase
+      .from('reviews')
+      .select(`
+        id,
+        comment,
+        rating,
+        created_at,
+        users!inner(name)
+      `)
+      .eq('product_id', id)
+      .order('created_at', { ascending: false });
+
+    if (reviewsError) {
+      console.error('Reviews Error:', reviewsError);
+      // Don't fail the request if reviews fail, just return empty array
+    }
+
+    // Format reviews to match frontend interface
+    const formattedReviews = (reviews || []).map(review => ({
+      id: review.id,
+      user: review.users?.name || 'Anonymous',
+      comment: review.comment,
+      rating: review.rating
+    }));
+
+    // Return product with reviews
+    const productWithReviews = {
+      ...product,
+      reviews: formattedReviews
+    };
+
+    res.status(200).json(productWithReviews);
   } catch (error) {
+    console.error('Server Error:', error);
     res.status(500).json({ error: error.message });
   }
 };

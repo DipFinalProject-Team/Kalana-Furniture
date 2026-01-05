@@ -1,23 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaStar, FaTrash, FaSearch, FaFilter, FaExternalLinkAlt } from 'react-icons/fa';
-import { reviewsData } from '../data/mockData';
+import { adminService } from '../services/api';
+import type { Review } from '../services/api';
 import ConfirmationModal from '../components/ConfirmationModal';
 import Toast from '../components/Toast';
 
-interface Review {
-  id: number;
-  customerName: string;
-  productName: string;
-  category: string;
-  rating: number;
-  comment: string;
-  date: string;
-  avatar: string;
-  productUrl: string;
-}
-
 const Reviews: React.FC = () => {
-  const [reviews, setReviews] = useState<Review[]>(reviewsData);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRating, setFilterRating] = useState<number | 'all'>('all');
 
@@ -32,17 +23,42 @@ const Reviews: React.FC = () => {
     isVisible: false,
   });
 
+  useEffect(() => {
+    fetchReviews();
+  }, []);
+
+  const fetchReviews = async () => {
+    try {
+      setLoading(true);
+      const data = await adminService.getAllReviews();
+      setReviews(data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching reviews:', err);
+      setError('Failed to load reviews');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDeleteClick = (id: number) => {
     setDeleteId(id);
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteId) {
-      setReviews(reviews.filter(review => review.id !== deleteId));
-      setToast({ message: 'Review deleted successfully!', type: 'success', isVisible: true });
-      setIsDeleteModalOpen(false);
-      setDeleteId(null);
+      try {
+        await adminService.deleteReview(deleteId);
+        setReviews(reviews.filter(review => review.id !== deleteId));
+        setToast({ message: 'Review deleted successfully!', type: 'success', isVisible: true });
+      } catch (err) {
+        console.error('Error deleting review:', err);
+        setToast({ message: 'Failed to delete review', type: 'error', isVisible: true });
+      } finally {
+        setIsDeleteModalOpen(false);
+        setDeleteId(null);
+      }
     }
   };
 
@@ -121,64 +137,82 @@ const Reviews: React.FC = () => {
       </div>
 
       <div className="grid gap-4">
-        {filteredReviews.map((review) => (
-          <div key={review.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-            <div className="flex justify-between items-start">
-              <div className="flex gap-4">
-                <img 
-                  src={review.avatar} 
-                  alt={review.customerName} 
-                  className="w-12 h-12 rounded-full object-cover border-2 border-gray-100"
-                />
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold text-gray-800">{review.customerName}</h3>
-                    <span className="text-gray-400 text-sm">•</span>
-                    <span className="text-gray-500 text-sm">{review.date}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex text-yellow-400 text-sm">
-                      {[...Array(5)].map((_, i) => (
-                        <FaStar key={i} className={i < review.rating ? "text-yellow-400" : "text-gray-300"} />
-                      ))}
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="text-gray-500">Loading reviews...</div>
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <div className="text-red-500">{error}</div>
+            <button 
+              onClick={fetchReviews}
+              className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Retry
+            </button>
+          </div>
+        ) : (
+          <>
+            {filteredReviews.map((review) => (
+              <div key={review.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start">
+                  <div className="flex gap-4">
+                    <img 
+                      src={review.avatar} 
+                      alt={review.customerName} 
+                      className="w-12 h-12 rounded-full object-cover border-2 border-gray-100"
+                    />
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-bold text-gray-800">{review.customerName}</h3>
+                        <span className="text-gray-400 text-sm">•</span>
+                        <span className="text-gray-500 text-sm">{review.date}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex text-yellow-400 text-sm">
+                          {[...Array(5)].map((_, i) => (
+                            <FaStar key={i} className={i < review.rating ? "text-yellow-400" : "text-gray-300"} />
+                          ))}
+                        </div>
+                        <span className="text-sm font-medium text-wood-brown bg-orange-50 px-2 py-0.5 rounded">
+                          {review.productName}
+                        </span>
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                          {review.category}
+                        </span>
+                      </div>
+                      <p className="text-gray-600 leading-relaxed">{review.comment}</p>
                     </div>
-                    <span className="text-sm font-medium text-wood-brown bg-orange-50 px-2 py-0.5 rounded">
-                      {review.productName}
-                    </span>
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                      {review.category}
-                    </span>
                   </div>
-                  <p className="text-gray-600 leading-relaxed">{review.comment}</p>
+                  
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={review.productUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="View on Website"
+                    >
+                      <FaExternalLinkAlt />
+                    </a>
+                    <button
+                      onClick={() => handleDeleteClick(review.id)}
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Remove Review"
+                    >
+                      <FaTrash />
+                    </button>
+                  </div>
                 </div>
               </div>
-              
-              <div className="flex items-center gap-2">
-                <a
-                  href={review.productUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-                  title="View on Website"
-                >
-                  <FaExternalLinkAlt />
-                </a>
-                <button
-                  onClick={() => handleDeleteClick(review.id)}
-                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Remove Review"
-                >
-                  <FaTrash />
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
+            ))}
 
-        {filteredReviews.length === 0 && (
-          <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
-            <p className="text-gray-500">No reviews found matching your criteria.</p>
-          </div>
+            {filteredReviews.length === 0 && (
+              <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
+                <p className="text-gray-500">No reviews found matching your criteria.</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

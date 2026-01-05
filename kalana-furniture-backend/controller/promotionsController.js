@@ -19,6 +19,30 @@ exports.getAllPromotions = async (req, res) => {
   }
 };
 
+exports.getActivePromotions = async (req, res) => {
+  try {
+    const currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+
+    const { data, error } = await supabase
+      .from('promotions')
+      .select('*')
+      .eq('is_active', true)
+      .lte('start_date', currentDate)
+      .gte('end_date', currentDate)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Supabase Error:', error);
+      throw error;
+    }
+
+    res.status(200).json(data);
+  } catch (error) {
+    console.error('Server Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 exports.getPromotionById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -43,7 +67,7 @@ exports.createPromotion = async (req, res) => {
 
     // Prepare promotion object
     const promotion = {
-      code: promotionData.code,
+      code: promotionData.code || null, // Allow null for general discounts
       description: promotionData.description,
       type: promotionData.type,
       value: promotionData.value,
@@ -54,8 +78,18 @@ exports.createPromotion = async (req, res) => {
     };
 
     // Validate required fields
-    if (!promotion.code || !promotion.description || !promotion.type || promotion.value == null) {
-      return res.status(400).json({ error: 'All fields are required' });
+    if (!promotion.description || !promotion.type || promotion.value == null) {
+      return res.status(400).json({ error: 'Description, type, and value are required' });
+    }
+
+    // For general discounts (no code), only allow percentage type
+    if (!promotion.code && promotion.type !== 'percentage') {
+      return res.status(400).json({ error: 'General discounts can only be percentage-based' });
+    }
+
+    // For discount codes, code is required
+    if (promotion.code && !promotion.code.trim()) {
+      return res.status(400).json({ error: 'Discount code cannot be empty' });
     }
 
     const { data, error } = await supabase
@@ -65,6 +99,10 @@ exports.createPromotion = async (req, res) => {
 
     if (error) {
       console.error('Supabase insert error:', error);
+      // Handle unique constraint violation for code
+      if (error.code === '23505') {
+        return res.status(400).json({ error: 'Discount code already exists' });
+      }
       throw error;
     }
 
@@ -81,7 +119,7 @@ exports.updatePromotion = async (req, res) => {
     const promotionData = req.body;
 
     const updates = {
-      code: promotionData.code,
+      code: promotionData.code || null,
       description: promotionData.description,
       type: promotionData.type,
       value: promotionData.value,
@@ -92,6 +130,21 @@ exports.updatePromotion = async (req, res) => {
       updated_at: new Date().toISOString(),
     };
 
+    // Validate required fields
+    if (!updates.description || !updates.type || updates.value == null) {
+      return res.status(400).json({ error: 'Description, type, and value are required' });
+    }
+
+    // For general discounts (no code), only allow percentage type
+    if (!updates.code && updates.type !== 'percentage') {
+      return res.status(400).json({ error: 'General discounts can only be percentage-based' });
+    }
+
+    // For discount codes, code is required
+    if (updates.code && !updates.code.trim()) {
+      return res.status(400).json({ error: 'Discount code cannot be empty' });
+    }
+
     const { data, error } = await supabase
       .from('promotions')
       .update(updates)
@@ -100,6 +153,10 @@ exports.updatePromotion = async (req, res) => {
 
     if (error) {
       console.error('Supabase update error:', error);
+      // Handle unique constraint violation for code
+      if (error.code === '23505') {
+        return res.status(400).json({ error: 'Discount code already exists' });
+      }
       throw error;
     }
 

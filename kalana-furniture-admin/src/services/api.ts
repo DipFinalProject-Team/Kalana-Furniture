@@ -32,6 +32,18 @@ export interface Product {
   images?: string[];
 }
 
+export interface Review {
+  id: number;
+  customerName: string;
+  productName: string;
+  category: string;
+  rating: number;
+  comment: string;
+  date: string;
+  avatar: string;
+  productUrl: string;
+}
+
 interface BackendProduct {
   id: number;
   productName: string;
@@ -147,6 +159,8 @@ export interface Promotion {
   endDate: string;
   appliesTo: string;
   isActive: boolean;
+  applicableProducts?: number[];
+  applicableCategories?: string[];
 }
 
 interface BackendPromotion {
@@ -161,6 +175,8 @@ interface BackendPromotion {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  applicable_products?: number[];
+  applicable_categories?: string[];
 }
 
 // Helper to map backend promotion to frontend promotion
@@ -175,6 +191,8 @@ const mapPromotion = (data: BackendPromotion): Promotion => {
     endDate: data.end_date,
     appliesTo: data.applies_to,
     isActive: data.is_active,
+    applicableProducts: data.applicable_products || [],
+    applicableCategories: data.applicable_categories || [],
   };
 };
 
@@ -323,6 +341,17 @@ export const adminService = {
 
   markInvoiceAsPaid: async (id: string): Promise<{ success: boolean; message: string; invoice: Invoice }> => {
     const response = await api.put(`/admin/invoices/${id}/pay`);
+    return response.data;
+  },
+
+  // Review management functions
+  getAllReviews: async (): Promise<Review[]> => {
+    const response = await api.get('/admin/reviews');
+    return response.data;
+  },
+
+  deleteReview: async (id: number): Promise<{ message: string }> => {
+    const response = await api.delete(`/admin/reviews/${id}`);
     return response.data;
   }
 };

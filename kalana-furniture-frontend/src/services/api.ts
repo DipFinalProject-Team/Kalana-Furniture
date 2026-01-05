@@ -86,3 +86,217 @@ export const userService = {
     return response.data;
   }
 };
+
+// Product Service
+export interface Product {
+  id: number;
+  productName: string;
+  name?: string;
+  category: string;
+  price: number;
+  discountPrice?: number;
+  images: string[];
+  rating: number;
+  stock: number;
+  description?: string;
+  reviews?: Review[];
+}
+
+export interface Review {
+  id: number;
+  user: string;
+  comment: string;
+  rating: number;
+}
+
+export const productService = {
+  getAll: async (): Promise<Product[]> => {
+    const response = await api.get('/products');
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<Product> => {
+    const response = await api.get(`/products/${id}`);
+    return response.data;
+  },
+
+  getByCategory: async (category: string): Promise<Product[]> => {
+    const response = await api.get(`/products/category/${encodeURIComponent(category)}`);
+    return response.data;
+  },
+
+  create: async (productData: FormData): Promise<{ success: boolean; message: string; product: Product }> => {
+    const response = await api.post('/products', productData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  update: async (id: number, productData: Partial<Product>): Promise<{ success: boolean; message: string; product: Product }> => {
+    const response = await api.put(`/products/${id}`, productData);
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<{ success: boolean; message: string }> => {
+    const response = await api.delete(`/products/${id}`);
+    return response.data;
+  }
+};
+
+// Category Service
+export interface Category {
+  id: number;
+  name: string;
+  image: string;
+  description?: string;
+}
+
+export const categoryService = {
+  getAll: async (): Promise<Category[]> => {
+    const response = await api.get('/categories');
+    return response.data;
+  },
+
+  getById: async (id: number): Promise<Category> => {
+    const response = await api.get(`/categories/${id}`);
+    return response.data;
+  },
+
+  create: async (categoryData: Omit<Category, 'id'>): Promise<{ success: boolean; message: string; category: Category }> => {
+    const response = await api.post('/categories', categoryData);
+    return response.data;
+  },
+
+  update: async (id: number, categoryData: Partial<Category>): Promise<{ success: boolean; message: string; category: Category }> => {
+    const response = await api.put(`/categories/${id}`, categoryData);
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<{ success: boolean; message: string }> => {
+    const response = await api.delete(`/categories/${id}`);
+    return response.data;
+  }
+};
+
+// Review Service
+export interface Review {
+  id: number;
+  product_id: number;
+  user_id: string;
+  user_name: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+  images?: string[];
+}
+
+export const reviewService = {
+  getByProduct: async (productId: number): Promise<Review[]> => {
+    const response = await api.get(`/reviews/product/${productId}`);
+    return response.data;
+  },
+
+  create: async (reviewData: Omit<Review, 'id' | 'created_at'>): Promise<{ success: boolean; message: string; review: Review }> => {
+    const response = await api.post('/reviews', reviewData);
+    return response.data;
+  },
+
+  update: async (id: number, reviewData: Partial<Review>): Promise<{ success: boolean; message: string; review: Review }> => {
+    const response = await api.put(`/reviews/${id}`, reviewData);
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<{ success: boolean; message: string }> => {
+    const response = await api.delete(`/reviews/${id}`);
+    return response.data;
+  }
+};
+
+// Order Service
+export interface OrderItem {
+  product_id: number;
+  quantity: number;
+  price: number;
+  product?: Product;
+}
+
+export interface Order {
+  id?: number;
+  customer_id?: string;
+  items: OrderItem[];
+  total: number;
+  status?: string;
+  created_at?: string;
+}
+
+export const orderService = {
+  create: async (orderData: { items: OrderItem[], total: number }): Promise<Order> => {
+    const response = await api.post('/orders', orderData);
+    return response.data;
+  },
+
+  getAll: async (userId?: string): Promise<Order[]> => {
+    const url = userId ? `/orders?customer_id=${userId}` : '/orders';
+    const response = await api.get(url);
+    return response.data;
+  },
+
+  getById: async (id: number): Promise<Order> => {
+    const response = await api.get(`/orders/${id}`);
+    return response.data;
+  },
+
+  updateStatus: async (id: number, status: string): Promise<{ success: boolean; message: string; order: Order }> => {
+    const response = await api.put(`/orders/${id}/status`, { status });
+    return response.data;
+  }
+};
+
+// Promotion Service
+export interface Promotion {
+  id: number;
+  code: string | null;
+  description: string;
+  type: 'percentage' | 'fixed';
+  value: number;
+  start_date: string;
+  end_date: string;
+  applies_to: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export const promotionService = {
+  getAll: async (): Promise<Promotion[]> => {
+    const response = await api.get('/promotions');
+    return response.data;
+  },
+
+  getActive: async (): Promise<Promotion[]> => {
+    const response = await api.get('/promotions/active');
+    return response.data;
+  },
+
+  getById: async (id: number): Promise<Promotion> => {
+    const response = await api.get(`/promotions/${id}`);
+    return response.data;
+  },
+
+  create: async (promotionData: Omit<Promotion, 'id'>): Promise<{ success: boolean; message: string; promotion: Promotion }> => {
+    const response = await api.post('/promotions', promotionData);
+    return response.data;
+  },
+
+  update: async (id: number, promotionData: Partial<Promotion>): Promise<{ success: boolean; message: string; promotion: Promotion }> => {
+    const response = await api.put(`/promotions/${id}`, promotionData);
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<{ success: boolean; message: string }> => {
+    const response = await api.delete(`/promotions/${id}`);
+    return response.data;
+  }
+};

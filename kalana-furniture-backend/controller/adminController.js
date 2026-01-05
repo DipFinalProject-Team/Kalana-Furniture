@@ -1018,3 +1018,55 @@ exports.getCustomerDetails = async (req, res) => {
     });
   }
 };
+
+exports.getAllReviews = async (req, res) => {
+  try {
+    const { data: reviews, error } = await supabase
+      .from('reviews')
+      .select(`
+        id,
+        rating,
+        comment,
+        created_at,
+        user:users (name, profile_picture),
+        product:products (productName, category, id)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const formattedReviews = reviews.map(review => ({
+      id: review.id,
+      customerName: review.user?.name || 'Anonymous',
+      productName: review.product?.productName || 'Unknown Product',
+      category: review.product?.category || 'Uncategorized',
+      rating: review.rating,
+      comment: review.comment,
+      date: new Date(review.created_at).toISOString().split('T')[0],
+      avatar: review.user?.profile_picture || generateDefaultAvatar(review.user?.name || 'Anonymous'),
+      productUrl: `/products/${review.product?.id}`
+    }));
+
+    res.status(200).json(formattedReviews);
+  } catch (error) {
+    console.error('Error fetching reviews:', error);
+    res.status(500).json({ message: 'Failed to fetch reviews' });
+  }
+};
+
+exports.deleteReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase
+      .from('reviews')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.status(200).json({ message: 'Review deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    res.status(500).json({ message: 'Failed to delete review' });
+  }
+};

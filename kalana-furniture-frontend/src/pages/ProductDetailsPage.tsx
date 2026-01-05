@@ -1,15 +1,136 @@
 import { useParams, Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "../components/Header";
-import { allProducts } from '../data/mockdata';
+import { productService, promotionService, type Product, type Promotion } from '../services/api';
 
 const ProductDetailsPage = () => {
   const { id } = useParams();
-  const product = allProducts.find((p) => p.id === Number(id));
+  const [product, setProduct] = useState<Product | null>(null);
+  const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
+  const [categoryHasDiscounts, setCategoryHasDiscounts] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentImage, setCurrentImage] = useState(0);
 
-  if (!product) {
-    return <div>Product not found</div>;
+  // Function to apply promotions to a product
+  const applyPromotionsToProduct = (product: Product, promotionsList: Promotion[]): Product & { discountPrice?: number; discountPercentage?: number } => {
+    let bestDiscountPrice = product.discountPrice || product.price; // Start with existing discount or original price
+    let bestDiscountPercentage = 0;
+
+    promotionsList.forEach(promotion => {
+      // Only apply general discounts (where code is null)
+      if (promotion.code !== null) return;
+      
+      // Skip inactive promotions (though getActive should only return active ones)
+      if (!promotion.is_active) return;
+
+      // Check if promotion applies to this product
+      let appliesToProduct = false;
+
+      if (promotion.applies_to === 'All Products') {
+        appliesToProduct = true;
+      } else if (promotion.applies_to && promotion.applies_to.startsWith('Category: ')) {
+        const category = promotion.applies_to.replace('Category: ', '');
+        appliesToProduct = product.category === category;
+      }
+
+      if (appliesToProduct) {
+        let discountPrice = product.price;
+
+        if (promotion.type === 'percentage') {
+          discountPrice = product.price * (1 - promotion.value / 100);
+        } else if (promotion.type === 'fixed') {
+          discountPrice = Math.max(0, product.price - promotion.value);
+        }
+
+        if (discountPrice < bestDiscountPrice) {
+          bestDiscountPrice = discountPrice;
+          bestDiscountPercentage = promotion.type === 'percentage' ? promotion.value : Math.round(((product.price - discountPrice) / product.price) * 100);
+        }
+      }
+    });
+
+    if (bestDiscountPrice < product.price) {
+      return {
+        ...product,
+        discountPrice: Math.round(bestDiscountPrice),
+        discountPercentage: bestDiscountPercentage
+      };
+    }
+
+    return product;
+  };
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        const [productData, promotionsData] = await Promise.all([
+          productService.getById(id),
+          promotionService.getActive()
+        ]);
+        
+        // Apply promotions to the product
+        const productWithDiscount = applyPromotionsToProduct(productData, promotionsData);
+        
+        // For testing: add a test discount if no discount exists
+        const testProduct = productWithDiscount.discountPrice ? productWithDiscount : {
+          ...productWithDiscount,
+          discountPrice: Math.round(productWithDiscount.price * 0.9) // 10% discount for testing
+        };
+        
+        setProduct(testProduct);
+        
+        // Fetch similar products from the same category
+        if (productData.category) {
+          const similar = await productService.getByCategory(productData.category);
+          // Apply promotions to similar products
+          const similarWithDiscounts = similar.map(p => applyPromotionsToProduct(p, promotionsData));
+          // Filter out the current product and limit to 4
+          const filteredSimilar = similarWithDiscounts.filter(p => p.id !== productData.id).slice(0, 4);
+          setSimilarProducts(filteredSimilar);
+          
+          // Check if category has any discounted products
+          const hasDiscounts = similarWithDiscounts.some(p => p.discountPrice && p.discountPrice < p.price);
+          setCategoryHasDiscounts(hasDiscounts);
+        }
+      } catch (err) {
+        console.error('Error fetching product:', err);
+        setError('Failed to load product details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <>
+        <Header />
+        <div className="bg-white py-[150px]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">Loading product details...</div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <>
+        <Header />
+        <div className="bg-white py-[150px]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center text-red-600">{error || 'Product not found'}</div>
+          </div>
+        </div>
+      </>
+    );
   }
 
   return (
@@ -35,7 +156,7 @@ const ProductDetailsPage = () => {
                       <img
                         className="w-full h-full object-cover"
                         src={img}
-                        alt={`${product.name} ${index + 1}`}
+                        alt={`${product.productName || product.name} ${index + 1}`}
                       />
                     </button>
                   ))}
@@ -45,7 +166,7 @@ const ProductDetailsPage = () => {
                     <img
                       className="w-full h-full object-contain"
                       src={product.images[currentImage]}
-                      alt={product.name}
+                      alt={product.productName || product.name}
                     />
                   </div>
                 </div>
@@ -55,7 +176,7 @@ const ProductDetailsPage = () => {
             {/* Product Details & Purchase */}
             <div className="md:w-1/2 px-4 mt-8 md:mt-0">
               <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                {product.name}
+                {product.productName || product.name}
               </h1>
               <div className="flex items-center mb-4">
                 <div className="flex items-center">
@@ -68,8 +189,13 @@ const ProductDetailsPage = () => {
                   </span>
                 </div>
                 <span className="mx-2 text-gray-300">|</span>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-gray-600 flex items-center gap-2">
                   Category: {product.category}
+                  {categoryHasDiscounts && (
+                    <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
+                      On Sale
+                    </span>
+                  )}
                 </span>
               </div>
 
@@ -195,14 +321,16 @@ const ProductDetailsPage = () => {
           {/* Similar Products Section */}
           <div className="mt-16">
             <div className="border-t pt-8">
-              <h3 className="text-3xl font-bold text-gray-900 mb-8 text-center">
+              <h3 className="text-3xl font-bold text-gray-900 mb-8 text-center flex items-center justify-center gap-4">
                 You Might Also Like
+                {categoryHasDiscounts && (
+                  <span className="bg-red-600 text-white px-4 py-2 rounded-full text-sm font-bold">
+                    Category On Sale!
+                  </span>
+                )}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {allProducts
-                  .filter(p => p.category === product.category && p.id !== product.id)
-                  .slice(0, 4)
-                  .map((similarProduct) => {
+                {similarProducts.map((similarProduct) => {
                     const discountPercentage = similarProduct.discountPrice 
                       ? Math.round(((similarProduct.price - similarProduct.discountPrice) / similarProduct.price) * 100)
                       : 0;
@@ -217,7 +345,7 @@ const ProductDetailsPage = () => {
                       <div className="w-full h-64 overflow-hidden bg-gray-200">
                         <img
                           src={similarProduct.images[0]}
-                          alt={similarProduct.name}
+                          alt={similarProduct.productName || similarProduct.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
@@ -228,7 +356,7 @@ const ProductDetailsPage = () => {
                           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                         >
                           <h4 className="font-semibold text-lg text-gray-900 mb-2 hover:text-wood-accent transition-colors line-clamp-2">
-                            {similarProduct.name}
+                            {similarProduct.productName || similarProduct.name}
                           </h4>
                         </Link>
                         <div className="flex items-center mb-2">
@@ -257,7 +385,7 @@ const ProductDetailsPage = () => {
                     );
                   })}
               </div>
-              {allProducts.filter(p => p.category === product.category && p.id !== product.id).length === 0 && (
+              {similarProducts.length === 0 && (
                 <div className="text-center py-8">
                   <p className="text-gray-600">No similar products found in this category.</p>
                 </div>

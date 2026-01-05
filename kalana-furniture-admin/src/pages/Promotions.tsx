@@ -38,6 +38,8 @@ const Promotions: React.FC = () => {
     isActive: true,
   });
 
+  const [promotionType, setPromotionType] = useState<'code' | 'discount'>('code');
+
   // Fetch promotions on component mount
   useEffect(() => {
     const fetchPromotions = async () => {
@@ -64,9 +66,20 @@ const Promotions: React.FC = () => {
   const handleOpenModal = (promotion?: Promotion) => {
     if (promotion) {
       setEditingId(promotion.id);
-      setFormData({ ...promotion });
+      // Determine promotion type based on whether it has a code
+      const isCode = !!promotion.code;
+      setPromotionType(isCode ? 'code' : 'discount');
+      
+      // For general discounts, ensure type is percentage
+      const formData = { ...promotion };
+      if (!isCode && formData.type === 'fixed') {
+        formData.type = 'percentage';
+      }
+      
+      setFormData(formData);
     } else {
       setEditingId(null);
+      setPromotionType('code');
       setFormData({
         code: '',
         description: '',
@@ -89,12 +102,19 @@ const Promotions: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const submitData = { ...formData };
+      
+      // For discount type, clear the code
+      if (promotionType === 'discount') {
+        submitData.code = '';
+      }
+      
       if (editingId) {
-        const updatedPromotion = await promotionService.update(editingId, formData);
+        const updatedPromotion = await promotionService.update(editingId, submitData);
         setPromotions(promotions.map(p => p.id === editingId ? updatedPromotion : p));
         showToast('Promotion updated successfully!', 'success');
       } else {
-        const newPromotion = await promotionService.create(formData);
+        const newPromotion = await promotionService.create(submitData);
         setPromotions([...promotions, newPromotion]);
         showToast('Promotion created successfully!', 'success');
       }
@@ -179,10 +199,20 @@ const Promotions: React.FC = () => {
               </div>
               <div>
                 <div className="flex items-center gap-3">
-                  <h3 className="text-xl font-bold text-gray-800">{promo.code}</h3>
+                  <h3 className="text-xl font-bold text-gray-800">{promo.code || 'General Discount'}</h3>
                   <span className={`text-xs px-2 py-1 rounded-full ${promo.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                     {promo.isActive ? 'Active' : 'Inactive'}
                   </span>
+                  {promo.code && (
+                    <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                      Code
+                    </span>
+                  )}
+                  {!promo.code && (
+                    <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+                      General
+                    </span>
+                  )}
                 </div>
                 <p className="text-gray-600">{promo.description}</p>
                 <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
@@ -234,7 +264,7 @@ const Promotions: React.FC = () => {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-800">
-                {editingId ? 'Edit Promotion' : 'Create New Promotion'}
+                {editingId ? 'Edit' : 'Create'} {promotionType === 'code' ? 'Discount Code' : 'General Discount'}
               </h2>
               <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600">
                 <FaTimes />
@@ -242,19 +272,56 @@ const Promotions: React.FC = () => {
             </div>
             
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Discount Code</label>
-                  <input
-                    type="text"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-wood-brown"
-                    value={formData.code}
-                    onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})}
-                    placeholder="e.g. SUMMER25"
-                  />
+              {/* Promotion Type Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Promotion Type</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="promotionType"
+                      value="code"
+                      checked={promotionType === 'code'}
+                      onChange={(e) => setPromotionType(e.target.value as 'code' | 'discount')}
+                      className="mr-2 text-wood-brown focus:ring-wood-brown"
+                    />
+                    <span className="text-sm text-gray-700">Discount Code</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="promotionType"
+                      value="discount"
+                      checked={promotionType === 'discount'}
+                      onChange={(e) => {
+                        const newType = e.target.value as 'code' | 'discount';
+                        setPromotionType(newType);
+                        if (newType === 'discount' && formData.type === 'fixed') {
+                          setFormData({...formData, type: 'percentage'});
+                        }
+                      }}
+                      className="mr-2 text-wood-brown focus:ring-wood-brown"
+                    />
+                    <span className="text-sm text-gray-700">General Discount</span>
+                  </label>
                 </div>
-                <div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {promotionType === 'code' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Discount Code</label>
+                    <input
+                      type="text"
+                      required={promotionType === 'code'}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-wood-brown"
+                      value={formData.code}
+                      onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})}
+                      placeholder="e.g. SUMMER25"
+                    />
+                  </div>
+                )}
+                <div className={promotionType === 'code' ? '' : 'col-span-2'}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Discount Type</label>
                   <select
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-wood-brown"
@@ -262,7 +329,9 @@ const Promotions: React.FC = () => {
                     onChange={(e) => setFormData({...formData, type: e.target.value as 'percentage' | 'fixed'})}
                   >
                     <option value="percentage">Percentage (%)</option>
-                    <option value="fixed">Fixed Amount (Rs.)</option>
+                    {promotionType === 'code' && (
+                      <option value="fixed">Fixed Amount (Rs.)</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -315,20 +384,39 @@ const Promotions: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Applicable To</label>
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-wood-brown"
-                  value={formData.appliesTo}
-                  onChange={(e) => setFormData({...formData, appliesTo: e.target.value})}
-                >
-                  <option value="All Products">All Products</option>
-                  <option value="Category: Bedroom">Category: Bedroom</option>
-                  <option value="Category: Living Room">Category: Living Room</option>
-                  <option value="Category: Dining">Category: Dining</option>
-                  <option value="Category: Office">Category: Office</option>
-                </select>
-              </div>
+              {promotionType === 'code' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Applicable To</label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-wood-brown"
+                    value={formData.appliesTo}
+                    onChange={(e) => setFormData({...formData, appliesTo: e.target.value})}
+                  >
+                    <option value="All Products">All Products</option>
+                    <option value="Category: Bedroom">Category: Bedroom</option>
+                    <option value="Category: Living Room">Category: Living Room</option>
+                    <option value="Category: Dining">Category: Dining</option>
+                    <option value="Category: Office">Category: Office</option>
+                  </select>
+                </div>
+              )}
+
+              {promotionType === 'discount' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Applicable To</label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-wood-brown"
+                    value={formData.appliesTo}
+                    onChange={(e) => setFormData({...formData, appliesTo: e.target.value})}
+                  >
+                    <option value="All Products">All Products</option>
+                    <option value="Category: Bedroom">Category: Bedroom</option>
+                    <option value="Category: Living Room">Category: Living Room</option>
+                    <option value="Category: Dining">Category: Dining</option>
+                    <option value="Category: Office">Category: Office</option>
+                  </select>
+                </div>
+              )}
 
               <div className="flex items-center gap-2 mt-2">
                 <input
@@ -354,7 +442,7 @@ const Promotions: React.FC = () => {
                   className="flex-1 px-4 py-2 bg-wood-brown text-white rounded-lg hover:bg-wood-accent transition-colors"
                   style={{ backgroundColor: '#8B4513' }}
                 >
-                  {editingId ? 'Update Promotion' : 'Create Promotion'}
+                  {editingId ? 'Update' : 'Create'} {promotionType === 'code' ? 'Discount Code' : 'General Discount'}
                 </button>
               </div>
             </form>

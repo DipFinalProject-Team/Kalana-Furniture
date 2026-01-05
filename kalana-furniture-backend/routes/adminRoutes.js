@@ -39,4 +39,8 @@ router.get('/customers', adminController.getAllCustomers);
 router.put('/customers/:id/status', adminController.updateCustomerStatus);
 router.get('/customers/:id', adminController.getCustomerDetails);
 
+// Review management routes
+router.get('/reviews', adminController.getAllReviews);
+router.delete('/reviews/:id', adminController.deleteReview);
+
 module.exports = router;

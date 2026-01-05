@@ -72,7 +72,7 @@ const Dashboard: React.FC = () => {
               </div>
               <h2 className="text-lg font-bold text-gray-800">Recently Added Products</h2>
             </div>
-            <Link to="/products" className="text-sm text-wood-brown hover:underline flex items-center gap-1">
+            <Link to="/admin/products" className="text-sm text-wood-brown hover:underline flex items-center gap-1">
               View All <FaArrowRight size={12} />
             </Link>
           </div>
@@ -104,7 +104,7 @@ const Dashboard: React.FC = () => {
               </div>
               <h2 className="text-lg font-bold text-gray-800">Low Stock Alerts</h2>
             </div>
-            <Link to="/inventory" className="text-sm text-wood-brown hover:underline flex items-center gap-1">
+            <Link to="/admin/inventory" className="text-sm text-wood-brown hover:underline flex items-center gap-1">
               Manage Inventory <FaArrowRight size={12} />
             </Link>
           </div>

@@ -1,41 +1,122 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Header from '../components/Header';
-import { allProducts } from '../data/mockdata.ts';
+import { productService, promotionService } from '../services/api';
+import type { Product, Promotion } from '../services/api';
 
 const CategoryProducts = () => {
   const { categoryName } = useParams();
-  const [products, setProducts] = useState<typeof allProducts>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [allCategoryProducts, setAllCategoryProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [priceRange, setPriceRange] = useState([0, 1000]);
+  const [priceRange, setPriceRange] = useState([0, 100000]);
   const [sortOrder, setSortOrder] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [maxPrice] = useState(100000);
+  const [loading, setLoading] = useState(true);
   const itemsPerPage = 9;
+
+  // Function to apply promotions to a product
+  const applyPromotionsToProduct = (product: Product, promotionsList: Promotion[]): Product & { discountPrice?: number; discountPercentage?: number } => {
+    let bestDiscountPrice = product.discountPrice || product.price; // Start with existing discount or original price
+    let bestDiscountPercentage = 0;
+
+    promotionsList.forEach(promotion => {
+      // Only apply general discounts (where code is null)
+      if (promotion.code !== null) return;
+      
+      // Skip inactive promotions (though getActive should only return active ones)
+      if (!promotion.is_active) return;
+
+      // Check if promotion applies to this product
+      let appliesToProduct = false;
+
+      if (promotion.applies_to === 'All Products') {
+        appliesToProduct = true;
+      } else if (promotion.applies_to && promotion.applies_to.startsWith('Category: ')) {
+        const category = promotion.applies_to.replace('Category: ', '');
+        appliesToProduct = product.category === category;
+      }
+
+      if (appliesToProduct) {
+        let discountPrice = product.price;
+
+        if (promotion.type === 'percentage') {
+          discountPrice = product.price * (1 - promotion.value / 100);
+        } else if (promotion.type === 'fixed') {
+          discountPrice = Math.max(0, product.price - promotion.value);
+        }
+
+        if (discountPrice < bestDiscountPrice) {
+          bestDiscountPrice = discountPrice;
+          bestDiscountPercentage = promotion.type === 'percentage' ? promotion.value : Math.round(((product.price - discountPrice) / product.price) * 100);
+        }
+      }
+    });
+
+    if (bestDiscountPrice < product.price) {
+      return {
+        ...product,
+        discountPrice: Math.round(bestDiscountPrice),
+        discountPercentage: bestDiscountPercentage
+      };
+    }
+
+    return product;
+  };
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Fetch products by category
   useEffect(() => {
-    if (!categoryName) return;
+    const fetchCategoryProducts = async () => {
+      if (!categoryName) return;
 
-    let filtered = allProducts.filter(p => p.category === decodeURIComponent(categoryName));
+      try {
+        setLoading(true);
+        const [fetchedProducts, fetchedPromotions] = await Promise.all([
+          productService.getByCategory(decodeURIComponent(categoryName)),
+          promotionService.getActive()
+        ]);
+
+        // Apply promotions to products
+        const productsWithPromotions = fetchedProducts.map((product: Product) => 
+          applyPromotionsToProduct(product, fetchedPromotions)
+        );
+
+        setAllCategoryProducts(productsWithPromotions);
+      } catch (error) {
+        console.error('Error fetching category products:', error);
+        setAllCategoryProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategoryProducts();
+  }, [categoryName]);
+
+  // Filter and sort products
+  useEffect(() => {
+    let filtered = allCategoryProducts;
 
     if (searchTerm) {
-      filtered = filtered.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+      filtered = filtered.filter(p => p.productName.toLowerCase().includes(searchTerm.toLowerCase()));
     }
 
     filtered = filtered.filter(p => p.price >= priceRange[0] && p.price <= priceRange[1]);
 
     if (sortOrder === 'low-to-high') {
-      filtered.sort((a, b) => a.price - b.price);
+      filtered = [...filtered].sort((a, b) => a.price - b.price);
     } else if (sortOrder === 'high-to-low') {
-      filtered.sort((a, b) => b.price - a.price);
+      filtered = [...filtered].sort((a, b) => b.price - a.price);
     }
 
     setProducts(filtered);
     setCurrentPage(1);
-  }, [categoryName, searchTerm, priceRange, sortOrder]);
+  }, [allCategoryProducts, searchTerm, priceRange, sortOrder]);
 
   if (!categoryName) {
     return (
@@ -73,7 +154,7 @@ const CategoryProducts = () => {
               {decodeURIComponent(categoryName)} Products
             </h1>
             <p className="mt-4 text-xl text-white">
-              Discover our {decodeURIComponent(categoryName).toLowerCase()} collection ({products.length} items)
+              Discover our {decodeURIComponent(categoryName || '').toLowerCase()} collection Item
             </p>
           </div>
 
@@ -89,7 +170,7 @@ const CategoryProducts = () => {
                   <input
                     type="text"
                     id="search"
-                    placeholder={`Search ${decodeURIComponent(categoryName)} products...`}
+                    placeholder={`Search ${decodeURIComponent(categoryName || '')} products...`}
                     className="mt-1 block w-full p-2 border border-wood-light rounded-md"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -109,8 +190,8 @@ const CategoryProducts = () => {
                       <input
                         type="range"
                         min="0"
-                        max="1000"
-                        step="10"
+                        max={maxPrice}
+                        step="1000"
                         value={priceRange[0]}
                         className="w-full"
                         onChange={(e) => setPriceRange([Number(e.target.value), Math.max(Number(e.target.value), priceRange[1])])}
@@ -121,8 +202,8 @@ const CategoryProducts = () => {
                       <input
                         type="range"
                         min="0"
-                        max="1000"
-                        step="10"
+                        max={maxPrice}
+                        step="1000"
                         value={priceRange[1]}
                         className="w-full"
                         onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
@@ -150,7 +231,12 @@ const CategoryProducts = () => {
 
             {/* Products Grid */}
             <div className="w-full md:w-3/4">
-              {products.length === 0 ? (
+              {loading ? (
+                <div className="flex justify-center items-center py-20">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-wood-brown"></div>
+                  <span className="ml-3 text-white">Loading products...</span>
+                </div>
+              ) : products.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-xl text-gray-600">No products found matching your filters.</p>
                   <p className="text-gray-500 mt-2">Try adjusting your search or price range.</p>
@@ -173,13 +259,13 @@ const CategoryProducts = () => {
                         <div className="w-full h-64 overflow-hidden rounded-t-lg bg-gray-200">
                           <img
                             src={product.images[0]}
-                            alt={product.name}
+                            alt={product.productName}
                             className="h-full w-full object-cover object-center group-hover:opacity-75"
                           />
                         </div>
                         <div className="p-4">
                           <Link to={`/product/${product.id}`} className="block">
-                            <h3 className="font-bold text-lg text-wood-brown hover:text-wood-accent hover:underline transition duration-200">{product.name}</h3>
+                            <h3 className="font-bold text-lg text-wood-brown hover:text-wood-accent hover:underline transition duration-200">{product.productName}</h3>
                           </Link>
                           <div className="flex items-center mb-2">
                             <span className="text-yellow-500 text-sm">

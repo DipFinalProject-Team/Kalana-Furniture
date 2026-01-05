@@ -611,7 +611,7 @@ const InventoryManagement: React.FC = () => {
                           {order.status}
                         </span>
                       </td>
-                      <td className="p-4 text-gray-500 text-sm">{order.orderDate}</td>
+                      <td className="p-4 text-gray-500 text-sm">{order.orderDate.split('T')[0]}</td>
                     </tr>
                   ))}
                 </tbody>
