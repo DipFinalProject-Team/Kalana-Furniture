@@ -13,9 +13,13 @@ export interface Product {
 
 export interface Review {
   id: number;
-  user: string;
-  comment: string;
+  product_id?: number;
+  user_id?: string;
+  user_name: string;
   rating: number;
+  comment: string;
+  images?: string[];
+  created_at?: string;
 }
 
 export interface Category {
@@ -48,13 +52,13 @@ export const allProducts: Product[] = [
     reviews: [
       {
         id: 1,
-        user: 'Alex',
+        user_name: 'Alex',
         comment: 'So comfortable and looks amazing!',
         rating: 5,
       },
       {
         id: 2,
-        user: 'Maria',
+        user_name: 'Maria',
         comment: 'Great value for the price.',
         rating: 4,
       },

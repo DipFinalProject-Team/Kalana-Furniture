@@ -1,7 +1,57 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import SnowAnimation from './SnowAnimation';
+import { productService, type Product } from '../services/api';
 
 const Hero = () => {
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [showResults, setShowResults] = useState(false);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const productsData = await productService.getAll();
+        setProducts(productsData);
+      } catch (error) {
+        console.error('Failed to fetch products:', error);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const filtered = products.filter(product =>
+        (product.productName || product.name || '').toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredProducts(filtered);
+      setShowResults(true);
+    } else {
+      setFilteredProducts([]);
+      setShowResults(false);
+    }
+  }, [searchQuery, products]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleProductClick = (product: Product) => {
+    navigate(`/products/${product.id}`);
+    setShowResults(false);
+    setSearchQuery('');
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
+      setShowResults(false);
+    }
+  };
   return (
     <section className="relative h-[80vh] bg-wood-brown text-white flex items-center justify-center overflow-hidden">
       <SnowAnimation
@@ -21,18 +71,39 @@ const Hero = () => {
         <h1 className="font-serif text-5xl md:text-6xl font-bold mb-4 drop-shadow-lg">Your Space, Your Style</h1>
         <p className="text-lg md:text-xl text-wood-light mb-8 drop-shadow-md">Find the perfect furniture to complete your home</p>
         <div className="max-w-2xl mx-auto">
-          <div className="relative">
+          <form onSubmit={handleSearchSubmit} className="relative">
             <input
               type="search"
+              value={searchQuery}
+              onChange={handleSearchChange}
               placeholder="Search for sofas, tables, chairs..."
               className="w-full py-4 px-6 border rounded-full bg-white text-gray-800 focus:outline-none focus:ring-4 focus:ring-wood-accent focus:ring-opacity-50 shadow-lg"
             />
-            <button className="absolute top-1/2 right-3 transform -translate-y-1/2 bg-wood-accent text-white rounded-full p-2 hover:bg-wood-accent-hover transition duration-300 shadow-md">
+            <button type="submit" className="absolute top-1/2 right-3 transform -translate-y-1/2 bg-wood-accent text-white rounded-full p-2 hover:bg-wood-accent-hover transition duration-300 shadow-md">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </button>
-          </div>
+            {showResults && filteredProducts.length > 0 && (
+              <div className="absolute top-full mt-2 w-full bg-white rounded-lg shadow-lg border max-h-60 overflow-y-auto z-20">
+                {filteredProducts.slice(0, 5).map(product => (
+                  <div
+                    key={product.id}
+                    onClick={() => handleProductClick(product)}
+                    className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
+                  >
+                    <div className="flex items-center">
+                      <img src={product.images[0]} alt={product.productName || product.name} className="w-10 h-10 rounded mr-3 object-cover" />
+                      <div>
+                        <p className="font-semibold text-gray-800">{product.productName || product.name}</p>
+                        <p className="text-sm text-gray-600">Rs.{product.price}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </form>
         </div>
         <div className="mt-8">
             <Link to="/products" className="bg-wood-accent text-white font-bold py-3 px-8 rounded-full hover:bg-wood-accent-hover transition duration-300 transform hover:scale-105 shadow-lg inline-block">

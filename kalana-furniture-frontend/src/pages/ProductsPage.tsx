@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import Header from '../components/Header';
 import { productService, categoryService, promotionService } from '../services/api';
 import type { Product, Promotion } from '../services/api';
 
 const ProductsPage = () => {
+  const [searchParams] = useSearchParams();
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>(['All']);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [priceRange, setPriceRange] = useState([0, 1000000]);
   const [sortOrder, setSortOrder] = useState('');
@@ -109,6 +110,12 @@ const ProductsPage = () => {
 
     fetchData();
   }, []);
+
+  // Update search term from URL params
+  useEffect(() => {
+    const searchQuery = searchParams.get('search');
+    setSearchTerm(searchQuery || '');
+  }, [searchParams]);
 
   // Handle filtering
   useEffect(() => {
@@ -251,8 +258,8 @@ const ProductsPage = () => {
           <div className="w-full md:w-3/4">
             {products.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-xl text-gray-600">No products found.</p>
-                <p className="text-gray-500 mt-2">Try adjusting your filters or check back later.</p>
+                <p className="text-2xl font-bold text-white">No products found.</p>
+                <p className="text-white text-xl mt-2">Try adjusting your filters or check back later.</p>
               </div>
             ) : (
               <>
@@ -280,15 +287,6 @@ const ProductsPage = () => {
                         <Link to={`/product/${product.id}`} className="block">
                           <h3 className="font-bold text-lg text-wood-brown hover:text-wood-accent hover:underline transition duration-200">{product.productName}</h3>
                         </Link>
-                        <div className="flex items-center mb-2">
-                          <span className="text-yellow-500 text-sm">
-                            {"★".repeat(Math.floor(product.rating))}
-                            {"☆".repeat(5 - Math.floor(product.rating))}
-                          </span>
-                          <span className="text-gray-500 text-sm ml-1">
-                            ({product.rating})
-                          </span>
-                        </div>
                         <div className="mt-2">
                           {product.discountPrice ? (
                             <div className="flex items-center gap-2">

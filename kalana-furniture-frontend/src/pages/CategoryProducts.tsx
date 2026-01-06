@@ -267,15 +267,6 @@ const CategoryProducts = () => {
                           <Link to={`/product/${product.id}`} className="block">
                             <h3 className="font-bold text-lg text-wood-brown hover:text-wood-accent hover:underline transition duration-200">{product.productName}</h3>
                           </Link>
-                          <div className="flex items-center mb-2">
-                            <span className="text-yellow-500 text-sm">
-                              {"★".repeat(Math.floor(product.rating))}
-                              {"☆".repeat(5 - Math.floor(product.rating))}
-                            </span>
-                            <span className="text-gray-500 text-sm ml-1">
-                              ({product.rating})
-                            </span>
-                          </div>
                           <div className="mt-2">
                             {product.discountPrice ? (
                               <div className="flex items-center gap-2">

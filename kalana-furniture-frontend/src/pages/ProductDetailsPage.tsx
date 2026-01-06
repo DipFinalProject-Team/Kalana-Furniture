@@ -180,13 +180,32 @@ const ProductDetailsPage = () => {
               </h1>
               <div className="flex items-center mb-4">
                 <div className="flex items-center">
-                  <span className="text-yellow-500">
-                    {"★".repeat(Math.floor(product.rating))}
-                    {"☆".repeat(5 - Math.floor(product.rating))}
-                  </span>
-                  <span className="text-gray-600 ml-2 text-sm">
-                    ({(product.reviews?.length || 0)} reviews)
-                  </span>
+                  {product.reviews && product.reviews.length > 0 ? (
+                    (() => {
+                      const averageRating = product.reviews.reduce((sum, review) => sum + review.rating, 0) / product.reviews.length;
+                      return (
+                        <>
+                          <span className="text-yellow-500 text-lg">
+                            {"★".repeat(Math.floor(averageRating))}
+                            {"☆".repeat(5 - Math.floor(averageRating))}
+                          </span>
+                          <span className="text-gray-600 ml-2 text-sm">
+                            ({averageRating.toFixed(1)}) ({(product.reviews?.length || 0)} reviews)
+                          </span>
+                        </>
+                      );
+                    })()
+                  ) : (
+                    <>
+                      <span className="text-yellow-500">
+                        {"★".repeat(Math.floor(product.rating))}
+                        {"☆".repeat(5 - Math.floor(product.rating))}
+                      </span>
+                      <span className="text-gray-600 ml-2 text-sm">
+                        ({(product.reviews?.length || 0)} reviews)
+                      </span>
+                    </>
+                  )}
                 </div>
                 <span className="mx-2 text-gray-300">|</span>
                 <span className="text-sm text-gray-600 flex items-center gap-2">
@@ -293,18 +312,42 @@ const ProductDetailsPage = () => {
                 </div>
                 {(product.reviews?.length || 0) > 0 ? (
                   <div className="space-y-6">
-                    {product.reviews?.map((review) => (
+                    {product.reviews?.slice(0, 3).map((review) => (
                       <div key={review.id} className="border-b pb-4">
                         <div className="flex items-center mb-2">
-                          <span className="font-bold mr-2">{review.user}</span>
-                          <span className="text-yellow-500">
+                          <span className="font-bold mr-2">{review.user_name}</span>
+                          <div className="flex text-yellow-400 text-sm">
                             {"★".repeat(review.rating)}
                             {"☆".repeat(5 - review.rating)}
-                          </span>
+                          </div>
                         </div>
                         <p className="text-gray-600">{review.comment}</p>
+                        {review.images && Array.isArray(review.images) && review.images.length > 0 && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
+                            {review.images.slice(0, 3).map((image, index) => (
+                              <img
+                                key={index}
+                                src={image}
+                                alt={`Review image ${index + 1}`}
+                                className="w-full h-20 object-cover rounded-md border"
+                              />
+                            ))}
+                            {review.images.length > 3 && (
+                              <div className="w-full h-20 bg-gray-100 rounded-md border flex items-center justify-center text-gray-500 text-sm">
+                                +{review.images.length - 3} more
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
+                    {(product.reviews?.length || 0) > 3 && (
+                      <div className="text-center pt-4">
+                        <Link to={`/review/${product.id}`} className="text-wood-accent font-semibold hover:text-wood-accent-hover transition-colors">
+                          View all {(product.reviews?.length || 0)} reviews →
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-8">

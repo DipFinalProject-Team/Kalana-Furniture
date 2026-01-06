@@ -34,8 +34,8 @@ export const mockOrders: Order[] = [
         stock: 15,
         rating: 4.5,
         reviews: [
-          { id: 1, user: "Alice", rating: 5, comment: "Very sturdy and looks great!" },
-          { id: 2, user: "Bob", rating: 4, comment: "Comfortable, but assembly was a bit tricky." },
+          { id: 1, user_name: "Alice", rating: 5, comment: "Very sturdy and looks great!" },
+          { id: 2, user_name: "Bob", rating: 4, comment: "Comfortable, but assembly was a bit tricky." },
         ],
         quantity: 1,
       }
@@ -61,7 +61,7 @@ export const mockOrders: Order[] = [
             stock: 8,
             rating: 4.8,
             reviews: [
-              { id: 3, user: "Charlie", rating: 5, comment: "Absolutely love this sofa! It's the centerpiece of my living room." },
+              { id: 3, user_name: "Charlie", rating: 5, comment: "Absolutely love this sofa! It's the centerpiece of my living room." },
             ],
             quantity: 1,
           },

@@ -18,6 +18,33 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Response interceptor to standardize responses
+api.interceptors.response.use(
+  (response) => {
+    // If response data is an array, return as is
+    if (Array.isArray(response.data)) {
+      return response;
+    }
+    // For successful responses, wrap in success format
+    return {
+      ...response,
+      data: {
+        success: true,
+        message: 'Success',
+        ...response.data
+      }
+    };
+  },
+  (error) => {
+    // For error responses, wrap in error format
+    const message = error.response?.data?.error || error.message || 'An error occurred';
+    return Promise.reject({
+      success: false,
+      message
+    });
+  }
+);
+
 export interface User {
   id: string;
   name: string;
@@ -102,13 +129,6 @@ export interface Product {
   reviews?: Review[];
 }
 
-export interface Review {
-  id: number;
-  user: string;
-  comment: string;
-  rating: number;
-}
-
 export const productService = {
   getAll: async (): Promise<Product[]> => {
     const response = await api.get('/products');
@@ -188,28 +208,83 @@ export interface Review {
   user_name: string;
   rating: number;
   comment: string;
-  created_at: string;
   images?: string[];
+  created_at: string;
+}
+
+// Raw review data from API
+interface RawReview {
+  id: number;
+  user: string;
+  comment: string;
+  rating: number;
+  images?: string[] | null;
+  created_at: string;
 }
 
 export const reviewService = {
-  getByProduct: async (productId: number): Promise<Review[]> => {
+  getProductReviews: async (productId: string): Promise<Review[]> => {
     const response = await api.get(`/reviews/product/${productId}`);
+    return response.data.map((review: RawReview) => ({
+      id: review.id,
+      product_id: 0, // This will be set by the component if needed
+      user_id: '', // Not returned by API
+      user_name: review.user,
+      rating: review.rating,
+      comment: review.comment,
+      images: Array.isArray(review.images) ? review.images : [],
+      created_at: review.created_at
+    }));
+  },
+
+  createReview: async (productId: string, reviewData: { comment: string; rating: number; images?: File[] }): Promise<{ success: boolean; message: string; review?: Review }> => {
+    try {
+      const formData = new FormData();
+      formData.append('comment', reviewData.comment);
+      formData.append('rating', reviewData.rating.toString());
+
+      if (reviewData.images && reviewData.images.length > 0) {
+        reviewData.images.forEach((image) => {
+          formData.append('images', image);
+        });
+      }
+
+      const response = await api.post(`/reviews/product/${productId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return {
+        success: response.data.success,
+        message: response.data.message,
+        review: {
+          id: response.data.id,
+          product_id: parseInt(productId),
+          user_id: '',
+          user_name: response.data.user,
+          rating: response.data.rating,
+          comment: response.data.comment,
+          images: response.data.images || [],
+          created_at: response.data.created_at
+        }
+      };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create review';
+      return {
+        success: false,
+        message: errorMessage
+      };
+    }
+  },
+
+  updateReview: async (reviewId: string, reviewData: { comment: string; rating: number }): Promise<{ success: boolean; message: string; review: Review }> => {
+    const response = await api.put(`/reviews/${reviewId}`, reviewData);
     return response.data;
   },
 
-  create: async (reviewData: Omit<Review, 'id' | 'created_at'>): Promise<{ success: boolean; message: string; review: Review }> => {
-    const response = await api.post('/reviews', reviewData);
-    return response.data;
-  },
-
-  update: async (id: number, reviewData: Partial<Review>): Promise<{ success: boolean; message: string; review: Review }> => {
-    const response = await api.put(`/reviews/${id}`, reviewData);
-    return response.data;
-  },
-
-  delete: async (id: number): Promise<{ success: boolean; message: string }> => {
-    const response = await api.delete(`/reviews/${id}`);
+  deleteReview: async (reviewId: string): Promise<{ success: boolean; message: string }> => {
+    const response = await api.delete(`/reviews/${reviewId}`);
     return response.data;
   }
 };
