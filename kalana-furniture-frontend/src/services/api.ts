@@ -9,9 +9,16 @@ const api = axios.create({
   },
 });
 
+// Helper functions for cookies
+const getCookie = (name: string): string | undefined => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift();
+};
+
 // Add token to requests if available
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('userToken');
+  const token = getCookie('userToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -58,6 +65,7 @@ export interface User {
 export interface LoginCredentials {
   email: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 export interface RegisterData {
@@ -120,6 +128,7 @@ export interface Product {
   productName: string;
   name?: string;
   category: string;
+  sku: string;
   price: number;
   discountPrice?: number;
   images: string[];
@@ -291,10 +300,22 @@ export const reviewService = {
 
 // Order Service
 export interface OrderItem {
+  id?: number;
   product_id: number;
+  product_name: string;
+  product_category: string;
+  product_sku: string;
   quantity: number;
   price: number;
+  product_image?: string;
   product?: Product;
+}
+
+export interface DeliveryDetails {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
 }
 
 export interface Order {
@@ -303,12 +324,18 @@ export interface Order {
   items: OrderItem[];
   total: number;
   status?: string;
+  deliveryDetails?: DeliveryDetails;
   created_at?: string;
 }
 
 export const orderService = {
-  create: async (orderData: { items: OrderItem[], total: number }): Promise<Order> => {
+  create: async (orderData: { items: OrderItem[], total: number, deliveryDetails: DeliveryDetails }): Promise<{ message: string; order: Order }> => {
     const response = await api.post('/orders', orderData);
+    return response.data;
+  },
+
+  getUserOrders: async (): Promise<Order[]> => {
+    const response = await api.get('/orders/user');
     return response.data;
   },
 
@@ -324,7 +351,7 @@ export const orderService = {
   },
 
   updateStatus: async (id: number, status: string): Promise<{ success: boolean; message: string; order: Order }> => {
-    const response = await api.put(`/orders/${id}/status`, { status });
+    const response = await api.patch(`/orders/${id}/status`, { status });
     return response.data;
   }
 };
@@ -373,5 +400,12 @@ export const promotionService = {
   delete: async (id: number): Promise<{ success: boolean; message: string }> => {
     const response = await api.delete(`/promotions/${id}`);
     return response.data;
+  },
+
+  apply: async (code: string): Promise<{ valid: boolean; promotion?: any; error?: string }> => {
+    const response = await api.post('/promotions/apply', { code });
+    return response.data;
   }
 };
+
+export { api };

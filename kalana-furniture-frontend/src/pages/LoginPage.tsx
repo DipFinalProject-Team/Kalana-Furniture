@@ -22,6 +22,7 @@ const LoginPage = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showLoadingScreen, setShowLoadingScreen] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -71,7 +72,8 @@ const LoginPage = ({
     try {
       const result = await login({
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        rememberMe: rememberMe
       });
 
       if (result.success) {
@@ -170,7 +172,19 @@ const LoginPage = ({
                 <p className="text-red-500 text-sm mt-1">{errors.password}</p>
               )}
             </div>
-
+            <div className="flex items-center">
+              <input
+                id="rememberMe"
+                name="rememberMe"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 text-wood-accent focus:ring-wood-accent border-gray-300 rounded"
+              />
+              <label htmlFor="rememberMe" className="ml-2 block text-sm text-wood-brown">
+                Remember me
+              </label>
+            </div>
             {errors.login && (
               <p className="text-red-500 text-sm mt-1">{errors.login}</p>
             )}

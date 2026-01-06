@@ -220,3 +220,79 @@ exports.togglePromotionStatus = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.applyPromoCode = async (req, res) => {
+  try {
+    const { code } = req.body;
+    const userId = req.user?.id; // Required for usage tracking
+
+    if (!code || !code.trim()) {
+      return res.status(400).json({ error: 'Promo code is required' });
+    }
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+
+    // Find active promotion with matching code
+    const { data: promotion, error } = await supabase
+      .from('promotions')
+      .select('*')
+      .eq('code', code.trim().toUpperCase())
+      .eq('is_active', true)
+      .lte('start_date', currentDate)
+      .gte('end_date', currentDate)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+      console.error('Supabase Error:', error);
+      throw error;
+    }
+
+    if (!promotion) {
+      return res.status(400).json({
+        error: 'Invalid or expired promo code',
+        valid: false
+      });
+    }
+
+    // Check if user has already used this promo code
+    const { data: usage, error: usageError } = await supabase
+      .from('promo_code_usage')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('promo_code', code.trim().toUpperCase())
+      .single();
+
+    if (usageError && usageError.code !== 'PGRST116') { // PGRST116 is "not found" error
+      console.error('Usage check error:', usageError);
+      throw usageError;
+    }
+
+    if (usage) {
+      return res.status(400).json({
+        error: 'You have already used this promo code',
+        valid: false
+      });
+    }
+
+    // Return promotion details for frontend to calculate discount
+    res.status(200).json({
+      valid: true,
+      promotion: {
+        id: promotion.id,
+        code: promotion.code,
+        description: promotion.description,
+        type: promotion.type,
+        value: promotion.value,
+        applies_to: promotion.applies_to
+      }
+    });
+
+  } catch (error) {
+    console.error('Promo code application failed:', error);
+    res.status(500).json({ error: error.message });
+  }
+};

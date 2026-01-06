@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import AuthRequiredMessage from '../components/AuthRequiredMessage';
 import { productService, reviewService, type Product, type Review } from '../services/api';
-import { AuthContext } from '../contexts/AuthContext';
+import { AuthContext } from '../contexts/AuthContextDefinition';
 import { FaStar, FaUserCircle, FaCamera, FaTimes } from 'react-icons/fa';
 
 const ReviewPage = () => {

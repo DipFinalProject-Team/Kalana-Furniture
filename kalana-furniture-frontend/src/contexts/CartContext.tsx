@@ -1,27 +1,35 @@
-import React, { createContext, useContext, useState, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { api, promotionService } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
 
 export interface CartItem {
-  id: number;
+  id: number; // cart item id
+  product_id: number; // product id
   name: string;
   image: string;
   price: number;
+  discountPrice?: number;
   quantity: number;
-  description: string;
+  stock: number;
+  category: string;
+  sku: string;
 }
 
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (item: CartItem) => void;
-  removeFromCart: (id: number) => void;
-  updateQuantity: (id: number, quantity: number) => void;
-  clearCart: () => void;
+  addToCart: (productId: number, quantity?: number) => Promise<void>;
+  removeFromCart: (cartItemId: number) => Promise<void>;
+  updateQuantity: (cartItemId: number, quantity: number) => Promise<void>;
+  clearCart: () => Promise<void>;
   getTotalItems: () => number;
   getTotalPrice: () => number;
   appliedDiscount: number;
   promoCode: string;
   promoMessage: string;
-  applyPromoCode: (code: string) => boolean;
+  applyPromoCode: (code: string) => Promise<boolean>;
   removePromoCode: () => void;
+  loading: boolean;
+  error: string | null;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -39,101 +47,165 @@ interface CartProviderProps {
 }
 
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: 1,
-      name: 'Elegant Oak Dining Table',
-      image: 'https://images.unsplash.com/photo-1604074131665-7a4b13870ab4?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      price: 799.99,
-      quantity: 1,
-      description: 'A beautifully crafted dining table made from solid oak, perfect for family gatherings.'
-    },
-    {
-      id: 2,
-      name: 'Modern Velvet Sofa',
-      image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      price: 1299.99,
-      quantity: 1,
-      description: 'Luxurious and comfortable sofa, upholstered in premium velvet for a modern touch.'
-    },
-    {
-      id: 3,
-      name: 'Rustic Bookshelf',
-      image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-      price: 450.00,
-      quantity: 2,
-      description: 'Charming rustic bookshelf made from reclaimed wood, adding character to any room.'
-    },
-  ]);
-
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [appliedDiscount, setAppliedDiscount] = useState(0);
   const [promoCode, setPromoCode] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
-  const addToCart = (item: CartItem) => {
-    setCartItems(prev => {
-      const existing = prev.find(i => i.id === item.id);
-      if (existing) {
-        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i);
-      }
-      return [...prev, item];
-    });
+  // Load cart items when user logs in
+  useEffect(() => {
+    if (user) {
+      loadCart();
+    } else {
+      setCartItems([]);
+    }
+  }, [user]);
+
+  const loadCart = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.get('/cart');
+      setCartItems(Array.isArray(response.data) ? response.data : []);
+    } catch (err) {
+      console.error('Error loading cart:', err);
+      setError('Failed to load cart');
+      setCartItems([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const removeFromCart = (id: number) => {
-    setCartItems(prev => prev.filter(item => item.id !== id));
-  };
-
-  const updateQuantity = (id: number, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(id);
+  const addToCart = async (productId: number, quantity: number = 1) => {
+    if (!user) {
+      setError('Please log in to add items to cart');
       return;
     }
-    setCartItems(prev => prev.map(item => item.id === id ? { ...item, quantity } : item));
+
+    try {
+      setLoading(true);
+      setError(null);
+      await api.post('/cart', { productId, quantity });
+      await loadCart(); // Reload cart to get updated data
+    } catch (err: any) {
+      console.error('Error adding to cart:', err);
+      setError(err.response?.data?.error || 'Failed to add item to cart');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const clearCart = () => {
-    setCartItems([]);
+  const removeFromCart = async (cartItemId: number) => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      await api.delete(`/cart/${cartItemId}`);
+      await loadCart(); // Reload cart to get updated data
+    } catch (err: any) {
+      console.error('Error removing from cart:', err);
+      setError(err.response?.data?.error || 'Failed to remove item from cart');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateQuantity = async (cartItemId: number, quantity: number) => {
+    if (!user) return;
+
+    if (quantity <= 0) {
+      await removeFromCart(cartItemId);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      await api.put(`/cart/${cartItemId}`, { quantity });
+      await loadCart(); // Reload cart to get updated data
+    } catch (err: any) {
+      console.error('Error updating cart quantity:', err);
+      setError(err.response?.data?.error || 'Failed to update item quantity');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearCart = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      await api.delete('/cart');
+      setCartItems([]);
+      // Clear promo code state when cart is cleared
+      setAppliedDiscount(0);
+      setPromoCode('');
+      setPromoMessage('');
+    } catch (err: any) {
+      console.error('Error clearing cart:', err);
+      setError(err.response?.data?.error || 'Failed to clear cart');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getTotalItems = () => {
+    if (!Array.isArray(cartItems)) return 0;
     return cartItems.reduce((total, item) => total + item.quantity, 0);
   };
 
-  const getTotalPrice = () => {
-    return cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
-  };
+  const getTotalPrice = useCallback(() => {
+    if (!Array.isArray(cartItems)) return 0;
+    return cartItems.reduce((total, item) => {
+      const price = item.discountPrice || item.price;
+      return total + price * item.quantity;
+    }, 0);
+  }, [cartItems]);
 
-  const applyPromoCode = (code: string): boolean => {
-    const upperCode = code.toUpperCase().trim();
-    
-    // Sample promo codes - in a real app, this would come from a backend
-    const promoCodes = {
-      'SAVE10': { discount: 0.1, type: 'percentage' }, // 10% off
-      'SAVE20': { discount: 0.2, type: 'percentage' }, // 20% off
-      'FIXED50': { discount: 50, type: 'fixed' }, // Rs 50 off
-      'WOODLOVER': { discount: 0.15, type: 'percentage' }, // 15% off
-    };
+  const applyPromoCode = async (code: string): Promise<boolean> => {
+    if (!user) {
+      setPromoMessage('Please log in to apply promo codes');
+      return false;
+    }
 
-    if (promoCodes[upperCode as keyof typeof promoCodes]) {
-      const promo = promoCodes[upperCode as keyof typeof promoCodes];
-      const subtotal = getTotalPrice();
-      
-      let discountAmount = 0;
-      if (promo.type === 'percentage') {
-        discountAmount = subtotal * promo.discount;
+    try {
+      const response = await promotionService.apply(code);
+
+      if (response.valid) {
+        const { promotion } = response;
+        const subtotal = getTotalPrice();
+
+        let discountAmount = 0;
+        if (promotion.type === 'percentage') {
+          discountAmount = subtotal * (promotion.value / 100);
+        } else if (promotion.type === 'fixed') {
+          discountAmount = Math.min(promotion.value, subtotal);
+        }
+
+        setAppliedDiscount(discountAmount);
+        setPromoCode(code.toUpperCase().trim());
+        setPromoMessage(promotion.description);
+        return true;
       } else {
-        discountAmount = Math.min(promo.discount, subtotal);
+        setAppliedDiscount(0);
+        setPromoCode('');
+        setPromoMessage(response.error || 'Invalid promo code');
+        return false;
       }
-      
-      setAppliedDiscount(discountAmount);
-      setPromoCode(upperCode);
-      setPromoMessage(`Promo code applied! You saved Rs.${discountAmount.toFixed(2)}`);
-      return true;
-    } else {
+    } catch (err: any) {
+      console.error('Error applying promo code:', err.message || err);
       setAppliedDiscount(0);
       setPromoCode('');
-      setPromoMessage('Invalid promo code. Please try again.');
+      setPromoMessage(err.message || 'Failed to apply promo code');
       return false;
     }
   };
@@ -157,7 +229,9 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       promoCode,
       promoMessage,
       applyPromoCode,
-      removePromoCode
+      removePromoCode,
+      loading,
+      error
     }}>
       {children}
     </CartContext.Provider>

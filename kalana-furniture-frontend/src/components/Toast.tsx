@@ -11,7 +11,7 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
-    }, 4000); // Auto-close after 4 seconds to match UserProfile
+    }, 5000); // Auto-close after 5 seconds for better readability
 
     return () => {
       clearTimeout(timer);
@@ -19,23 +19,33 @@ const Toast = ({ message, type, onClose }: ToastProps) => {
   }, [onClose]);
 
   return (
-    <div className="fixed top-28 right-4 z-[60] animate-in slide-in-from-right-4 fade-in-0 duration-300">
-      <div className={`flex items-center space-x-3 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-lg ${
+    <div className="fixed top-28 right-4 z-[60] animate-in slide-in-from-right-4 fade-in-0 duration-500">
+      <div className={`flex items-center space-x-4 px-8 py-5 rounded-2xl shadow-2xl border-2 backdrop-blur-md ${
         type === 'success'
-          ? 'bg-emerald-500/25 border-emerald-400/40 text-emerald-100 shadow-emerald-500/20'
-          : 'bg-red-500/25 border-red-400/40 text-red-100 shadow-red-500/20'
+          ? 'bg-amber-50/95 border-amber-200/60 text-amber-900 shadow-amber-100/50'
+          : 'bg-red-50/95 border-red-200/60 text-red-900 shadow-red-100/50'
       }`}>
-        {type === 'success' ? (
-          <FaCheckCircle className="text-emerald-400 text-xl flex-shrink-0" />
-        ) : (
-          <FaExclamationTriangle className="text-red-400 text-xl flex-shrink-0" />
-        )}
-        <span className="font-medium">{message}</span>
+        <div className={`p-2 rounded-full ${
+          type === 'success'
+            ? 'bg-amber-100/80'
+            : 'bg-red-100/80'
+        }`}>
+          {type === 'success' ? (
+            <FaCheckCircle className="text-xl flex-shrink-0 text-amber-600" />
+          ) : (
+            <FaExclamationTriangle className="text-xl flex-shrink-0 text-red-600" />
+          )}
+        </div>
+        <span className="font-medium text-base leading-relaxed">{message}</span>
         <button
           onClick={onClose}
-          className="ml-4 text-white/70 hover:text-white transition-colors duration-200 text-lg"
+          className={`ml-4 p-1 rounded-full transition-all duration-200 hover:bg-black/5 ${
+            type === 'success' ? 'text-amber-700 hover:text-amber-900' : 'text-red-700 hover:text-red-900'
+          }`}
         >
-          ×
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
       </div>
     </div>

@@ -1,7 +1,10 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import Header from "../components/Header";
+import Toast from "../components/Toast";
 import { productService, promotionService, type Product, type Promotion } from '../services/api';
+import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../hooks/useAuth';
 
 const ProductDetailsPage = () => {
   const { id } = useParams();
@@ -11,6 +14,13 @@ const ProductDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentImage, setCurrentImage] = useState(0);
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
+  const [addingToCart, setAddingToCart] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const { addToCart, clearCart } = useCart();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Function to apply promotions to a product
   const applyPromotionsToProduct = (product: Product, promotionsList: Promotion[]): Product & { discountPrice?: number; discountPercentage?: number } => {
@@ -75,13 +85,7 @@ const ProductDetailsPage = () => {
         // Apply promotions to the product
         const productWithDiscount = applyPromotionsToProduct(productData, promotionsData);
         
-        // For testing: add a test discount if no discount exists
-        const testProduct = productWithDiscount.discountPrice ? productWithDiscount : {
-          ...productWithDiscount,
-          discountPrice: Math.round(productWithDiscount.price * 0.9) // 10% discount for testing
-        };
-        
-        setProduct(testProduct);
+        setProduct(productWithDiscount);
         
         // Fetch similar products from the same category
         if (productData.category) {
@@ -106,6 +110,43 @@ const ProductDetailsPage = () => {
 
     fetchProduct();
   }, [id]);
+
+  const handleAddToCart = async () => {
+    if (!product || !user) {
+      setToast({ message: 'Please log in to add items to cart', type: 'error' });
+      return;
+    }
+
+    try {
+      setAddingToCart(true);
+      await addToCart(product.id, selectedQuantity);
+      setToast({ message: 'Item added to cart successfully!', type: 'success' });
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      setToast({ message: 'Failed to add item to cart. Please try again.', type: 'error' });
+    } finally {
+      setAddingToCart(false);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (!product || !user) {
+      setToast({ message: 'Please log in to proceed to checkout', type: 'error' });
+      return;
+    }
+
+    try {
+      // Clear existing cart and add the selected product
+      await clearCart();
+      await addToCart(product.id, selectedQuantity);
+      
+      // Navigate to checkout with buyNow flag
+      navigate('/checkout?buyNow=true');
+    } catch (error) {
+      console.error('Error proceeding to checkout:', error);
+      setToast({ message: 'Failed to proceed to checkout. Please try again.', type: 'error' });
+    }
+  };
 
   if (loading) {
     return (
@@ -216,6 +257,10 @@ const ProductDetailsPage = () => {
                     </span>
                   )}
                 </span>
+                <span className="mx-2 text-gray-300">|</span>
+                <span className="text-sm text-gray-600">
+                  Model: {product.sku}
+                </span>
               </div>
 
               <div className="border rounded-lg p-6 mt-6">
@@ -243,6 +288,8 @@ const ProductDetailsPage = () => {
                   </label>
                   <select
                     id="quantity"
+                    value={selectedQuantity}
+                    onChange={(e) => setSelectedQuantity(Number(e.target.value))}
                     className="border border-gray-300 rounded-md p-2"
                   >
                     {[...Array(Math.min(product.stock, 10)).keys()].map(
@@ -256,11 +303,18 @@ const ProductDetailsPage = () => {
                 </div>
 
                 <div className="flex flex-col gap-4">
-                  <button className="w-full bg-wood-accent text-white py-3 px-6 rounded-full font-bold text-lg hover:bg-wood-accent-hover transition-colors">
+                  <button 
+                    onClick={handleBuyNow}
+                    className="w-full bg-wood-accent text-white py-3 px-6 rounded-full font-bold text-lg hover:bg-wood-accent-hover transition-colors"
+                  >
                     Buy It Now
                   </button>
-                  <button className="w-full bg-gray-200 text-gray-800 py-3 px-6 rounded-full font-bold text-lg hover:bg-gray-300 transition-colors">
-                    Add to Cart
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={addingToCart || !user}
+                    className="w-full bg-gray-200 text-gray-800 py-3 px-6 rounded-full font-bold text-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {addingToCart ? 'Adding...' : 'Add to Cart'}
                   </button>
                 </div>
               </div>
@@ -437,6 +491,13 @@ const ProductDetailsPage = () => {
           </div>
         </div>
       </div>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </>
   );
 };

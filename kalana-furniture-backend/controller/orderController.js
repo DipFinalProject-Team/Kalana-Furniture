@@ -4,7 +4,35 @@ exports.getAllOrders = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('orders')
-      .select('*, items:order_items(*), customer:users(*)'); // Assuming relationships
+      .select(`
+        *,
+        items:order_items(*),
+        customer:users(name, email)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getUserOrders = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        items:order_items(*)
+      `)
+      .eq('customer_id', userId)
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
     res.status(200).json(data);
@@ -18,7 +46,11 @@ exports.getOrderById = async (req, res) => {
     const { id } = req.params;
     const { data, error } = await supabase
       .from('orders')
-      .select('*, items:order_items(*), customer:users(*)')
+      .select(`
+        *,
+        items:order_items(*),
+        customer:users(name, email)
+      `)
       .eq('id', id)
       .single();
 
@@ -33,23 +65,51 @@ exports.getOrderById = async (req, res) => {
 
 exports.createOrder = async (req, res) => {
   try {
-    const { customer_id, items, total, status } = req.body;
+    const { 
+      customer_id, 
+      items, 
+      total, 
+      status,
+      deliveryDetails,
+      promoCode
+    } = req.body;
+    
+    // Validate required fields
+    if (!customer_id || !items || !total || !deliveryDetails) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    if (!deliveryDetails.name || !deliveryDetails.address || !deliveryDetails.phone || !deliveryDetails.email) {
+      return res.status(400).json({ error: 'Delivery details are incomplete' });
+    }
     
     // Start a transaction-like approach (Supabase doesn't support multi-table transactions in client directly easily without RPC, but we'll do sequential inserts)
     
-    // 1. Create Order
+    // 1. Create Order with delivery details
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
-      .insert([{ customer_id, total, status: status || 'pending' }])
+      .insert([{
+        customer_id,
+        total,
+        status: status || 'pending',
+        delivery_name: deliveryDetails.name,
+        delivery_address: deliveryDetails.address,
+        delivery_phone: deliveryDetails.phone,
+        delivery_email: deliveryDetails.email
+      }])
       .select()
       .single();
 
     if (orderError) throw orderError;
 
-    // 2. Create Order Items
+    // 2. Create Order Items with product details
     const orderItems = items.map(item => ({
       order_id: orderData.id,
       product_id: item.product_id,
+      product_name: item.product_name,
+      product_category: item.product_category,
+      product_sku: item.product_sku,
+      product_image: item.image || item.product_image || null, // Store the first image or product image
       quantity: item.quantity,
       price: item.price
     }));
@@ -64,7 +124,37 @@ exports.createOrder = async (req, res) => {
         throw itemsError;
     }
 
-    res.status(201).json(orderData);
+    // 3. Clear user's cart after successful order
+    const { error: cartError } = await supabase
+      .from('cart')
+      .delete()
+      .eq('user_id', customer_id);
+
+    if (cartError) {
+      console.error("Error clearing cart:", cartError);
+      // Don't fail the order for cart clearing error
+    }
+
+    // 4. Record promo code usage if promo code was applied
+    if (promoCode) {
+      const { error: usageError } = await supabase
+        .from('promo_code_usage')
+        .insert([{
+          user_id: customer_id,
+          promo_code: promoCode.toUpperCase(),
+          order_id: orderData.id
+        }]);
+
+      if (usageError) {
+        console.error("Error recording promo code usage:", usageError);
+        // Don't fail the order for usage recording error
+      }
+    }
+
+    res.status(201).json({
+      message: 'Order created successfully',
+      order: orderData
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

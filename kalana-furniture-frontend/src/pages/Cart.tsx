@@ -34,7 +34,7 @@ const Cart = () => {
     setLocalPromoCode('');
   };
 
-  const subtotal = useMemo(() => getTotalPrice(), [cartItems]);
+  const subtotal = useMemo(() => getTotalPrice(), [getTotalPrice]);
   const total = useMemo(() => Math.max(subtotal - appliedDiscount, 0), [subtotal, appliedDiscount]);
 
   return (
@@ -94,8 +94,17 @@ const Cart = () => {
                   <img src={item.image} alt={item.name} className="w-24 h-24 md:w-32 md:h-32 rounded-lg object-cover border-2 border-wood-accent/50 shadow-lg" />
                   <div className="flex-grow ml-6">
                     <h3 className="text-xl font-bold text-white">{item.name}</h3>
-                    <p className="text-sm text-wood-light mt-1 hidden md:block">{item.description}</p>
-                    <p className="text-lg font-semibold text-wood-accent mt-2">Rs.{item.price.toFixed(2)}</p>
+                    <p className="text-sm text-wood-light mt-1">Category: {item.category}</p>
+                    <div className="mt-2">
+                      {item.discountPrice ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400 line-through text-sm">Rs.{item.price.toFixed(2)}</span>
+                          <span className="text-lg font-semibold text-red-400">Rs.{item.discountPrice.toFixed(2)}</span>
+                        </div>
+                      ) : (
+                        <p className="text-lg font-semibold text-wood-accent">Rs.{item.price.toFixed(2)}</p>
+                      )}
+                    </div>
                   </div>
                   <div className="flex flex-col items-end space-y-4 ml-4">
                     <div className="flex items-center bg-white/20 rounded-full">

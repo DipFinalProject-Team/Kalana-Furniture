@@ -1,51 +1,118 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaShippingFast, FaUser, FaMapMarkerAlt, FaPhone, FaEnvelope, FaMoneyBillWave } from 'react-icons/fa';
 import { useCart } from '../contexts/CartContext';
 import Header from '../components/Header';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import SnowAnimation from '../components/SnowAnimation'; // Reusing the snow animation for a consistent feel
 import Toast from '../components/Toast';
 import { useAuth } from '../hooks/useAuth';
 import AuthRequiredMessage from '../components/AuthRequiredMessage';
+import { orderService } from '../services/api';
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, isLoading } = useAuth();
-  const { cartItems, clearCart, appliedDiscount } = useCart();
+  const { cartItems, clearCart, appliedDiscount, promoCode, applyPromoCode, removePromoCode, promoMessage } = useCart();
+
+  const isBuyNow = searchParams.get('buyNow') === 'true';
 
   const [deliveryDetails, setDeliveryDetails] = useState({
-    name: 'John Doe',
-    address: '123 Furniture St, Wood City, WC 12345',
-    phone: '+94771234567',
-    email: 'john.doe@example.com',
+    name: '',
+    address: '',
+    phone: '',
+    email: '',
   });
 
   const [isEditing, setIsEditing] = useState(false);
   const [toast, setToast] = useState<{type: 'success' | 'error', message: string} | null>(null);
+  const [localPromoCode, setLocalPromoCode] = useState('');
+
+  // Populate delivery details with user information
+  useEffect(() => {
+    if (user) {
+      setDeliveryDetails({
+        name: user.name || '',
+        address: user.address || '',
+        phone: user.phone || '',
+        email: user.email || '',
+      });
+    }
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setDeliveryDetails(prev => ({ ...prev, [name]: value }));
   };
 
-  const subtotal = cartItems.reduce((acc: number, item) => acc + item.price * item.quantity, 0);
-  const shippingFee = subtotal > 500 ? 0 : 50; // Free shipping for orders over Rs 500
+  const handleApplyPromoCode = () => {
+    applyPromoCode(localPromoCode);
+  };
+
+  const handleRemovePromoCode = () => {
+    removePromoCode();
+    setLocalPromoCode('');
+  };
+
+  const subtotal = cartItems.reduce((acc: number, item) => acc + (item.discountPrice || item.price) * item.quantity, 0);
+  const shippingFee = 0; // No shipping fees
   const total = subtotal + shippingFee - appliedDiscount;
 
-  const handleConfirmOrder = () => {
-    // In a real app, you'd send this to a backend
-    console.log('Order Confirmed:', {
-      deliveryDetails,
-      items: cartItems,
-      total,
-    });
+  const handleConfirmOrder = async () => {
+    if (!user) {
+      setToast({ type: 'error', message: 'Please log in to place an order' });
+      return;
+    }
 
-    // Show a confirmation message and navigate home
-    setToast({ type: 'success', message: 'Your order has been placed successfully!' });
-    clearCart();
-    setTimeout(() => {
-      navigate('/');
-    }, 2000); // Navigate after showing the toast
+    try {
+      // Prepare order data
+      const orderData = {
+        customer_id: user.id,
+        items: cartItems.map(item => ({
+          product_id: item.product_id,
+          product_name: item.name,
+          product_category: item.category,
+          product_sku: item.sku,
+          image: item.image, // Include product image
+          quantity: item.quantity,
+          price: item.price // Use the price from cart (which includes discounts)
+        })),
+        total: total,
+        deliveryDetails: deliveryDetails,
+        promoCode: promoCode || null // Include promo code if applied
+      };
+
+      // Create order via API
+      const response = await orderService.create(orderData);
+
+      // Show success message
+      setToast({ type: 'success', message: response.message || 'Your order has been placed successfully!' });
+
+      // Clear cart (this will be handled by the backend, but also clear locally)
+      clearCart();
+
+      // Navigate to home after showing the toast
+      setTimeout(() => {
+        navigate('/');
+      }, 2000);
+
+    } catch (error: unknown) {
+      console.error('Error creating order:', error);
+      let errorMessage = 'Failed to place order. Please try again.';
+
+      // Check if it's an axios error with response
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { error?: string } } };
+        if (axiosError.response?.data?.error) {
+          errorMessage = axiosError.response.data.error;
+        }
+      }
+
+      setToast({
+        type: 'error',
+        message: errorMessage
+      });
+    }
   };
 
   return (
@@ -178,11 +245,56 @@ const CheckoutPage = () => {
                             <p className="text-sm">Qty: {item.quantity}</p>
                         </div>
                       </div>
-                      <p className="text-white font-semibold">Rs.{(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="text-white font-semibold">
+                        {item.discountPrice ? (
+                          <span className="text-red-400">Rs.{(item.discountPrice * item.quantity).toFixed(2)}</span>
+                        ) : (
+                          <span>Rs.{(item.price * item.quantity).toFixed(2)}</span>
+                        )}
+                      </p>
                     </div>
                   ))}
                 </div>
                 <hr className="border-white/20 my-6"/>
+
+                {/* Promo Code Section for Buy Now */}
+                {isBuyNow && (
+                  <div className="mb-6">
+                    <label className="flex items-center text-sm font-medium text-wood-light mb-2">
+                      <span className="text-wood-accent mr-2">🏷️</span>
+                      Have a Promo Code?
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={localPromoCode}
+                        onChange={(e) => setLocalPromoCode(e.target.value)}
+                        placeholder="Enter promo code"
+                        className="flex-1 px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white placeholder-wood-light focus:outline-none focus:ring-2 focus:ring-wood-accent focus:border-transparent"
+                      />
+                      <button
+                        onClick={handleApplyPromoCode}
+                        className="px-4 py-2 bg-wood-accent text-white rounded-lg hover:bg-wood-accent-hover transition-colors duration-200 font-medium"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                    {promoMessage && (
+                      <p className={`text-sm mt-2 ${appliedDiscount > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {promoMessage}
+                      </p>
+                    )}
+                    {appliedDiscount > 0 && (
+                      <button
+                        onClick={handleRemovePromoCode}
+                        className="text-xs text-red-400 hover:text-red-300 mt-1 underline"
+                      >
+                        Remove promo code
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-3 text-wood-light">
                     <div className="flex justify-between">
                         <p>Subtotal</p>
@@ -194,10 +306,6 @@ const CheckoutPage = () => {
                             <p className="font-semibold">-Rs.{appliedDiscount.toFixed(2)}</p>
                         </div>
                     )}
-                    <div className="flex justify-between">
-                        <p>Shipping Fee</p>
-                        <p className="text-white font-semibold">{shippingFee === 0 ? 'Free' : `Rs.${shippingFee.toFixed(2)}`}</p>
-                    </div>
                 </div>
                 <hr className="border-white/20 my-6"/>
                 <div className="flex justify-between text-white font-bold text-xl">

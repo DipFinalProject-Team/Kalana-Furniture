@@ -1,17 +1,21 @@
-import React, { createContext, useState, useEffect, type ReactNode } from 'react';
+import React, { useState, useEffect, type ReactNode } from 'react';
 import { userService, type User, type LoginCredentials, type RegisterData } from '../services/api';
+import { AuthContext, type AuthContextType } from './AuthContextDefinition';
 
-export interface AuthContextType {
-  user: User | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  login: (credentials: LoginCredentials) => Promise<{ success: boolean; message: string }>;
-  register: (userData: RegisterData) => Promise<{ success: boolean; message: string; requiresConfirmation?: boolean }>;
-  logout: () => Promise<void>;
-  updateUser: (userData: Partial<User>) => void;
-}
+// Helper functions for cookies
+const setCookie = (name: string, value: string, maxAge: number) => {
+  document.cookie = `${name}=${value}; max-age=${maxAge}; path=/; SameSite=Lax`;
+};
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const getCookie = (name: string): string | undefined => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift();
+};
+
+const deleteCookie = (name: string) => {
+  document.cookie = `${name}=; max-age=0; path=/; SameSite=Lax`;
+};
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -24,33 +28,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     // Check if user is already logged in on app start
     const checkAuthStatus = async () => {
-      const token = localStorage.getItem('userToken');
-      const loginTime = localStorage.getItem('userLoginTime');
+      const token = getCookie('userToken');
+      const loginTime = getCookie('userLoginTime');
       
       if (token && loginTime) {
         const loginTimestamp = parseInt(loginTime);
         const currentTime = Date.now();
-        const oneDay = 24 * 60 * 60 * 1000; // 1 day in milliseconds
+        const sevenDays = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
         
-        // Check if login is still valid (less than 1 day old)
-        if (currentTime - loginTimestamp < oneDay) {
+        // Check if login is still valid (less than 7 days old)
+        if (currentTime - loginTimestamp < sevenDays) {
           try {
             const response = await userService.verifyToken();
             if (response.success && response.user) {
               setUser(response.user);
             } else {
-              localStorage.removeItem('userToken');
-              localStorage.removeItem('userLoginTime');
+              deleteCookie('userToken');
+              deleteCookie('userLoginTime');
             }
           } catch (error) {
             console.error('Token verification failed:', error);
-            localStorage.removeItem('userToken');
-            localStorage.removeItem('userLoginTime');
+            deleteCookie('userToken');
+            deleteCookie('userLoginTime');
           }
         } else {
           // Token expired, remove it
-          localStorage.removeItem('userToken');
-          localStorage.removeItem('userLoginTime');
+          deleteCookie('userToken');
+          deleteCookie('userLoginTime');
         }
       }
       setIsLoading(false);
@@ -63,8 +67,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await userService.login(credentials);
       if (response.success && response.token && response.user) {
-        localStorage.setItem('userToken', response.token);
-        localStorage.setItem('userLoginTime', Date.now().toString());
+        const maxAge = credentials.rememberMe ? 7 * 24 * 60 * 60 : 24 * 60 * 60; // 7 days or 1 day
+        setCookie('userToken', response.token, maxAge);
+        setCookie('userLoginTime', Date.now().toString(), maxAge);
         setUser(response.user);
         return { success: true, message: response.message };
       } else {
@@ -80,8 +85,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await userService.register(userData);
       if (response.success && response.token && response.user) {
-        localStorage.setItem('userToken', response.token);
-        localStorage.setItem('userLoginTime', Date.now().toString());
+        const maxAge = 7 * 24 * 60 * 60; // 7 days for register
+        setCookie('userToken', response.token, maxAge);
+        setCookie('userLoginTime', Date.now().toString(), maxAge);
         setUser(response.user);
         return { success: true, message: response.message };
       } else if (response.success && response.requiresConfirmation) {
@@ -101,8 +107,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      localStorage.removeItem('userToken');
-      localStorage.removeItem('userLoginTime');
+      deleteCookie('userToken');
+      deleteCookie('userLoginTime');
       setUser(null);
     }
   };
