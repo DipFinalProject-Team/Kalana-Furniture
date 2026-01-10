@@ -1,5 +1,6 @@
 import React, { useState, useEffect, type ReactNode } from 'react';
 import { userService, type User, type LoginCredentials, type RegisterData } from '../services/api';
+import { supabase } from '../services/supabase';
 import { AuthContext, type AuthContextType } from './AuthContextDefinition';
 
 // Helper functions for cookies
@@ -63,6 +64,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuthStatus();
   }, []);
 
+  // Real-time monitoring for user status changes
+  useEffect(() => {
+    if (!user) return;
+
+    // Subscribe to changes in the users table for the current user
+    const channel = supabase
+      .channel('user-status-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('User status change detected:', payload);
+          const newStatus = payload.new.status;
+          
+          if (newStatus === 'Blocked') {
+            console.log('User has been blocked, logging out...');
+            // Automatically log out the user
+            deleteCookie('userToken');
+            deleteCookie('userLoginTime');
+            setUser(null);
+            
+            // Show an alert to inform the user
+            alert('Your account has been blocked by an administrator. You have been logged out.');
+            
+            // Redirect to login page
+            window.location.href = '/login';
+          }
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount or user change
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const login = async (credentials: LoginCredentials): Promise<{ success: boolean; message: string }> => {
     try {
       const response = await userService.login(credentials);
@@ -76,7 +119,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return { success: false, message: response.message };
       }
     } catch (error: unknown) {
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Login failed. Please try again.';
+      const message = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || (error as { message?: string })?.message || 'Login failed. Please try again.';
       return { success: false, message };
     }
   };

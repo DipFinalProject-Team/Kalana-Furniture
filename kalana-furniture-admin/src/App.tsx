@@ -14,7 +14,6 @@ import Promotions from './pages/Promotions';
 import Reviews from './pages/Reviews';
 import Settings from './pages/Settings';
 import AdminLoginPage from './components/AdminLoginPage';
-import AdminForgotPasswordPage from './components/AdminForgotPasswordPage';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -60,7 +59,6 @@ const AppContent: React.FC = () => {
           isAuthenticated ? <Navigate to="/admin" replace /> : <AdminLoginPage />
         }
       />
-      <Route path="/forgot-password" element={<AdminForgotPasswordPage onSwitchToLogin={() => {}} />} />
 
       {/* Protected Admin Routes */}
       <Route

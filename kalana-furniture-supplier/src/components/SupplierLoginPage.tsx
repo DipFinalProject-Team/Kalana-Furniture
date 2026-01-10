@@ -227,12 +227,6 @@ const SupplierLoginPage = () => {
                 </div>
                 <span className="ml-2 text-sm text-gray-600 group-hover:text-gray-900 transition-colors">Remember me</span>
               </label>
-              <Link
-                to="/forgot-password"
-                className="text-sm font-medium text-wood-brown hover:text-wood-accent transition-colors"
-              >
-                Forgot password?
-              </Link>
             </div>
 
             <button

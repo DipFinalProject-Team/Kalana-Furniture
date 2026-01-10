@@ -106,7 +106,6 @@ const ProductManagement: React.FC = () => {
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Attempting to save product:', currentProduct);
     
     // Basic validation
     if (!currentProduct.productName || !currentProduct.sku) {
@@ -121,9 +120,7 @@ const ProductManagement: React.FC = () => {
         setProducts(products.map(p => p.id === currentProduct.id ? updatedProduct : p));
         showToast('Product updated successfully', 'success');
       } else {
-        console.log('Creating new product...');
         const newProduct = await productService.create(currentProduct, newFiles);
-        console.log('Product created successfully:', newProduct);
         setProducts([...products, newProduct]);
         showToast('Product created successfully', 'success');
       }

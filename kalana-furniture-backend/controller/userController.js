@@ -173,6 +173,14 @@ exports.login = async (req, res) => {
       });
     }
 
+    // Check if user account is blocked
+    if (userData.status === 'Blocked') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been blocked. Please contact support for assistance.'
+      });
+    }
+
     // Return successful login
     res.status(200).json({
       success: true,
@@ -328,7 +336,7 @@ exports.updateUserProfile = async (req, res) => {
 
 exports.changePassword = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const user = req.user; // This is the user object from Supabase Auth
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
@@ -339,14 +347,18 @@ exports.changePassword = async (req, res) => {
       return res.status(400).json({ success: false, message: 'New password must be at least 8 characters long' });
     }
 
-    // Get user from Supabase Auth
-    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
-    if (userError || !userData.user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+    // Verify current password by attempting to sign in
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword
+    });
+
+    if (signInError) {
+      return res.status(400).json({ success: false, message: 'Current password is incorrect' });
     }
 
     // Update password in Supabase Auth
-    const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
+    const { error: updateError } = await supabase.auth.updateUser({
       password: newPassword
     });
 

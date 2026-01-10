@@ -153,11 +153,9 @@ exports.createProduct = async (req, res) => {
     // Handle image uploads
     const imageUrls = [];
     if (req.files && req.files.length > 0) {
-      console.log(`Uploading ${req.files.length} images to Cloudinary...`);
       const uploadPromises = req.files.map(file => uploadToCloudinary(file.buffer));
       const results = await Promise.all(uploadPromises);
       imageUrls.push(...results);
-      console.log('Images uploaded successfully');
     }
 
     // Prepare product object
@@ -177,8 +175,6 @@ exports.createProduct = async (req, res) => {
       return res.status(400).json({ error: 'Product name and SKU are required' });
     }
 
-    console.log(`Creating product: ${product.productName}`);
-
     const { data, error } = await supabase
       .from('products')
       .insert([product])
@@ -189,7 +185,6 @@ exports.createProduct = async (req, res) => {
       throw error;
     }
 
-    console.log(`Product created successfully in ${Date.now() - startTime}ms`);
     res.status(201).json(data[0]);
   } catch (error) {
     console.error(`Product creation failed after ${Date.now() - startTime}ms:`, error);
@@ -249,14 +244,29 @@ exports.updateProduct = async (req, res) => {
 exports.deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { error } = await supabase
+
+    // First, delete all order items associated with this product
+    const { error: orderItemsError } = await supabase
+      .from('order_items')
+      .delete()
+      .eq('product_id', id);
+
+    if (orderItemsError) {
+      console.error('Error deleting order items:', orderItemsError);
+      throw orderItemsError;
+    }
+
+    // Then delete the product
+    const { error: productError } = await supabase
       .from('products')
       .delete()
       .eq('id', id);
 
-    if (error) throw error;
+    if (productError) throw productError;
+
     res.status(204).send();
   } catch (error) {
+    console.error('Delete product error:', error);
     res.status(500).json({ error: error.message });
   }
 };

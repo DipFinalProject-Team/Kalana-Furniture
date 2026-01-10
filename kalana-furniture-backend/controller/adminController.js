@@ -241,7 +241,6 @@ exports.changePassword = async (req, res) => {
 
     if (signInError) {
       if (signInError.message.includes('Email not confirmed')) {
-        console.log('Email not confirmed - allowing password change for development');
         skipVerification = true;
       } else {
         console.error('Current password verification failed:', signInError.message);
@@ -510,24 +509,42 @@ exports.updateStock = async (req, res) => {
 // Purchase Order Management Functions
 exports.getPurchaseOrders = async (req, res) => {
   try {
+    // Fetch orders first without join to ensure basic query works
     const { data: orders, error } = await supabase
       .from('purchase_orders')
-      .select(`
-        *,
-        products (
-          productName
-        ),
-        suppliers (
-          company_name
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase fetch error:', error);
+      throw error;
+    }
+
+    if (!orders || orders.length === 0) {
+      return res.status(200).json({ success: true, orders: [] });
+    }
+
+    // Manually fetch related data to avoid join issues
+    const productIds = [...new Set(orders.map(o => o.product_id))];
+    const supplierIds = [...new Set(orders.map(o => o.supplier_id))];
+
+    const { data: products } = await supabase
+      .from('products')
+      .select('id, productName')
+      .in('id', productIds);
+
+    const { data: suppliers } = await supabase
+      .from('suppliers')
+      .select('id, company_name')
+      .in('id', supplierIds);
+
+    // Create lookup maps
+    const productMap = (products || []).reduce((acc, p) => ({ ...acc, [p.id]: p.productName }), {});
+    const supplierMap = (suppliers || []).reduce((acc, s) => ({ ...acc, [s.id]: s.company_name }), {});
 
     const formattedOrders = orders.map(order => ({
-      id: order.id,
-      productName: order.products?.productName || 'Unknown Product',
+      id: order.id.toString(),
+      productName: productMap[order.product_id] || 'Unknown Product',
       quantity: order.quantity,
       expectedDelivery: order.expected_delivery,
       pricePerUnit: parseFloat(order.price_per_unit),
@@ -535,8 +552,8 @@ exports.getPurchaseOrders = async (req, res) => {
       orderDate: order.order_date,
       actualDeliveryDate: order.actual_delivery_date,
       deliveryNotes: order.delivery_notes,
-      supplierId: order.supplier_id,
-      supplierName: order.suppliers?.company_name || 'Unknown Supplier'
+      supplierId: order.supplier_id.toString(),
+      supplierName: supplierMap[order.supplier_id] || 'Unknown Supplier'
     }));
 
     res.status(200).json({
@@ -564,39 +581,58 @@ exports.createPurchaseOrder = async (req, res) => {
       });
     }
 
+    // Ensure types
+    const pId = parseInt(productId);
+    const sId = parseInt(supplierId);
+    const qty = parseInt(quantity);
+    const price = parseFloat(pricePerUnit);
+
+    if (isNaN(pId) || isNaN(sId) || isNaN(qty) || isNaN(price)) {
+      return res.status(400).json({ success: false, message: 'Invalid field types' });
+    }
+
+    // Insert the order
     const { data: order, error } = await supabase
       .from('purchase_orders')
       .insert({
-        supplier_id: supplierId,
-        product_id: productId,
-        quantity,
-        price_per_unit: pricePerUnit,
+        supplier_id: sId,
+        product_id: pId,
+        quantity: qty,
+        price_per_unit: price,
         expected_delivery: expectedDelivery,
         status: 'Pending'
       })
-      .select(`
-        *,
-        products (
-          productName
-        ),
-        suppliers (
-          company_name
-        )
-      `)
+      .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase insert error:', error);
+      throw error;
+    }
+
+    // Fetch related details separately to ensure stability
+    const { data: product } = await supabase
+      .from('products')
+      .select('productName')
+      .eq('id', pId)
+      .single();
+
+    const { data: supplier } = await supabase
+      .from('suppliers')
+      .select('company_name')
+      .eq('id', sId)
+      .single();
 
     const formattedOrder = {
-      id: order.id,
-      productName: order.products?.productName || 'Unknown Product',
+      id: order.id.toString(),
+      productName: product?.productName || 'Unknown Product',
       quantity: order.quantity,
       expectedDelivery: order.expected_delivery,
       pricePerUnit: parseFloat(order.price_per_unit),
       status: order.status,
       orderDate: order.order_date,
-      supplierId: order.supplier_id,
-      supplierName: order.suppliers?.company_name || 'Unknown Supplier'
+      supplierId: order.supplier_id.toString(),
+      supplierName: supplier?.company_name || 'Unknown Supplier'
     };
 
     res.status(201).json({
@@ -608,7 +644,7 @@ exports.createPurchaseOrder = async (req, res) => {
     console.error('Create purchase order error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to create purchase order'
+      message: 'Failed to create purchase order: ' + (error.message || 'Unknown error')
     });
   }
 };
@@ -697,26 +733,55 @@ exports.updatePurchaseOrderStatus = async (req, res) => {
 // Invoice Management Functions
 exports.getInvoices = async (req, res) => {
   try {
+    // First check if invoices table exists and has data
     const { data: invoices, error } = await supabase
       .from('invoices')
-      .select(`
-        *,
-        suppliers (
-          company_name
-        ),
-        purchase_orders (
-          id
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Invoices table query error:', error);
+      // If table doesn't exist, return empty array
+      if (error.code === '42P01') { // relation does not exist
+        return res.status(200).json({
+          success: true,
+          invoices: []
+        });
+      }
+      throw error;
+    }
+
+    if (!invoices || invoices.length === 0) {
+      return res.status(200).json({
+        success: true,
+        invoices: []
+      });
+    }
+
+    // Get unique supplier and purchase order IDs
+    const supplierIds = [...new Set(invoices.map(inv => inv.supplier_id).filter(id => id))];
+    const purchaseOrderIds = [...new Set(invoices.map(inv => inv.purchase_order_id).filter(id => id))];
+
+    // Fetch related data separately
+    const suppliers = supplierIds.length > 0 ? await supabase
+      .from('suppliers')
+      .select('id, company_name')
+      .in('id', supplierIds) : { data: [] };
+
+    const purchaseOrders = purchaseOrderIds.length > 0 ? await supabase
+      .from('purchase_orders')
+      .select('id')
+      .in('id', purchaseOrderIds) : { data: [] };
+
+    // Create lookup maps
+    const supplierMap = (suppliers.data || []).reduce((acc, s) => ({ ...acc, [s.id]: s.company_name }), {});
+    const orderMap = (purchaseOrders.data || []).reduce((acc, po) => ({ ...acc, [po.id]: po.id }), {});
 
     const formattedInvoices = invoices.map(invoice => ({
       id: invoice.invoice_number.toString(),
-      orderId: invoice.purchase_orders?.id ? `PO-${String(invoice.purchase_orders.id).padStart(4, '0')}` : 'N/A',
-      supplierName: invoice.suppliers?.company_name || 'Unknown Supplier',
-      amount: parseFloat(invoice.amount),
+      orderId: invoice.purchase_order_id ? `PO-${String(orderMap[invoice.purchase_order_id] || invoice.purchase_order_id).padStart(4, '0')}` : 'N/A',
+      supplierName: supplierMap[invoice.supplier_id] || 'Unknown Supplier',
+      amount: parseFloat(invoice.amount || invoice.total_amount || 0),
       date: invoice.issue_date,
       dueDate: invoice.due_date,
       status: invoice.status,
@@ -739,7 +804,6 @@ exports.getInvoices = async (req, res) => {
 exports.markInvoiceAsPaid = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('Marking invoice as paid:', id);
 
     const { data: invoice, error } = await supabase
       .from('invoices')
@@ -750,8 +814,6 @@ exports.markInvoiceAsPaid = async (req, res) => {
       .eq('invoice_number', id)
       .select('id, invoice_number, amount, total_amount, issue_date, due_date, status, supplier_id, purchase_order_id')
       .single();
-
-    console.log('Update result:', { error, invoice: invoice ? 'found' : 'not found' });
 
     if (error) {
       console.error('Supabase error:', error);
@@ -769,7 +831,6 @@ exports.markInvoiceAsPaid = async (req, res) => {
     let supplierName = 'Unknown Supplier';
     let orderId = '';
 
-    console.log('Step 1: Fetching supplier');
     try {
       if (invoice.supplier_id) {
         const { data: supplier } = await supabase
@@ -783,10 +844,9 @@ exports.markInvoiceAsPaid = async (req, res) => {
         }
       }
     } catch (err) {
-      console.log('Supplier query failed:', err.message);
+      // Supplier query failed, continue without supplier name
     }
 
-    console.log('Step 2: Fetching purchase order');
     try {
       if (invoice.purchase_order_id) {
         const { data: purchaseOrder } = await supabase
@@ -800,10 +860,9 @@ exports.markInvoiceAsPaid = async (req, res) => {
         }
       }
     } catch (err) {
-      console.log('Purchase order query failed:', err.message);
+      // Purchase order query failed, continue without order ID
     }
 
-    console.log('Step 3: Formatting invoice');
     const formattedInvoice = {
       id: invoice.invoice_number.toString(),
       orderId: orderId,
@@ -815,7 +874,6 @@ exports.markInvoiceAsPaid = async (req, res) => {
       paymentDate: new Date().toISOString().split('T')[0] // Set current date as payment date
     };
 
-    console.log('Step 4: Sending response', formattedInvoice);
     res.status(200).json({
       success: true,
       message: 'Invoice marked as paid successfully',
@@ -1044,7 +1102,7 @@ exports.getAllReviews = async (req, res) => {
       comment: review.comment,
       date: new Date(review.created_at).toISOString().split('T')[0],
       avatar: review.user?.profile_picture || generateDefaultAvatar(review.user?.name || 'Anonymous'),
-      productUrl: `/products/${review.product?.id}`
+      productUrl: `http://localhost:5173/product/${review.product?.id}`
     }));
 
     res.status(200).json(formattedReviews);
@@ -1068,5 +1126,331 @@ exports.deleteReview = async (req, res) => {
   } catch (error) {
     console.error('Error deleting review:', error);
     res.status(500).json({ message: 'Failed to delete review' });
+  }
+};
+
+// Analytics Functions
+exports.getMonthlySales = async (req, res) => {
+  try {
+    // Get sales data for the last 12 months
+    const { data, error } = await supabase
+      .from('orders')
+      .select('total, created_at')
+      .eq('status', 'delivered') // Only count completed orders
+      .gte('created_at', new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString())
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    // Group by month
+    const monthlyData = {};
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    data.forEach(order => {
+      const date = new Date(order.created_at);
+      const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+      const monthName = monthNames[date.getMonth()];
+
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = { name: monthName, sales: 0 };
+      }
+      monthlyData[monthKey].sales += parseFloat(order.total);
+    });
+
+    // Convert to array and sort by date
+    const result = Object.values(monthlyData).sort((a, b) => {
+      const monthA = monthNames.indexOf(a.name);
+      const monthB = monthNames.indexOf(b.name);
+      return monthA - monthB;
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error fetching monthly sales:', error);
+    res.status(500).json({ message: 'Failed to fetch monthly sales data' });
+  }
+};
+
+exports.getOrdersTrend = async (req, res) => {
+  try {
+    // Get orders count for the last 30 days
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select('created_at')
+      .gte('created_at', thirtyDaysAgo)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    // Group by day
+    const dailyData = {};
+    data.forEach(order => {
+      const date = new Date(order.created_at);
+      const dayKey = date.getDate().toString().padStart(2, '0');
+
+      if (!dailyData[dayKey]) {
+        dailyData[dayKey] = { date: dayKey, orders: 0 };
+      }
+      dailyData[dayKey].orders += 1;
+    });
+
+    // Convert to array and sort by date
+    const result = Object.values(dailyData).sort((a, b) => parseInt(a.date) - parseInt(b.date));
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error fetching orders trend:', error);
+    res.status(500).json({ message: 'Failed to fetch orders trend data' });
+  }
+};
+
+exports.getTopSellingProducts = async (req, res) => {
+  try {
+    // Get all order items to properly aggregate sales by product
+    const { data, error } = await supabase
+      .from('order_items')
+      .select(`
+        product_id,
+        product_name,
+        product_category,
+        price,
+        quantity,
+        product_image,
+        products!inner(sku)
+      `);
+
+    if (error) throw error;
+
+    // Aggregate sales by product
+    const productSales = {};
+    data.forEach(item => {
+      const productId = item.product_id;
+      if (!productSales[productId]) {
+        productSales[productId] = {
+          id: productId,
+          name: item.product_name,
+          category: item.product_category,
+          price: parseFloat(item.price),
+          sales: 0,
+          image: item.product_image || 'https://via.placeholder.com/150',
+          sku: item.products?.sku || 'N/A'
+        };
+      }
+      productSales[productId].sales += item.quantity;
+    });
+
+    // Convert to array and sort by total sales (descending)
+    const result = Object.values(productSales)
+      .sort((a, b) => b.sales - a.sales)
+      .slice(0, 10); // Top 10 products by total quantity sold
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error fetching top selling products:', error);
+    res.status(500).json({ message: 'Failed to fetch top selling products' });
+  }
+};
+
+exports.getSalesByCategory = async (req, res) => {
+  try {
+    // Get sales by category from order items
+    const { data, error } = await supabase
+      .from('order_items')
+      .select('product_category, quantity, price')
+      .order('product_category');
+
+    if (error) throw error;
+
+    // Aggregate sales by category
+    const categorySales = {};
+    data.forEach(item => {
+      const category = item.product_category;
+      if (!categorySales[category]) {
+        categorySales[category] = { name: category, value: 0 };
+      }
+      categorySales[category].value += item.quantity;
+    });
+
+    // Add colors and convert to array
+    const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F'];
+    const result = Object.values(categorySales).map((category, index) => ({
+      ...category,
+      color: colors[index % colors.length]
+    }));
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error fetching sales by category:', error);
+    res.status(500).json({ message: 'Failed to fetch sales by category data' });
+  }
+};
+
+// Dashboard Statistics
+exports.getDashboardStats = async (req, res) => {
+  try {
+    // Get all statistics in parallel
+    const [
+      { count: totalCustomers },
+      { count: totalProducts },
+      { count: totalOrders },
+      { count: pendingOrders },
+      { count: cancelledOrders },
+      { count: totalSuppliers },
+      revenueResult,
+      monthlyRevenueResult,
+      { count: activePromotions },
+      { count: expiredPromotions }
+    ] = await Promise.all([
+      // Total customers (only users with role 'customer')
+      supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'customer'),
+      
+      // Total products
+      supabase.from('products').select('*', { count: 'exact', head: true }),
+      
+      // Total orders
+      supabase.from('orders').select('*', { count: 'exact', head: true }),
+      
+      // Pending orders
+      supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+      
+      // Cancelled orders
+      supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'cancelled'),
+      
+      // Total suppliers
+      supabase.from('suppliers').select('*', { count: 'exact', head: true }),
+      
+      // Total revenue (from placed orders)
+      supabase.from('orders').select('total, created_at').eq('status', 'placed'),
+      
+      // Monthly revenue (current month) - only placed orders
+      supabase.from('orders').select('total, created_at').eq('status', 'placed'),
+      
+      // Active promotions (is_active = true and end_date >= today)
+      supabase.from('promotions').select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .gte('end_date', new Date().toISOString().split('T')[0]),
+      
+      // Expired promotions (end_date < today)
+      supabase.from('promotions').select('*', { count: 'exact', head: true })
+        .lt('end_date', new Date().toISOString().split('T')[0])
+    ]);
+
+    // Calculate total revenue
+    const totalRevenue = revenueResult.data?.reduce((sum, order) => sum + parseFloat(order.total), 0) || 0;
+    
+    // Calculate monthly revenue (filter in JavaScript for current month only - status already filtered in query)
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const monthlyRevenue = monthlyRevenueResult.data
+      ?.filter(order => {
+        const orderDate = new Date(order.created_at);
+        return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
+      })
+      ?.reduce((sum, order) => sum + parseFloat(order.total), 0) || 0;
+
+    // Calculate trends (comparing with previous month)
+    const lastMonth = new Date().getMonth() - 1;
+    const lastMonthYear = lastMonth < 0 ? new Date().getFullYear() - 1 : new Date().getFullYear();
+    const adjustedLastMonth = lastMonth < 0 ? 11 : lastMonth;
+    
+    const lastMonthRevenue = monthlyRevenueResult.data
+      ?.filter(order => {
+        const orderDate = new Date(order.created_at);
+        return orderDate.getMonth() === adjustedLastMonth && orderDate.getFullYear() === lastMonthYear;
+      })
+      ?.reduce((sum, order) => sum + parseFloat(order.total), 0) || 0;
+    
+    // Calculate revenue trend percentage
+    const revenueTrend = lastMonthRevenue > 0 ? ((monthlyRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(1) : '0.0';
+
+    const stats = [
+      {
+        id: 1,
+        title: 'Total Customers',
+        value: totalCustomers.toLocaleString(),
+        icon: 'FaUsers',
+        color: 'bg-blue-500',
+        trend: '+12%', // This would need historical data to calculate properly
+      },
+      {
+        id: 2,
+        title: 'Total Products',
+        value: totalProducts.toLocaleString(),
+        icon: 'FaBoxOpen',
+        color: 'bg-indigo-500',
+        trend: '+5%',
+      },
+      {
+        id: 3,
+        title: 'Total Orders',
+        value: totalOrders.toLocaleString(),
+        icon: 'FaShoppingCart',
+        color: 'bg-green-500',
+        trend: '+8%',
+      },
+      {
+        id: 4,
+        title: 'Pending Orders',
+        value: pendingOrders.toString(),
+        icon: 'FaClock',
+        color: 'bg-yellow-500',
+        trend: '-2%',
+      },
+      {
+        id: 5,
+        title: 'Cancelled Orders',
+        value: cancelledOrders.toString(),
+        icon: 'FaTimesCircle',
+        color: 'bg-red-500',
+        trend: '-1%',
+      },
+      {
+        id: 6,
+        title: 'Total Revenue',
+        value: `Rs. ${totalRevenue.toLocaleString()}`,
+        icon: 'FaWallet',
+        color: 'bg-purple-500',
+        trend: `${revenueTrend.startsWith('-') ? '' : '+'}${revenueTrend}%`,
+      },
+      {
+        id: 7,
+        title: 'Monthly Sales',
+        value: `Rs. ${monthlyRevenue.toLocaleString()}`,
+        icon: 'FaMoneyBillWave',
+        color: 'bg-teal-500',
+        trend: `${revenueTrend.startsWith('-') ? '' : '+'}${revenueTrend}%`,
+      },
+      {
+        id: 8,
+        title: 'Total Suppliers',
+        value: totalSuppliers.toString(),
+        icon: 'FaTruck',
+        color: 'bg-orange-500',
+        trend: '+2%',
+      },
+      {
+        id: 9,
+        title: 'Active Promotions',
+        value: activePromotions.toString(),
+        icon: 'FaTags',
+        color: 'bg-pink-500',
+        trend: '+2%', // This would need historical data to calculate properly
+      },
+      {
+        id: 10,
+        title: 'Expired Promotions',
+        value: expiredPromotions.toString(),
+        icon: 'FaCalendarTimes',
+        color: 'bg-gray-500',
+        trend: '+5%', // This would need historical data to calculate properly
+      },
+    ];
+
+    res.status(200).json(stats);
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    res.status(500).json({ message: 'Failed to fetch dashboard statistics' });
   }
 };

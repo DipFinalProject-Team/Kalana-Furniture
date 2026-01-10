@@ -7,8 +7,6 @@ const upload = require('../middleware/upload');
 // Supplier authentication routes
 router.post('/register', supplierController.register);
 router.post('/login', supplierController.login);
-router.post('/forgot-password', supplierController.forgotPassword);
-router.post('/reset-password', supplierController.resetPassword);
 router.post('/logout', supplierController.logout);
 router.delete('/account', authenticateSupplier, supplierController.deleteAccount);
 router.get('/verify', supplierController.verifyToken);
