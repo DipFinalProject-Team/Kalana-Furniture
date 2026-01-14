@@ -98,8 +98,13 @@ const Cart = () => {
                     <div className="mt-2">
                       {item.discountPrice ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-gray-400 line-through text-sm">Rs.{item.price.toFixed(2)}</span>
-                          <span className="text-lg font-semibold text-red-400">Rs.{item.discountPrice.toFixed(2)}</span>
+                          <span className="text-gray-500 line-through text-sm">Rs.{item.price.toFixed(2)}</span>
+                          <span className="text-red-400 font-bold text-lg">Rs.{item.discountPrice.toFixed(2)}</span>
+                          {item.discountPercentage && (
+                            <span className="bg-red-100 text-red-400 px-2 py-1 rounded-full text-xs font-medium">
+                              -{item.discountPercentage}%
+                            </span>
+                          )}
                         </div>
                       ) : (
                         <p className="text-lg font-semibold text-wood-accent">Rs.{item.price.toFixed(2)}</p>

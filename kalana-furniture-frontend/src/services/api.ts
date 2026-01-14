@@ -174,41 +174,6 @@ export const productService = {
   }
 };
 
-// Category Service
-export interface Category {
-  id: number;
-  name: string;
-  image: string;
-  description?: string;
-}
-
-export const categoryService = {
-  getAll: async (): Promise<Category[]> => {
-    const response = await api.get('/categories');
-    return response.data;
-  },
-
-  getById: async (id: number): Promise<Category> => {
-    const response = await api.get(`/categories/${id}`);
-    return response.data;
-  },
-
-  create: async (categoryData: Omit<Category, 'id'>): Promise<{ success: boolean; message: string; category: Category }> => {
-    const response = await api.post('/categories', categoryData);
-    return response.data;
-  },
-
-  update: async (id: number, categoryData: Partial<Category>): Promise<{ success: boolean; message: string; category: Category }> => {
-    const response = await api.put(`/categories/${id}`, categoryData);
-    return response.data;
-  },
-
-  delete: async (id: number): Promise<{ success: boolean; message: string }> => {
-    const response = await api.delete(`/categories/${id}`);
-    return response.data;
-  }
-};
-
 // Review Service
 export interface Review {
   id: number;
@@ -321,15 +286,27 @@ export interface DeliveryDetails {
 export interface Order {
   id?: number;
   customer_id?: string;
-  items: OrderItem[];
+  product_id?: number;
+  quantity: number;
   total: number;
   status?: string;
-  deliveryDetails?: DeliveryDetails;
+  delivery_name?: string;
+  delivery_address?: string;
+  delivery_phone?: string;
+  delivery_email?: string;
   created_at?: string;
+  customer?: {
+    name: string;
+    email: string;
+  };
+  product?: {
+    productName: string;
+    images: string[];
+  };
 }
 
 export const orderService = {
-  create: async (orderData: { items: OrderItem[], total: number, deliveryDetails: DeliveryDetails }): Promise<{ message: string; order: Order }> => {
+  create: async (orderData: { product_id: number, quantity: number, total: number, deliveryDetails: DeliveryDetails }): Promise<{ message: string; order: Order }> => {
     const response = await api.post('/orders', orderData);
     return response.data;
   },

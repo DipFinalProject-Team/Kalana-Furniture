@@ -9,6 +9,7 @@ export interface CartItem {
   image: string;
   price: number;
   discountPrice?: number;
+  discountPercentage?: number;
   quantity: number;
   stock: number;
   category: string;

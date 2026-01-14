@@ -15,8 +15,8 @@ exports.getCart = async (req, res) => {
       .gte('end_date', currentDate);
 
     if (promoError) {
-      console.error('Promotions Error:', promoError);
-      // Continue without promotions if error
+      console.error('Promotions fetch error:', promoError);
+      // Continue without promotions if there's an error
     }
 
     const { data, error } = await supabase
@@ -30,7 +30,6 @@ exports.getCart = async (req, res) => {
           id,
           productName,
           price,
-          discountPrice,
           images,
           stock,
           category,
@@ -45,9 +44,9 @@ exports.getCart = async (req, res) => {
       throw error;
     }
 
-    // Function to apply promotions to a product
+    // Apply promotions to products
     const applyPromotionsToProduct = (product, promotionsList) => {
-      let bestDiscountPrice = product.discountPrice || product.price;
+      let bestDiscountPrice = product.price;
       let bestDiscountPercentage = 0;
 
       if (promotionsList) {
@@ -85,7 +84,7 @@ exports.getCart = async (req, res) => {
       if (bestDiscountPrice < product.price) {
         return {
           ...product,
-          discountPrice: Math.round(bestDiscountPrice),
+          discountPrice: Math.round(bestDiscountPrice * 100) / 100, // Round to 2 decimal places
           discountPercentage: bestDiscountPercentage
         };
       }
@@ -102,6 +101,7 @@ exports.getCart = async (req, res) => {
         name: productWithDiscount.productName,
         price: productWithDiscount.price,
         discountPrice: productWithDiscount.discountPrice,
+        discountPercentage: productWithDiscount.discountPercentage,
         image: productWithDiscount.images[0],
         quantity: item.quantity,
         stock: productWithDiscount.stock,

@@ -858,19 +858,14 @@ exports.getAllCustomers = async (req, res) => {
           .eq('customer_id', customer.id);
 
         // Get total spent
-        const { data: orderItems, error: orderItemsError } = await supabase
-          .from('order_items')
-          .select('price, quantity')
-          .eq('order_id', (
-            await supabase
-              .from('orders')
-              .select('id')
-              .eq('customer_id', customer.id)
-          ).data?.map(order => order.id) || []);
+        const { data: orders, error: ordersError } = await supabase
+          .from('orders')
+          .select('total')
+          .eq('customer_id', customer.id);
 
         let totalSpent = 0;
-        if (orderItems && orderItems.length > 0) {
-          totalSpent = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        if (orders && orders.length > 0) {
+          totalSpent = orders.reduce((sum, order) => sum + order.total, 0);
         }
 
         return {
@@ -975,22 +970,14 @@ exports.getCustomerDetails = async (req, res) => {
       .from('orders')
       .select(`
         *,
-        order_items (
-          quantity,
-          price,
-          products (productName)
-        )
+        product:products(productName)
       `)
       .eq('customer_id', id)
       .order('created_at', { ascending: false });
 
     // Calculate statistics
     const totalOrders = orders?.length || 0;
-    const totalSpent = orders?.reduce((sum, order) => {
-      const orderTotal = order.order_items?.reduce((itemSum, item) =>
-        itemSum + (item.price * item.quantity), 0) || 0;
-      return sum + orderTotal;
-    }, 0) || 0;
+    const totalSpent = orders?.reduce((sum, order) => sum + order.total, 0) || 0;
 
     const customerDetails = {
       id: customer.id,

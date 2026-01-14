@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaSearch, FaFilter, FaEye, FaTrash, FaCheckCircle, FaClock, FaBoxOpen, FaChevronDown, FaTimesCircle } from 'react-icons/fa';
-import { ordersList } from '../data/mockData';
+import { orderService, Order } from '../services/api';
 import ConfirmationModal from '../components/ConfirmationModal';
 import Toast from '../components/Toast';
 
@@ -10,20 +10,29 @@ interface OrderItem {
   price: number;
 }
 
-interface Order {
-  id: string;
-  customerName: string;
-  orderDate: string;
-  totalAmount: number;
-  paymentStatus: string;
-  status: string;
-  items: OrderItem[];
-}
-
 const OrderManagement: React.FC = () => {
-  const [orders, setOrders] = useState<Order[]>(ordersList);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('Pending');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const ordersData = await orderService.getAll();
+      setOrders(ordersData);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      showToast('Failed to load orders', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+  const [filterStatus, setFilterStatus] = useState<string>('all');
   
   // View Details Modal State
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -53,17 +62,25 @@ const OrderManagement: React.FC = () => {
     setIsDetailsModalOpen(true);
   };
 
-  const handleStatusChange = (id: string, newStatus: string) => {
-    setOrders(orders.map(order => 
-      order.id === id ? { ...order, status: newStatus } : order
-    ));
-    
-    // Update selected order if open in details modal
-    if (selectedOrder && selectedOrder.id === id) {
-      setSelectedOrder({ ...selectedOrder, status: newStatus });
-    }
+  const handleStatusChange = async (id: number, newStatus: string) => {
+    try {
+      await orderService.updateStatus(id, newStatus);
 
-    showToast(`Order ${id} status updated to ${newStatus}`, 'success');
+      // Update local state
+      setOrders(orders.map(order =>
+        order.id === id ? { ...order, status: newStatus } : order
+      ));
+
+      // Update selected order if open in details modal
+      if (selectedOrder && selectedOrder.id === id) {
+        setSelectedOrder({ ...selectedOrder, status: newStatus });
+      }
+
+      showToast(`Order ${id} status updated to ${newStatus}`, 'success');
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      showToast('Failed to update order status', 'error');
+    }
   };
 
   const handlePlaceOrderClick = (order: Order) => {
@@ -95,29 +112,12 @@ const OrderManagement: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Placed': return 'bg-green-100 text-green-700';
-      case 'Pending': return 'bg-yellow-100 text-yellow-700';
-      case 'Cancelled': return 'bg-red-100 text-red-700';
-      default: return 'bg-gray-100 text-gray-700';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Placed': return <FaCheckCircle />;
-      case 'Pending': return <FaClock />;
-      case 'Cancelled': return <FaTimesCircle />;
-      default: return <FaBoxOpen />;
-    }
-  };
-
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
-      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerName.toLowerCase().includes(searchTerm.toLowerCase());
-    
+    const matchesSearch =
+      order.id.toString().includes(searchTerm.toLowerCase()) ||
+      order.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.customer?.email?.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
 
     return matchesSearch && matchesStatus;
@@ -201,36 +201,52 @@ const OrderManagement: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="p-4 font-mono font-medium text-gray-800">{order.id}</td>
-                  <td className="p-4 text-gray-800 font-medium">{order.customerName}</td>
-                  <td className="p-4 text-gray-600 text-sm">{order.orderDate}</td>
-                  <td className="p-4 font-bold text-gray-800">Rs. {order.totalAmount.toFixed(2)}</td>
-                  <td className="p-4">
-                    <button
-                      onClick={() => {
-                        if (order.status === 'Pending') {
-                            handlePlaceOrderClick(order);
-                        }
-                      }}
-                      disabled={order.status === 'Placed' || order.status === 'Cancelled'}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 border ${
-                        order.status === 'Placed' ? 'bg-green-50 text-green-700 border-green-200 cursor-default' :
-                        order.status === 'Cancelled' ? 'bg-red-50 text-red-700 border-red-200 cursor-default' :
-                        'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100 hover:shadow-md cursor-pointer'
-                      }`}
-                    >
-                      {getStatusIcon(order.status)}
-                      <span>{order.status}</span>
-                      {order.status === 'Pending' && (
-                        <FaChevronDown className="ml-1" size={10} />
-                      )}
-                    </button>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-gray-500">
+                    Loading orders...
                   </td>
-                  <td className="p-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
+                </tr>
+              ) : filteredOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-gray-500">
+                    No orders found
+                  </td>
+                </tr>
+              ) : (
+                filteredOrders.map((order) => (
+                  <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-4 font-mono font-medium text-gray-800">#{order.id}</td>
+                    <td className="p-4 text-gray-800 font-medium">
+                      {order.customer?.name || 'N/A'}
+                      <div className="text-sm text-gray-500">{order.customer?.email}</div>
+                    </td>
+                    <td className="p-4 text-gray-600 text-sm">
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="p-4 font-bold text-gray-800">Rs. {order.total.toFixed(2)}</td>
+                    <td className="p-4">
+                      <select
+                        value={order.status}
+                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 ${
+                          order.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                          order.status === 'processing' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                          order.status === 'shipped' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                          order.status === 'delivered' ? 'bg-green-50 text-green-700 border-green-200' :
+                          'bg-red-50 text-red-700 border-red-200'
+                        }`}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="processing">Processing</option>
+                        <option value="shipped">Shipped</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
                         onClick={() => handleViewDetails(order)}
                         className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
                         title="View Details"
@@ -276,58 +292,61 @@ const OrderManagement: React.FC = () => {
               <div className="grid grid-cols-2 gap-6 mb-6">
                 <div>
                   <h3 className="text-sm font-bold text-gray-500 uppercase mb-2">Customer Info</h3>
-                  <p className="font-bold text-gray-800">{selectedOrder.customerName}</p>
-                  <p className="text-gray-600 text-sm">{selectedOrder.orderDate}</p>
+                  <p className="font-bold text-gray-800">{selectedOrder.customer?.name || 'N/A'}</p>
+                  <p className="text-gray-600 text-sm">{selectedOrder.customer?.email || 'N/A'}</p>
+                  <p className="text-gray-600 text-sm">{new Date(selectedOrder.created_at).toLocaleDateString()}</p>
                 </div>
-                <div className="text-right">
-                  <h3 className="text-sm font-bold text-gray-500 uppercase mb-2">Order Status</h3>
-                  <div className="relative inline-block text-left">
-                    <select
-                      value={selectedOrder.status}
-                      disabled={selectedOrder.status === 'Placed' || selectedOrder.status === 'Cancelled'}
-                      onChange={(e) => {
-                        handleStatusChange(selectedOrder.id, e.target.value);
-                        setSelectedOrder({ ...selectedOrder, status: e.target.value });
-                      }}
-                      className={`appearance-none pl-8 pr-8 py-1 rounded-full text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-wood-brown ${getStatusColor(selectedOrder.status)} ${
-                        selectedOrder.status === 'Placed' || selectedOrder.status === 'Cancelled' ? 'cursor-default opacity-100' : 'cursor-pointer'
-                      }`}
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="Placed">Placed</option>
-                    </select>
-                    <div className={`absolute left-2.5 top-1/2 transform -translate-y-1/2 pointer-events-none ${
-                      selectedOrder.status === 'Placed' ? 'text-green-700' :
-                      selectedOrder.status === 'Pending' ? 'text-yellow-700' :
-                      'text-red-700'
-                    }`}>
-                      {getStatusIcon(selectedOrder.status)}
-                    </div>
-                  </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-500 uppercase mb-2">Delivery Info</h3>
+                  <p className="font-bold text-gray-800">{selectedOrder.delivery_name}</p>
+                  <p className="text-gray-600 text-sm">{selectedOrder.delivery_address}</p>
+                  <p className="text-gray-600 text-sm">{selectedOrder.delivery_phone}</p>
+                  <p className="text-gray-600 text-sm">{selectedOrder.delivery_email}</p>
                 </div>
               </div>
 
+              <div className="mb-6">
+                <h3 className="text-sm font-bold text-gray-500 uppercase mb-2">Order Status</h3>
+                <select
+                  value={selectedOrder.status}
+                  onChange={(e) => handleStatusChange(selectedOrder.id, e.target.value)}
+                  className={`px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-wood-brown ${
+                    selectedOrder.status === 'pending' ? 'bg-yellow-50 border-yellow-200' :
+                    selectedOrder.status === 'processing' ? 'bg-blue-50 border-blue-200' :
+                    selectedOrder.status === 'shipped' ? 'bg-purple-50 border-purple-200' :
+                    selectedOrder.status === 'delivered' ? 'bg-green-50 border-green-200' :
+                    'bg-red-50 border-red-200'
+                  }`}
+                >
+                  <option value="pending">Pending</option>
+                  <option value="processing">Processing</option>
+                  <option value="shipped">Shipped</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                <h3 className="text-sm font-bold text-gray-500 uppercase mb-3">Order Items</h3>
-                <div className="space-y-3">
-                  {selectedOrder.items.map((item, index) => (
-                    <div key={index} className="flex justify-between items-center border-b border-gray-200 last:border-0 pb-2 last:pb-0">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-white rounded flex items-center justify-center text-wood-brown border border-gray-200">
-                          <FaBoxOpen />
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-800">{item.name}</p>
-                          <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
-                        </div>
-                      </div>
-                      <p className="font-medium text-gray-800">Rs. {item.price.toFixed(2)}</p>
+                <h3 className="text-sm font-bold text-gray-500 uppercase mb-3">Order Item</h3>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={selectedOrder.product?.images?.[0] || '/placeholder-image.jpg'}
+                      alt={selectedOrder.product?.productName || 'Product'}
+                      className="w-12 h-12 rounded-lg object-cover border border-gray-200"
+                    />
+                    <div>
+                      <p className="font-medium text-gray-800">{selectedOrder.product?.productName || 'N/A'}</p>
+                      <p className="text-xs text-gray-500">Qty: {selectedOrder.quantity}</p>
                     </div>
-                  ))}
+                  </div>
+                  <p className="font-medium text-gray-800">Rs. {(selectedOrder.total / selectedOrder.quantity).toFixed(2)} each</p>
+                </div>
+              </div>
                 </div>
                 <div className="mt-4 pt-3 border-t border-gray-200 flex justify-between items-center">
                   <p className="font-bold text-gray-800">Total Amount</p>
-                  <p className="text-xl font-bold text-wood-brown">Rs. {selectedOrder.totalAmount.toFixed(2)}</p>
+                  <p className="text-xl font-bold text-wood-brown">Rs. {selectedOrder.total.toFixed(2)}</p>
                 </div>
               </div>
 

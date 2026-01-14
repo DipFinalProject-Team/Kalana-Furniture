@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Header from '../components/Header';
-import { productService, categoryService, promotionService } from '../services/api';
+import { productService, promotionService } from '../services/api';
 import type { Product, Promotion } from '../services/api';
 
 const ProductsPage = () => {
@@ -74,15 +74,13 @@ const ProductsPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('Fetching products, categories, and promotions...');
-        const [productsData, categoriesData, promotionsData] = await Promise.all([
+        console.log('Fetching products and promotions...');
+        const [productsData, promotionsData] = await Promise.all([
           productService.getAll(),
-          categoryService.getAll(),
           promotionService.getActive()
         ]);
         
         console.log('Products data:', productsData);
-        console.log('Categories data:', categoriesData);
         console.log('Promotions data:', promotionsData);
         
         // Apply promotions to products
@@ -93,8 +91,8 @@ const ProductsPage = () => {
         setAllProducts(productsWithPromotions);
         setProducts(productsWithPromotions);
         
-        // Set categories from backend
-        const categoryNames = ['All', ...categoriesData.map(cat => cat.name)];
+        // Set hardcoded categories
+        const categoryNames = ['All', 'Living Room', 'Bedroom', 'Dining', 'Office'];
         setCategories(categoryNames);
         console.log('Categories set:', categoryNames);
       } catch (error) {

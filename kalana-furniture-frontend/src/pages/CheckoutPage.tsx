@@ -7,7 +7,7 @@ import SnowAnimation from '../components/SnowAnimation'; // Reusing the snow ani
 import Toast from '../components/Toast';
 import { useAuth } from '../hooks/useAuth';
 import AuthRequiredMessage from '../components/AuthRequiredMessage';
-import { orderService } from '../services/api';
+import { orderService, productService, type Product } from '../services/api';
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -16,6 +16,11 @@ const CheckoutPage = () => {
   const { cartItems, clearCart, appliedDiscount, promoCode, applyPromoCode, removePromoCode, promoMessage } = useCart();
 
   const isBuyNow = searchParams.get('buyNow') === 'true';
+  const buyNowProductId = searchParams.get('productId');
+  const buyNowQuantity = parseInt(searchParams.get('quantity') || '1');
+
+  const [buyNowProduct, setBuyNowProduct] = useState<Product | null>(null);
+  const [buyNowLoading, setBuyNowLoading] = useState(false);
 
   const [deliveryDetails, setDeliveryDetails] = useState({
     name: '',
@@ -40,6 +45,25 @@ const CheckoutPage = () => {
     }
   }, [user]);
 
+  // Fetch buy now product details
+  useEffect(() => {
+    if (isBuyNow && buyNowProductId) {
+      const fetchBuyNowProduct = async () => {
+        setBuyNowLoading(true);
+        try {
+          const product = await productService.getById(buyNowProductId);
+          setBuyNowProduct(product);
+        } catch (error) {
+          console.error('Error fetching buy now product:', error);
+          setToast({ type: 'error', message: 'Failed to load product details. Please try again.' });
+        } finally {
+          setBuyNowLoading(false);
+        }
+      };
+      fetchBuyNowProduct();
+    }
+  }, [isBuyNow, buyNowProductId]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setDeliveryDetails(prev => ({ ...prev, [name]: value }));
@@ -54,7 +78,12 @@ const CheckoutPage = () => {
     setLocalPromoCode('');
   };
 
-  const subtotal = cartItems.reduce((acc: number, item) => acc + (item.discountPrice || item.price) * item.quantity, 0);
+  const subtotal = isBuyNow && buyNowProduct 
+    ? (buyNowProduct.discountPrice || buyNowProduct.price) * buyNowQuantity 
+    : cartItems.reduce((acc: number, item) => {
+        const price = item.discountPrice || item.price;
+        return acc + price * item.quantity;
+      }, 0);
   const shippingFee = 0; // No shipping fees
   const total = subtotal + shippingFee - appliedDiscount;
 
@@ -65,31 +94,39 @@ const CheckoutPage = () => {
     }
 
     try {
-      // Prepare order data
-      const orderData = {
-        customer_id: user.id,
-        items: cartItems.map(item => ({
-          product_id: item.product_id,
-          product_name: item.name,
-          product_category: item.category,
-          product_sku: item.sku,
-          image: item.image, // Include product image
-          quantity: item.quantity,
-          price: item.price // Use the price from cart (which includes discounts)
-        })),
-        total: total,
-        deliveryDetails: deliveryDetails,
-        promoCode: promoCode || null // Include promo code if applied
-      };
+      if (isBuyNow && buyNowProduct) {
+        // Handle buy now order
+        const orderData = {
+          customer_id: user.id,
+          product_id: parseInt(buyNowProductId!),
+          quantity: buyNowQuantity,
+          total: (buyNowProduct.discountPrice || buyNowProduct.price) * buyNowQuantity,
+          deliveryDetails: deliveryDetails,
+          promoCode: promoCode || null // Include promo code if applied
+        };
 
-      // Create order via API
-      const response = await orderService.create(orderData);
+        await orderService.create(orderData);
+        setToast({ type: 'success', message: 'Your order has been placed successfully!' });
+      } else {
+        // Handle cart checkout
+        const orderPromises = cartItems.map(async (item) => {
+          const orderData = {
+            customer_id: user.id,
+            product_id: item.product_id,
+            quantity: item.quantity,
+            total: (item.discountPrice || item.price) * item.quantity,
+            deliveryDetails: deliveryDetails,
+            promoCode: promoCode || null // Include promo code if applied
+          };
 
-      // Show success message
-      setToast({ type: 'success', message: response.message || 'Your order has been placed successfully!' });
+          return orderService.create(orderData);
+        });
 
-      // Clear cart (this will be handled by the backend, but also clear locally)
-      clearCart();
+        // Wait for all orders to be created
+        await Promise.all(orderPromises);
+        setToast({ type: 'success', message: 'Your orders have been placed successfully!' });
+        clearCart();
+      }
 
       // Navigate to home after showing the toast
       setTimeout(() => {
@@ -118,7 +155,7 @@ const CheckoutPage = () => {
   return (
     <>
       <Header />
-      {isLoading ? (
+      {isLoading || buyNowLoading ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
           <div className="text-center">
             <div className="relative mb-8">
@@ -236,24 +273,53 @@ const CheckoutPage = () => {
               <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 shadow-lg sticky top-32">
                 <h2 className="text-2xl font-bold text-white mb-6 text-center">Order Summary</h2>
                 <div className="space-y-4">
-                  {cartItems.map(item => (
-                    <div key={item.id} className="flex justify-between items-center text-wood-light">
+                  {isBuyNow && buyNowProduct ? (
+                    <div className="flex justify-between items-center text-wood-light">
                       <div className="flex items-center">
-                        <img src={item.image} alt={item.name} className="w-12 h-12 rounded-lg mr-4 object-cover"/>
+                        <img src={buyNowProduct.images[0]} alt={buyNowProduct.productName} className="w-12 h-12 rounded-lg mr-4 object-cover"/>
                         <div>
-                            <p className="text-white font-semibold">{item.name}</p>
-                            <p className="text-sm">Qty: {item.quantity}</p>
+                            <p className="text-white font-semibold">{buyNowProduct.productName}</p>
+                            <p className="text-sm">Qty: {buyNowQuantity}</p>
                         </div>
                       </div>
-                      <p className="text-white font-semibold">
-                        {item.discountPrice ? (
-                          <span className="text-red-400">Rs.{(item.discountPrice * item.quantity).toFixed(2)}</span>
+                      <div className="text-right">
+                        {buyNowProduct.discountPrice ? (
+                          <div className="flex flex-col items-end">
+                            <span className="text-gray-400 line-through text-sm">Rs.{(buyNowProduct.price * buyNowQuantity).toFixed(2)}</span>
+                            <span className="text-red-400 font-bold">Rs.{(buyNowProduct.discountPrice * buyNowQuantity).toFixed(2)}</span>
+                          </div>
                         ) : (
-                          <span>Rs.{(item.price * item.quantity).toFixed(2)}</span>
+                          <p className="text-white font-semibold">
+                            Rs.{(buyNowProduct.price * buyNowQuantity).toFixed(2)}
+                          </p>
                         )}
-                      </p>
+                      </div>
                     </div>
-                  ))}
+                  ) : (
+                    cartItems.map(item => (
+                      <div key={item.id} className="flex justify-between items-center text-wood-light">
+                        <div className="flex items-center">
+                          <img src={item.image} alt={item.name} className="w-12 h-12 rounded-lg mr-4 object-cover"/>
+                          <div>
+                              <p className="text-white font-semibold">{item.name}</p>
+                              <p className="text-sm">Qty: {item.quantity}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          {item.discountPrice ? (
+                            <div className="flex flex-col items-end">
+                              <span className="text-gray-400 line-through text-sm">Rs.{(item.price * item.quantity).toFixed(2)}</span>
+                              <span className="text-red-400 font-bold">Rs.{(item.discountPrice * item.quantity).toFixed(2)}</span>
+                            </div>
+                          ) : (
+                            <p className="text-white font-semibold">
+                              Rs.{(item.price * item.quantity).toFixed(2)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
                 <hr className="border-white/20 my-6"/>
 
@@ -314,10 +380,10 @@ const CheckoutPage = () => {
                 </div>
                 <button 
                   onClick={handleConfirmOrder}
-                  disabled={cartItems.length === 0}
+                  disabled={(isBuyNow && !buyNowProduct) || (!isBuyNow && cartItems.length === 0) || buyNowLoading}
                   className="w-full mt-8 bg-wood-accent text-white font-bold py-3 rounded-lg hover:bg-wood-accent-hover transform hover:scale-105 transition-all duration-300 shadow-lg disabled:bg-gray-500 disabled:cursor-not-allowed"
                 >
-                  Confirm Order
+                  {buyNowLoading ? 'Loading...' : 'Confirm Order'}
                 </button>
               </div>
             </div>

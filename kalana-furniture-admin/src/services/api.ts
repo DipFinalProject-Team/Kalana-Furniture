@@ -417,7 +417,39 @@ export interface Customer {
   totalSpent: number;
   status: string;
   avatar: string;
+export interface Order {
+  id: number;
+  customer_id: string;
+  product_id: number;
+  quantity: number;
+  total: number;
+  status: string;
+  delivery_name: string;
+  delivery_address: string;
+  delivery_phone: string;
+  delivery_email: string;
+  created_at: string;
+  customer?: {
+    name: string;
+    email: string;
+  };
+  product?: {
+    productName: string;
+    images: string[];
+  };
 }
+
+export const orderService = {
+  getAll: async (): Promise<Order[]> => {
+    const response = await api.get('/admin/orders');
+    return response.data;
+  },
+
+  updateStatus: async (id: number, status: string): Promise<Order> => {
+    const response = await api.put(`/admin/orders/${id}/status`, { status });
+    return response.data;
+  }
+};
 
 export const customerService = {
   getAll: async (): Promise<Customer[]> => {

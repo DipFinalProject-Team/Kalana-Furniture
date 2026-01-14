@@ -16,7 +16,6 @@ import ProductDetailsPage from './pages/ProductDetailsPage';
 import OffersPage from './pages/OffersPage';
 import ReviewPage from './pages/ReviewPage';
 import CheckoutPage from './pages/CheckoutPage';
-
 function App() {
   const navigate = useNavigate();
 

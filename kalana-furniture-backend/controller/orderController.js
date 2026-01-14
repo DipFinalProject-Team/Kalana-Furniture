@@ -6,8 +6,8 @@ exports.getAllOrders = async (req, res) => {
       .from('orders')
       .select(`
         *,
-        items:order_items(*),
-        customer:users(name, email)
+        customer:users(name, email),
+        product:products(productName, images)
       `)
       .order('created_at', { ascending: false });
 
@@ -29,7 +29,7 @@ exports.getUserOrders = async (req, res) => {
       .from('orders')
       .select(`
         *,
-        items:order_items(*)
+        product:products(productName, images)
       `)
       .eq('customer_id', userId)
       .order('created_at', { ascending: false });
@@ -48,8 +48,8 @@ exports.getOrderById = async (req, res) => {
       .from('orders')
       .select(`
         *,
-        items:order_items(*),
-        customer:users(name, email)
+        customer:users(name, email),
+        product:products(productName, images)
       `)
       .eq('id', id)
       .single();
@@ -65,31 +65,47 @@ exports.getOrderById = async (req, res) => {
 
 exports.createOrder = async (req, res) => {
   try {
-    const { 
-      customer_id, 
-      items, 
-      total, 
+    const {
+      customer_id,
+      product_id,
+      quantity,
+      total,
       status,
       deliveryDetails,
       promoCode
     } = req.body;
-    
+
     // Validate required fields
-    if (!customer_id || !items || !total || !deliveryDetails) {
+    if (!customer_id || !product_id || !quantity || !total || !deliveryDetails) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     if (!deliveryDetails.name || !deliveryDetails.address || !deliveryDetails.phone || !deliveryDetails.email) {
       return res.status(400).json({ error: 'Delivery details are incomplete' });
     }
-    
-    // Start a transaction-like approach (Supabase doesn't support multi-table transactions in client directly easily without RPC, but we'll do sequential inserts)
-    
-    // 1. Create Order with delivery details
+
+    // Check product stock
+    const { data: product, error: productError } = await supabase
+      .from('products')
+      .select('stock')
+      .eq('id', product_id)
+      .single();
+
+    if (productError || !product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    if (product.stock < quantity) {
+      return res.status(400).json({ error: 'Insufficient stock' });
+    }
+
+    // Create Order
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .insert([{
         customer_id,
+        product_id,
+        quantity,
         total,
         status: status || 'pending',
         delivery_name: deliveryDetails.name,
@@ -102,40 +118,30 @@ exports.createOrder = async (req, res) => {
 
     if (orderError) throw orderError;
 
-    // 2. Create Order Items with product details
-    const orderItems = items.map(item => ({
-      order_id: orderData.id,
-      product_id: item.product_id,
-      product_name: item.product_name,
-      product_category: item.product_category,
-      product_sku: item.product_sku,
-      product_image: item.image || item.product_image || null, // Store the first image or product image
-      quantity: item.quantity,
-      price: item.price
-    }));
+    // Update product stock
+    const { error: stockError } = await supabase
+      .from('products')
+      .update({ stock: product.stock - quantity })
+      .eq('id', product_id);
 
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
-
-    if (itemsError) {
-        // Ideally rollback order here
-        console.error("Error creating items, order might be inconsistent:", itemsError);
-        throw itemsError;
+    if (stockError) {
+      console.error("Error updating stock:", stockError);
+      // Don't fail the order for stock update error
     }
 
-    // 3. Clear user's cart after successful order
+    // Clear user's cart after successful order (remove the specific product)
     const { error: cartError } = await supabase
       .from('cart')
       .delete()
-      .eq('user_id', customer_id);
+      .eq('user_id', customer_id)
+      .eq('product_id', product_id);
 
     if (cartError) {
       console.error("Error clearing cart:", cartError);
       // Don't fail the order for cart clearing error
     }
 
-    // 4. Record promo code usage if promo code was applied
+    // Record promo code usage if promo code was applied
     if (promoCode) {
       const { error: usageError } = await supabase
         .from('promo_code_usage')

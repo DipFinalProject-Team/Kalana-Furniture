@@ -18,7 +18,7 @@ const ProductDetailsPage = () => {
   const [addingToCart, setAddingToCart] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const { addToCart, clearCart } = useCart();
+  const { addToCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -136,12 +136,8 @@ const ProductDetailsPage = () => {
     }
 
     try {
-      // Clear existing cart and add the selected product
-      await clearCart();
-      await addToCart(product.id, selectedQuantity);
-      
-      // Navigate to checkout with buyNow flag
-      navigate('/checkout?buyNow=true');
+      // Navigate to checkout with buyNow flag and product details
+      navigate(`/checkout?buyNow=true&productId=${product.id}&quantity=${selectedQuantity}`);
     } catch (error) {
       console.error('Error proceeding to checkout:', error);
       setToast({ message: 'Failed to proceed to checkout. Please try again.', type: 'error' });
