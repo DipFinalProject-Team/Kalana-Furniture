@@ -30,6 +30,16 @@ export const supplierService = {
     return response.data;
   },
 
+  forgotPassword: async (data: { email: string }) => {
+    const response = await api.post('/suppliers/forgot-password', data);
+    return response.data;
+  },
+
+  resetPassword: async (data: { token: string; newPassword: string }) => {
+    const response = await api.post('/suppliers/reset-password', data);
+    return response.data;
+  },
+
   verifyToken: async () => {
     const response = await api.get('/suppliers/verify');
     return response.data;

@@ -92,9 +92,8 @@ const LoginPage = ({
       } else {
         setErrors({ login: result.message });
       }
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Login failed. Please try again.';
-      setErrors({ login: message });
+    } catch {
+      setErrors({ login: 'Login failed. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }

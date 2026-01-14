@@ -1,43 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { FaExclamationTriangle, FaClock, FaArrowRight, FaUsers, FaShoppingCart, FaWallet, FaBoxOpen, FaTimesCircle, FaMoneyBillWave, FaTruck, FaTags, FaCalendarTimes } from 'react-icons/fa';
+import { dashboardStats } from '../data/mockData';
+import { FaExclamationTriangle, FaClock, FaArrowRight } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
-import { productService, dashboardService, type Product, type DashboardStat } from '../services/api';
+import { productService, type Product } from '../services/api';
 
 const Dashboard: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
-  const [dashboardStats, setDashboardStats] = useState<DashboardStat[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statsLoading, setStatsLoading] = useState(true);
-
-  // Icon mapping for dynamic rendering
-  const iconMap = {
-    FaUsers,
-    FaShoppingCart,
-    FaWallet,
-    FaBoxOpen,
-    FaClock,
-    FaTimesCircle,
-    FaMoneyBillWave,
-    FaTruck,
-    FaTags,
-    FaCalendarTimes,
-  };
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        setLoading(true);
-        const [productsData, statsData] = await Promise.all([
-          productService.getAll(),
-          dashboardService.getStats()
-        ]);
-        setProducts(productsData);
-        setDashboardStats(statsData);
+        const data = await productService.getAll();
+        setProducts(data);
       } catch (error) {
         console.error('Failed to load dashboard data', error);
       } finally {
         setLoading(false);
-        setStatsLoading(false);
       }
     };
     loadData();
@@ -51,14 +30,7 @@ const Dashboard: React.FC = () => {
   const recentItems = [...products].sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()).slice(0, 5);
 
   if (loading) {
-    return (
-      <div className="p-6 bg-gray-50 min-h-screen rounded-2xl">
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-wood-brown mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading dashboard...</p>
-        </div>
-      </div>
-    );
+    return <div className="p-6">Loading dashboard...</div>;
   }
 
   return (
@@ -70,43 +42,24 @@ const Dashboard: React.FC = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {statsLoading ? (
-          // Loading skeleton for stats
-          Array.from({ length: 10 }).map((_, index) => (
-            <div key={index} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 animate-pulse">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-20"></div>
-                </div>
-                <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+        {dashboardStats.map((stat) => (
+          <div key={stat.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">{stat.title}</p>
+                <h3 className="text-2xl font-bold text-gray-800">{stat.value}</h3>
+                <span className={`text-xs font-medium px-2 py-1 rounded-full mt-2 inline-block ${
+                  stat.trend.startsWith('+') ? 'text-green-500 bg-green-50' : 'text-red-500 bg-red-50'
+                }`}>
+                  {stat.trend} from last month
+                </span>
+              </div>
+              <div className={`p-3 rounded-full text-white ${stat.color}`}>
+                <stat.icon size={24} />
               </div>
             </div>
-          ))
-        ) : (
-          dashboardStats.map((stat) => {
-            const IconComponent = iconMap[stat.icon as keyof typeof iconMap] || FaBoxOpen;
-            return (
-              <div key={stat.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">{stat.title}</p>
-                    <h3 className="text-2xl font-bold text-gray-800">{stat.value}</h3>
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full mt-2 inline-block ${
-                      stat.trend.startsWith('+') ? 'text-green-500 bg-green-50' : 'text-red-500 bg-red-50'
-                    }`}>
-                      {stat.trend} from last month
-                    </span>
-                  </div>
-                  <div className={`p-3 rounded-full text-white ${stat.color}`}>
-                    <IconComponent size={24} />
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

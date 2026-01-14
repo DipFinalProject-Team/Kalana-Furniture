@@ -45,8 +45,10 @@ const Promotions: React.FC = () => {
     const fetchPromotions = async () => {
       try {
         setLoading(true);
+        console.log('Fetching promotions...');
         
         const data = await promotionService.getAll();
+        console.log('Promotions fetched:', data);
         setPromotions(data);
       } catch (error) {
         console.error('Error fetching promotions:', error);

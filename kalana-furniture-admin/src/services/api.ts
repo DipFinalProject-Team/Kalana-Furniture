@@ -32,32 +32,16 @@ export interface Product {
   images?: string[];
 }
 
-export interface OrderItem {
+export interface Review {
   id: number;
-  product_id: number;
-  product_name: string;
-  product_category: string;
-  product_sku: string;
-  product_image: string;
-  quantity: number;
-  price: number;
-}
-
-export interface Order {
-  id: number;
-  customer_id: string;
-  total: number;
-  status: 'pending' | 'placed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  delivery_name: string;
-  delivery_address: string;
-  delivery_phone: string;
-  delivery_email: string;
-  created_at: string;
-  items?: OrderItem[];
-  customer?: {
-    name: string;
-    email: string;
-  };
+  customerName: string;
+  productName: string;
+  category: string;
+  rating: number;
+  comment: string;
+  date: string;
+  avatar: string;
+  productUrl: string;
 }
 
 interface BackendProduct {
@@ -270,18 +254,6 @@ export interface Invoice {
   paymentDate: string | null;
 }
 
-export interface Review {
-  id: number;
-  customerName: string;
-  productName: string;
-  category: string;
-  rating: number;
-  comment: string;
-  date: string;
-  avatar: string;
-  productUrl: string;
-}
-
 export const supplierService = {
   // Supplier-specific functions can be added here if needed
 };
@@ -433,24 +405,6 @@ export const promotionService = {
   }
 };
 
-// Order Management
-export const orderService = {
-  getAll: async (): Promise<Order[]> => {
-    const response = await api.get('/orders');
-    return response.data;
-  },
-
-  getById: async (id: string): Promise<Order> => {
-    const response = await api.get(`/orders/${id}`);
-    return response.data;
-  },
-
-  updateStatus: async (id: string, status: Order['status']): Promise<Order> => {
-    const response = await api.patch(`/orders/${id}/status`, { status });
-    return response.data;
-  }
-};
-
 // Customer Management
 export interface Customer {
   id: string;
@@ -479,72 +433,5 @@ export const customerService = {
   getDetails: async (id: string): Promise<Customer> => {
     const response = await api.get(`/admin/customers/${id}`);
     return response.data.data;
-  }
-};
-
-// Analytics Service
-export interface MonthlySalesData {
-  name: string;
-  sales: number;
-}
-
-export interface OrdersTrendData {
-  date: string;
-  orders: number;
-}
-
-export interface TopSellingProduct {
-  id: number;
-  name: string;
-  category: string;
-  price: number;
-  sales: number;
-  image: string;
-  sku: string;
-}
-
-export interface SalesByCategoryData {
-  name: string;
-  value: number;
-  color: string;
-  [key: string]: any; // Allow additional properties for recharts compatibility
-}
-
-export interface DashboardStat {
-  id: number;
-  title: string;
-  value: string;
-  icon: string;
-  color: string;
-  trend: string;
-}
-
-export const analyticsService = {
-  getMonthlySales: async (): Promise<MonthlySalesData[]> => {
-    const response = await api.get('/admin/analytics/monthly-sales');
-    return response.data;
-  },
-
-  getOrdersTrend: async (): Promise<OrdersTrendData[]> => {
-    const response = await api.get('/admin/analytics/orders-trend');
-    return response.data;
-  },
-
-  getTopSellingProducts: async (): Promise<TopSellingProduct[]> => {
-    const response = await api.get('/admin/analytics/top-products');
-    return response.data;
-  },
-
-  getSalesByCategory: async (): Promise<SalesByCategoryData[]> => {
-    const response = await api.get('/admin/analytics/sales-by-category');
-    return response.data;
-  }
-};
-
-// Dashboard Service
-export const dashboardService = {
-  getStats: async (): Promise<DashboardStat[]> => {
-    const response = await api.get('/admin/dashboard/stats');
-    return response.data;
   }
 };

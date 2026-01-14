@@ -6,12 +6,22 @@ import Invoices from './pages/Invoices';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import SupplierLoginPage from "./components/SupplierLoginPage";
+import SupplierForgotPasswordPage from "./components/SupplierForgotPasswordPage";
 import SupplierRegistrationPage from "./components/SupplierRegistrationPage";
+import SupplierResetPasswordPage from "./components/SupplierResetPasswordPage";
 
 const router = createBrowserRouter([
   {
     path: "/login",
     element: <SupplierLoginPage />,
+  },
+  {
+    path: "/forgot-password",
+    element: <SupplierForgotPasswordPage />,
+  },
+  {
+    path: "/supplier/reset-password",
+    element: <SupplierResetPasswordPage />,
   },
   {
     path: "/apply",

@@ -44,7 +44,7 @@ api.interceptors.response.use(
   },
   (error) => {
     // For error responses, wrap in error format
-    const message = error.response?.data?.error || error.response?.data?.message || error.message || 'An error occurred';
+    const message = error.response?.data?.error || error.message || 'An error occurred';
     return Promise.reject({
       success: false,
       message
@@ -60,7 +60,6 @@ export interface User {
   address?: string;
   profile_picture?: string;
   role: string;
-  status?: string;
 }
 
 export interface LoginCredentials {

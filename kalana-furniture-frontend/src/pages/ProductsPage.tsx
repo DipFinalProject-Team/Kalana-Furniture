@@ -74,11 +74,16 @@ const ProductsPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        console.log('Fetching products, categories, and promotions...');
         const [productsData, categoriesData, promotionsData] = await Promise.all([
           productService.getAll(),
           categoryService.getAll(),
           promotionService.getActive()
         ]);
+        
+        console.log('Products data:', productsData);
+        console.log('Categories data:', categoriesData);
+        console.log('Promotions data:', promotionsData);
         
         // Apply promotions to products
         const productsWithPromotions = productsData.map((product: Product) => 
@@ -91,6 +96,7 @@ const ProductsPage = () => {
         // Set categories from backend
         const categoryNames = ['All', ...categoriesData.map(cat => cat.name)];
         setCategories(categoryNames);
+        console.log('Categories set:', categoryNames);
       } catch (error) {
         console.error('Error fetching data:', error);
         // Set empty arrays on error to prevent infinite loading

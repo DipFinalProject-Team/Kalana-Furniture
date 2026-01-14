@@ -43,13 +43,4 @@ router.get('/customers/:id', adminController.getCustomerDetails);
 router.get('/reviews', adminController.getAllReviews);
 router.delete('/reviews/:id', adminController.deleteReview);
 
-// Analytics routes
-router.get('/analytics/monthly-sales', adminController.getMonthlySales);
-router.get('/analytics/orders-trend', adminController.getOrdersTrend);
-router.get('/analytics/top-products', adminController.getTopSellingProducts);
-router.get('/analytics/sales-by-category', adminController.getSalesByCategory);
-
-// Dashboard stats route
-router.get('/dashboard/stats', adminController.getDashboardStats);
-
 module.exports = router;

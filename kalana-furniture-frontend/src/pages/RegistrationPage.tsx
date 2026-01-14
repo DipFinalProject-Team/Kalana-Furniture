@@ -162,7 +162,7 @@ const RegistrationPage = ({ onSwitchToLogin }: RegistrationPageProps) => {
                 id="name" 
                 name="name"
                 type="text" 
-                placeholder="Kalana Furniture"
+                placeholder="John Doe"
                 value={formData.name}
                 onChange={handleInputChange}
               />

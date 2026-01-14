@@ -164,17 +164,6 @@ exports.updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-
-    // Get current order status first
-    const { data: currentOrder, error: fetchError } = await supabase
-      .from('orders')
-      .select('status')
-      .eq('id', id)
-      .single();
-
-    if (fetchError) throw fetchError;
-
-    // Update the order status
     const { data, error } = await supabase
       .from('orders')
       .update({ status })
@@ -182,40 +171,6 @@ exports.updateOrderStatus = async (req, res) => {
       .select();
 
     if (error) throw error;
-
-    // If status is being changed to 'placed' and it wasn't already 'placed' or higher status
-    if (status === 'placed' && currentOrder.status !== 'placed' && currentOrder.status !== 'processing' && currentOrder.status !== 'shipped' && currentOrder.status !== 'delivered') {
-      // Get order items
-      const { data: orderItems, error: itemsError } = await supabase
-        .from('order_items')
-        .select('product_id, quantity')
-        .eq('order_id', id);
-
-      if (itemsError) throw itemsError;
-
-      // Reduce stock for each item
-      for (const item of orderItems) {
-        // Get current stock
-        const { data: product, error: productError } = await supabase
-          .from('products')
-          .select('stock')
-          .eq('id', item.product_id)
-          .single();
-
-        if (productError) throw productError;
-
-        const newStock = Math.max(0, product.stock - item.quantity); // Prevent negative stock
-
-        // Update stock
-        const { error: updateError } = await supabase
-          .from('products')
-          .update({ stock: newStock })
-          .eq('id', item.product_id);
-
-        if (updateError) throw updateError;
-      }
-    }
-
     res.status(200).json(data[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });

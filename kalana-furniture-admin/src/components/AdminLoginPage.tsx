@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FaEye, FaEyeSlash, FaUser, FaLock } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 const AdminLoginPage = () => {
@@ -172,6 +172,12 @@ const AdminLoginPage = () => {
                 <input type="checkbox" className="form-checkbox h-4 w-4 text-wood-brown rounded border-gray-300 focus:ring-wood-accent" />
                 <span className="ml-2">Remember me</span>
               </label>
+              <Link
+                to="/forgot-password"
+                className="text-wood-brown hover:text-wood-accent font-medium transition-colors"
+              >
+                Forgot Password?
+              </Link>
             </div>
 
             <button

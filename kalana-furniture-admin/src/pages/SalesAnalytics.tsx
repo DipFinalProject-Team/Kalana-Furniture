@@ -1,51 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
   LineChart, Line, PieChart, Pie, Cell, 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
   AreaChart, Area 
 } from 'recharts';
 import { 
-  FaChartLine, FaShoppingCart, FaTrophy, FaExclamationTriangle 
-} from 'react-icons/fa';
-import { analyticsService, type MonthlySalesData, type OrdersTrendData, type TopSellingProduct, type SalesByCategoryData } from '../services/api';
+  monthlySalesData, 
+  ordersData, 
+  topSellingProducts, 
+  salesByCategory 
+} from '../data/mockData';
+import { FaChartLine, FaShoppingCart, FaTrophy } from 'react-icons/fa';
 
 const SalesAnalytics: React.FC = () => {
-  const [monthlySalesData, setMonthlySalesData] = useState<MonthlySalesData[]>([]);
-  const [ordersData, setOrdersData] = useState<OrdersTrendData[]>([]);
-  const [topSellingProducts, setTopSellingProducts] = useState<TopSellingProduct[]>([]);
-  const [salesByCategory, setSalesByCategory] = useState<SalesByCategoryData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F'];
-
-  useEffect(() => {
-    fetchAnalyticsData();
-  }, []);
-
-  const fetchAnalyticsData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const [monthlySales, ordersTrend, topProducts, salesByCat] = await Promise.all([
-        analyticsService.getMonthlySales(),
-        analyticsService.getOrdersTrend(),
-        analyticsService.getTopSellingProducts(),
-        analyticsService.getSalesByCategory()
-      ]);
-
-      setMonthlySalesData(monthlySales);
-      setOrdersData(ordersTrend);
-      setTopSellingProducts(topProducts);
-      setSalesByCategory(salesByCat);
-    } catch (err) {
-      console.error('Error fetching analytics data:', err);
-      setError('Failed to load analytics data');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen rounded-2xl">
@@ -55,25 +23,7 @@ const SalesAnalytics: React.FC = () => {
         <p className="text-gray-500 mt-1">Visual insights into business health and performance</p>
       </div>
 
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-wood-brown mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading analytics data...</p>
-        </div>
-      ) : error ? (
-        <div className="text-center py-12">
-          <FaExclamationTriangle className="mx-auto h-12 w-12 text-red-500 mb-4" />
-          <p className="text-red-600 mb-4">{error}</p>
-          <button
-            onClick={fetchAnalyticsData}
-            className="px-4 py-2 bg-wood-brown text-white rounded-lg hover:bg-opacity-90 transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Monthly Sales Chart */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-6">
@@ -199,7 +149,7 @@ const SalesAnalytics: React.FC = () => {
                 <div className="w-24 bg-gray-100 rounded-full h-2 hidden sm:block">
                   <div 
                     className="bg-yellow-400 h-2 rounded-full" 
-                    style={{ width: `${topSellingProducts.length > 0 ? (product.sales / Math.max(...topSellingProducts.map(p => p.sales))) * 100 : 0}%` }}
+                    style={{ width: `${(product.sales / 400) * 100}%` }}
                   ></div>
                 </div>
               </div>
@@ -207,8 +157,8 @@ const SalesAnalytics: React.FC = () => {
           </div>
         </div>
       </div>
-        </>
-      )}
+
+
     </div>
   );
 };

@@ -364,8 +364,6 @@ const SupplierApprovals: React.FC = () => {
             : `Are you sure you want to reject the application from ${selectedApp?.company_name}? This action cannot be undone.`
         }
         confirmText={actionType === 'approve' ? "Approve" : "Reject"}
-        confirmButtonColor={actionType === 'approve' ? 'green' : 'red'}
-        iconType={actionType === 'approve' ? 'success' : 'warning'}
       />
     </div>
   );

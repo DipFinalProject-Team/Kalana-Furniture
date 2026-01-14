@@ -7,6 +7,7 @@ import {
   FaEnvelope,
   FaCamera,
   FaLock,
+  FaCheckCircle,
   FaExclamationTriangle,
   FaEye,
   FaEyeSlash,
@@ -16,7 +17,6 @@ import Header from '../components/Header';
 import { useAuth } from '../hooks/useAuth';
 import { userService } from '../services/api';
 import AuthRequiredMessage from '../components/AuthRequiredMessage';
-import Toast from '../components/Toast';
 
 const UserProfile = () => {
   const { user, updateUser, isLoading } = useAuth();
@@ -63,10 +63,10 @@ const UserProfile = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error'; show: boolean }>({
-    message: '',
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error'; visible: boolean }>({
+    text: '',
     type: 'success',
-    show: false,
+    visible: false,
   });
 
   const [profileErrors, setProfileErrors] = useState<{ [key: string]: string }>({});
@@ -175,10 +175,10 @@ const UserProfile = () => {
     const file = event.target.files?.[0];
     if (file) {
       // Show loading state
-      setToast({
-        message: 'Uploading profile picture...',
+      setMessage({
+        text: 'Uploading profile picture...',
         type: 'success',
-        show: true,
+        visible: true,
       });
 
       try {
@@ -190,24 +190,28 @@ const UserProfile = () => {
         if (response.success) {
           setProfilePicture(response.imageUrl);
           updateUser(response.user);
-          setToast({
-            message: response.message || 'Profile picture updated successfully!',
+          setMessage({
+            text: response.message || 'Profile picture updated successfully!',
             type: 'success',
-            show: true,
+            visible: true,
           });
+          // Auto-hide message after 4 seconds
+          setTimeout(() => {
+            setMessage(prev => ({ ...prev, visible: false }));
+          }, 4000);
         } else {
-          setToast({
-            message: response.message || 'Failed to upload profile picture.',
+          setMessage({
+            text: response.message || 'Failed to upload profile picture.',
             type: 'error',
-            show: true,
+            visible: true,
           });
         }
       } catch (error) {
         console.error('Profile picture upload error:', error);
-        setToast({
-          message: 'Failed to upload profile picture. Please try again.',
+        setMessage({
+          text: 'Failed to upload profile picture. Please try again.',
           type: 'error',
-          show: true,
+          visible: true,
         });
       }
     }
@@ -225,10 +229,10 @@ const UserProfile = () => {
 
     // Check if there are any errors
     if (Object.keys(errors).length > 0) {
-      setToast({
-        message: 'Please fix the validation errors before saving.',
+      setMessage({
+        text: 'Please fix the validation errors before saving.',
         type: 'error',
-        show: true,
+        visible: true,
       });
       return;
     }
@@ -237,24 +241,28 @@ const UserProfile = () => {
       const response = await userService.updateProfile(profileData);
       if (response.success) {
         updateUser(response.user);
-        setToast({
-          message: response.message || 'Profile updated successfully!',
+        setMessage({
+          text: response.message || 'Profile updated successfully!',
           type: 'success',
-          show: true,
+          visible: true,
         });
+        // Auto-hide message after 4 seconds
+        setTimeout(() => {
+          setMessage(prev => ({ ...prev, visible: false }));
+        }, 4000);
       } else {
-        setToast({
-          message: response.message || 'Failed to update profile.',
+        setMessage({
+          text: response.message || 'Failed to update profile.',
           type: 'error',
-          show: true,
+          visible: true,
         });
       }
     } catch (error) {
       console.error('Profile update error:', error);
-      setToast({
-        message: 'Failed to update profile. Please try again.',
+      setMessage({
+        text: 'Failed to update profile. Please try again.',
         type: 'error',
-        show: true,
+        visible: true,
       });
     }
   };
@@ -271,10 +279,10 @@ const UserProfile = () => {
 
     // Check if there are any errors
     if (Object.keys(errors).length > 0) {
-      setToast({
-        message: 'Please fix the validation errors before changing password.',
+      setMessage({
+        text: 'Please fix the validation errors before changing password.',
         type: 'error',
-        show: true,
+        visible: true,
       });
       return;
     }
@@ -287,10 +295,10 @@ const UserProfile = () => {
       });
 
       if (response.success) {
-        setToast({
-          message: response.message || 'Password changed successfully!',
+        setMessage({
+          text: response.message || 'Password changed successfully!',
           type: 'success',
-          show: true,
+          visible: true,
         });
         setPasswordData({
           currentPassword: '',
@@ -298,20 +306,24 @@ const UserProfile = () => {
           confirmPassword: '',
         });
         setShowPasswordModal(false);
+        // Auto-hide message after 4 seconds
+        setTimeout(() => {
+          setMessage(prev => ({ ...prev, visible: false }));
+        }, 4000);
       } else {
-        setToast({
-          message: response.message || 'Failed to change password.',
+        setMessage({
+          text: response.message || 'Failed to change password.',
           type: 'error',
-          show: true,
+          visible: true,
         });
       }
     } catch (error: unknown) {
       console.error('Password change error:', error);
       const errorMessage = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || (error as { message?: string })?.message || 'Failed to change password. Please try again.';
-      setToast({
-        message: errorMessage,
+      setMessage({
+        text: errorMessage,
         type: 'error',
-        show: true,
+        visible: true,
       });
     } finally {
       setIsChangingPassword(false);
@@ -562,13 +574,28 @@ const UserProfile = () => {
         </div>
       </div>
 
-      {/* Toast Notification */}
-      {toast.show && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(prev => ({ ...prev, show: false }))}
-        />
+      {/* Styled Message Notification */}
+      {message.visible && (
+        <div className="fixed top-28 right-4 z-[60] animate-in slide-in-from-right-4 fade-in-0 duration-300">
+          <div className={`flex items-center space-x-3 px-6 py-4 rounded-2xl shadow-2xl border backdrop-blur-lg ${
+            message.type === 'success'
+              ? 'bg-emerald-500/25 border-emerald-400/40 text-emerald-100 shadow-emerald-500/20'
+              : 'bg-red-500/25 border-red-400/40 text-red-100 shadow-red-500/20'
+          }`}>
+            {message.type === 'success' ? (
+              <FaCheckCircle className="text-emerald-400 text-xl flex-shrink-0" />
+            ) : (
+              <FaExclamationTriangle className="text-red-400 text-xl flex-shrink-0" />
+            )}
+            <span className="font-medium">{message.text}</span>
+            <button
+              onClick={() => setMessage(prev => ({ ...prev, visible: false }))}
+              className="ml-4 text-white/70 hover:text-white transition-colors duration-200 text-lg"
+            >
+              ×
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Password Change Modal */}
