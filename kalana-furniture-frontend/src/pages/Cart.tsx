@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { FaTrash, FaPlus, FaMinus, FaShoppingCart, FaCreditCard, FaTag } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import SnowAnimation from '../components/SnowAnimation';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../hooks/useAuth';
 import Header from '../components/Header';
@@ -59,13 +58,6 @@ const Cart = () => {
     ) : (
     <div className="min-h-screen bg-[url('/wood-bg.jpg')] bg-cover bg-center bg-fixed py-[140px] px-4 relative overflow-hidden">
       <div className="absolute inset-0 bg-black/60"></div>
-      <SnowAnimation
-        containerClass="absolute inset-0 pointer-events-none overflow-hidden"
-        numFlakes={25}
-        minDuration={10}
-        maxDuration={20}
-        opacity={0.4}
-      />
       
       <div className="max-w-6xl mx-auto relative z-10">
 

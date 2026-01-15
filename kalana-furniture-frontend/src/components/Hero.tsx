@@ -1,6 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import SnowAnimation from './SnowAnimation';
 import { productService, type Product } from '../services/api';
 
 const Hero = () => {
@@ -54,17 +53,6 @@ const Hero = () => {
   };
   return (
     <section className="relative h-[80vh] bg-wood-brown text-white flex items-center justify-center overflow-hidden">
-      <SnowAnimation
-        containerClass="absolute inset-0 pointer-events-none overflow-hidden"
-        numFlakes={30}
-        minDuration={8}
-        maxDuration={16}
-        minDelay={0}
-        maxDelay={5}
-        minSize={10}
-        maxSize={30}
-        opacity={0.6}
-      />
       <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80')] opacity-30 bg-cover bg-center"></div>
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')] opacity-10"></div>
       <div className="relative z-10 text-center p-4 mt-28">

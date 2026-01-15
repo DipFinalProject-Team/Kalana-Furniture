@@ -9,7 +9,6 @@ import Cart from './pages/Cart';
 import OrderHistoryPage from './pages/OrderHistory';
 import ProductsPage from './pages/ProductsPage';
 import CategoryProducts from './pages/CategoryProducts';
-import SnowAnimation from './components/SnowAnimation';
 import { CartProvider } from './contexts/CartContext';
 import { AuthProvider } from './contexts/AuthContext';
 import ProductDetailsPage from './pages/ProductDetailsPage';
@@ -24,7 +23,6 @@ function App() {
     <AuthProvider>
       <CartProvider>
         <div className="relative">
-          <SnowAnimation />
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginPage onSwitchToRegister={() => navigate('/register')} onForgotPassword={() => navigate('/forgot-password')} />} />

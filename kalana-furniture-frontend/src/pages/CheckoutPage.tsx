@@ -3,7 +3,6 @@ import { FaShippingFast, FaUser, FaMapMarkerAlt, FaPhone, FaEnvelope, FaMoneyBil
 import { useCart } from '../contexts/CartContext';
 import Header from '../components/Header';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import SnowAnimation from '../components/SnowAnimation';
 import Toast from '../components/Toast';
 import { useAuth } from '../hooks/useAuth';
 import AuthRequiredMessage from '../components/AuthRequiredMessage';
@@ -296,17 +295,6 @@ const CheckoutPage = () => {
         />
       ) : (
         <div className="min-h-screen bg-gradient-to-br from-wood-brown via-nav-brown to-wood-accent py-[140px] px-4 relative overflow-hidden">
-        <SnowAnimation
-            containerClass="absolute inset-0 pointer-events-none overflow-hidden"
-            numFlakes={25}
-            minDuration={8}
-            maxDuration={15}
-            minDelay={0}
-            maxDelay={5}
-            minSize={8}
-            maxSize={20}
-            opacity={0.5}
-        />
 
         <div className="max-w-6xl mx-auto z-10 relative">
           <div className="text-center mb-12">

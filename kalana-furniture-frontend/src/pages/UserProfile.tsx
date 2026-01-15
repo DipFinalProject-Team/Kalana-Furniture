@@ -11,7 +11,6 @@ import {
   FaEye,
   FaEyeSlash,
 } from "react-icons/fa";
-import SnowAnimation from "../components/SnowAnimation";
 import Header from '../components/Header';
 import { useAuth } from '../hooks/useAuth';
 import { userService } from '../services/api';
@@ -370,17 +369,6 @@ const UserProfile = () => {
       ) : (
         <div className="min-h-screen bg-[url('/wood-bg.jpg')] bg-cover bg-center bg-fixed py-[140px] px-4 relative overflow-hidden">
           <div className="absolute inset-0 bg-black/60"></div>
-          <SnowAnimation
-            containerClass="absolute inset-0 pointer-events-none overflow-hidden"
-            numFlakes={25}
-            minDuration={8}
-            maxDuration={15}
-            minDelay={0}
-            maxDelay={5}
-            minSize={8}
-            maxSize={20}
-            opacity={0.5}
-          />
           <div className="max-w-4xl mx-auto relative z-10">
             <div className="text-start mb-4">
               <h1 className="font-sans text-4xl font-bold text-white mb-4 drop-shadow-lg flex items-center justify-center">

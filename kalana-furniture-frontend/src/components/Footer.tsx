@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import SnowAnimation from './SnowAnimation';
 
 const SocialIcon = ({ href, children }: { href: string, children: React.ReactNode }) => (
   <a href={href} target="_blank" rel="noopener noreferrer" className="text-wood-light hover:text-wood-accent transition duration-300 transform hover:scale-110">
@@ -10,17 +9,6 @@ const SocialIcon = ({ href, children }: { href: string, children: React.ReactNod
 const Footer = () => {
   return (
     <footer className="bg-gradient-to-r from-wood-brown to-nav-brown text-wood-light relative overflow-hidden">
-      <SnowAnimation
-        containerClass="absolute inset-0 pointer-events-none overflow-hidden"
-        numFlakes={20}
-        minDuration={6}
-        maxDuration={12}
-        minDelay={0}
-        maxDelay={3}
-        minSize={8}
-        maxSize={23}
-        opacity={0.4}
-      />
       <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1555041469-a586c61ea9bc?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80')] opacity-10 bg-cover bg-center"></div>
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')] opacity-10"></div>
       <div className="relative max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">

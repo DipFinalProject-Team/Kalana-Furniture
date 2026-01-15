@@ -21,19 +21,8 @@ module.exports = {
         'realwood': ['"Realwood"', 'sans-serif'],
       },
       animation: {
-        'snowfall': 'snowfall 10s linear infinite',
-        'hero-snowfall': 'hero-snowfall 12s linear infinite',
       },
       keyframes: {
-        'snowfall': {
-          '0%': { transform: 'translateY(-10vh) rotate(0deg)' },
-          '100%': { transform: 'translateY(100vh) rotate(360deg)' },
-        },
-        'hero-snowfall': {
-          '0%': { transform: 'translateY(-20px) rotate(0deg) scale(0.8)' },
-          '50%': { transform: 'translateY(50vh) rotate(180deg) scale(1.2)' },
-          '100%': { transform: 'translateY(100vh) rotate(360deg) scale(0.8)' },
-        },
       },
     },
   },
