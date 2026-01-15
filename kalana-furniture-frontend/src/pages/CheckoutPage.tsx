@@ -3,13 +3,62 @@ import { FaShippingFast, FaUser, FaMapMarkerAlt, FaPhone, FaEnvelope, FaMoneyBil
 import { useCart } from '../contexts/CartContext';
 import Header from '../components/Header';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import SnowAnimation from '../components/SnowAnimation'; // Reusing the snow animation for a consistent feel
+import SnowAnimation from '../components/SnowAnimation';
 import Toast from '../components/Toast';
 import { useAuth } from '../hooks/useAuth';
 import AuthRequiredMessage from '../components/AuthRequiredMessage';
-import { orderService, productService, type Product } from '../services/api';
+import { orderService, productService, promotionService, type Product, type Promotion } from '../services/api';
+
 
 const CheckoutPage = () => {
+  // Function to apply promotions to a product
+  const applyPromotionsToProduct = (product: Product, promotionsList: Promotion[]): Product & { discountPrice?: number; discountPercentage?: number } => {
+    let bestDiscountPrice = product.discountPrice || product.price; // Start with existing discount or original price
+    let bestDiscountPercentage = 0;
+
+    promotionsList.forEach(promotion => {
+      // Only apply general discounts (where code is null)
+      if (promotion.code !== null) return;
+      
+      // Skip inactive promotions (though getActive should only return active ones)
+      if (!promotion.is_active) return;
+
+      // Check if promotion applies to this product
+      let appliesToProduct = false;
+
+      if (promotion.applies_to === 'All Products') {
+        appliesToProduct = true;
+      } else if (promotion.applies_to && promotion.applies_to.startsWith('Category: ')) {
+        const category = promotion.applies_to.replace('Category: ', '');
+        appliesToProduct = product.category === category;
+      }
+
+      if (appliesToProduct) {
+        let discountPrice = product.price;
+
+        if (promotion.type === 'percentage') {
+          discountPrice = product.price * (1 - promotion.value / 100);
+        } else if (promotion.type === 'fixed') {
+          discountPrice = Math.max(0, product.price - promotion.value);
+        }
+
+        if (discountPrice < bestDiscountPrice) {
+          bestDiscountPrice = discountPrice;
+          bestDiscountPercentage = promotion.type === 'percentage' ? promotion.value : Math.round(((product.price - discountPrice) / product.price) * 100);
+        }
+      }
+    });
+
+    if (bestDiscountPrice < product.price) {
+      return {
+        ...product,
+        discountPrice: Math.round(bestDiscountPrice),
+        discountPercentage: bestDiscountPercentage
+      };
+    }
+
+    return product;
+  };
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, isLoading } = useAuth();
@@ -19,7 +68,7 @@ const CheckoutPage = () => {
   const buyNowProductId = searchParams.get('productId');
   const buyNowQuantity = parseInt(searchParams.get('quantity') || '1');
 
-  const [buyNowProduct, setBuyNowProduct] = useState<Product | null>(null);
+  const [buyNowProduct, setBuyNowProduct] = useState<(Product & { discountPrice?: number; discountPercentage?: number }) | null>(null);
   const [buyNowLoading, setBuyNowLoading] = useState(false);
 
   const [deliveryDetails, setDeliveryDetails] = useState({
@@ -51,8 +100,15 @@ const CheckoutPage = () => {
       const fetchBuyNowProduct = async () => {
         setBuyNowLoading(true);
         try {
-          const product = await productService.getById(buyNowProductId);
-          setBuyNowProduct(product);
+          const [productData, promotionsData] = await Promise.all([
+            productService.getById(buyNowProductId),
+            promotionService.getActive()
+          ]);
+          
+          // Apply promotions to the product
+          const productWithDiscount = applyPromotionsToProduct(productData, promotionsData);
+          
+          setBuyNowProduct(productWithDiscount);
         } catch (error) {
           console.error('Error fetching buy now product:', error);
           setToast({ type: 'error', message: 'Failed to load product details. Please try again.' });
@@ -286,7 +342,14 @@ const CheckoutPage = () => {
                         {buyNowProduct.discountPrice ? (
                           <div className="flex flex-col items-end">
                             <span className="text-gray-400 line-through text-sm">Rs.{(buyNowProduct.price * buyNowQuantity).toFixed(2)}</span>
-                            <span className="text-red-400 font-bold">Rs.{(buyNowProduct.discountPrice * buyNowQuantity).toFixed(2)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-red-400 font-bold">Rs.{(buyNowProduct.discountPrice * buyNowQuantity).toFixed(2)}</span>
+                              {buyNowProduct.discountPercentage && (
+                                <span className="bg-red-100 text-red-400 px-2 py-1 rounded-full text-xs font-medium">
+                                  -{buyNowProduct.discountPercentage}%
+                                </span>
+                              )}
+                            </div>
                           </div>
                         ) : (
                           <p className="text-white font-semibold">
