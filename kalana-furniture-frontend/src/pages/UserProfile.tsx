@@ -34,7 +34,7 @@ const UserProfile = () => {
     confirmPassword: "",
   });
 
-  const [profilePicture, setProfilePicture] = useState("");
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
   // Check authentication and redirect if not logged in
   useEffect(() => {
@@ -54,7 +54,7 @@ const UserProfile = () => {
       });
       // Set profile picture with fallback to first letter of name
       const profilePic = user.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name?.charAt(0) || 'U')}&background=8B4513&color=fff&size=128`;
-      setProfilePicture(profilePic);
+      setProfilePicture(profilePic || null);
     }
   }, [user]);
 
@@ -195,8 +195,6 @@ const UserProfile = () => {
             type: 'success',
             visible: false,
           });
-          // Auto-hide message after 4 seconds
-          // Removed - Toast component handles auto-hide
         } else {
           setMessage({
             text: response.message || 'Failed to upload profile picture.',
@@ -244,8 +242,6 @@ const UserProfile = () => {
           type: 'success',
           visible: false,
         });
-        // Auto-hide message after 4 seconds
-        // Removed - Toast component handles auto-hide
       } else {
         setMessage({
           text: response.message || 'Failed to update profile.',
@@ -302,8 +298,6 @@ const UserProfile = () => {
           confirmPassword: '',
         });
         setShowPasswordModal(false);
-        // Auto-hide message after 4 seconds
-        // Removed - Toast component handles auto-hide
       } else {
         setMessage({
           text: response.message || 'Failed to change password.',
@@ -401,11 +395,17 @@ const UserProfile = () => {
             <div className="text-center">
               <div className="relative inline-block mb-6">
                 <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-wood-accent shadow-[0_0_30px_rgba(200,162,124,0.3)] mx-auto hover:shadow-[0_0_40px_rgba(200,162,124,0.5)] transition-shadow duration-500">
-                  <img
-                    src={profilePicture}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                  />
+                  {profilePicture ? (
+                    <img
+                      src={profilePicture}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-wood-accent flex items-center justify-center">
+                      <FaUser className="text-white text-4xl" />
+                    </div>
+                  )}
                 </div>
                 <label className="absolute bottom-0 right-0 bg-wood-accent text-white p-3 rounded-full cursor-pointer hover:bg-wood-accent-hover transition-colors duration-300 shadow-lg">
                   <FaCamera className="text-lg" />

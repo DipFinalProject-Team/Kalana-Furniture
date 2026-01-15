@@ -504,3 +504,83 @@ exports.resetPassword = async (req, res) => {
     });
   }
 };
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id; // From auth middleware
+
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required'
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 8 characters long'
+      });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be different from current password'
+      });
+    }
+
+    // Get user data from database to verify current password
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id, email')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !userData) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Verify current password by attempting to sign in
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: userData.email,
+      password: currentPassword
+    });
+
+    if (signInError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password is incorrect'
+      });
+    }
+
+    // Update the password
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (updateError) {
+      console.error('Password update error:', updateError);
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to update password'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to change password'
+    });
+  }
+};
