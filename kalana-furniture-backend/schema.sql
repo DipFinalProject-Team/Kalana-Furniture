@@ -196,11 +196,17 @@ create table public.promo_code_usage (
   promo_code text not null,
   used_at timestamp with time zone default timezone('utc'::text, now()) not null,
   order_id bigint references public.orders(id) on delete cascade,
-  unique(user_id, promo_code) -- Each user can use each promo code only once
+  promotion_id bigint references public.promotions(id) on delete cascade,
+  unique(user_id, promotion_id) -- Each user can use each promotion only once
 );
 
 ALTER TABLE public.promo_code_usage
-ADD COLUMN  promotion_id bigint references public.promotions(id) on delete cascade
+ADD COLUMN  promotion_id bigint references public.promotions(id) on delete cascade;
+
+-- Drop old unique constraint and add new one
+ALTER TABLE public.promo_code_usage
+DROP CONSTRAINT IF EXISTS promo_code_usage_user_id_promo_code_key,
+ADD CONSTRAINT promo_code_usage_user_id_promotion_id_key UNIQUE (user_id, promotion_id);
 
 ALTER TABLE public.orders
 ADD COLUMN promo_code text,

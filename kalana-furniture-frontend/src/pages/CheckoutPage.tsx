@@ -82,6 +82,11 @@ const CheckoutPage = () => {
   const [toast, setToast] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [localPromoCode, setLocalPromoCode] = useState('');
 
+  // Buy now specific promo code state
+  const [buyNowPromoCode, setBuyNowPromoCode] = useState('');
+  const [buyNowAppliedDiscount, setBuyNowAppliedDiscount] = useState(0);
+  const [buyNowPromoMessage, setBuyNowPromoMessage] = useState('');
+
   // Populate delivery details with user information
   useEffect(() => {
     if (user) {
@@ -135,6 +140,51 @@ const CheckoutPage = () => {
     setLocalPromoCode('');
   };
 
+  const handleBuyNowApplyPromoCode = async () => {
+    if (!user) {
+      setBuyNowPromoMessage('Please log in to apply promo codes');
+      return;
+    }
+
+    if (!buyNowProduct) {
+      setBuyNowPromoMessage('Product not loaded');
+      return;
+    }
+
+    try {
+      const response = await promotionService.apply(buyNowPromoCode);
+
+      if (response.valid) {
+        const { promotion } = response;
+        const productPrice = buyNowProduct.discountPrice || buyNowProduct.price;
+        const subtotal = productPrice * buyNowQuantity;
+
+        let discountAmount = 0;
+        if (promotion.type === 'percentage') {
+          discountAmount = subtotal * (promotion.value / 100);
+        } else if (promotion.type === 'fixed') {
+          discountAmount = Math.min(promotion.value, subtotal);
+        }
+
+        setBuyNowAppliedDiscount(discountAmount);
+        setBuyNowPromoMessage(promotion.description);
+      } else {
+        setBuyNowAppliedDiscount(0);
+        setBuyNowPromoMessage(response.error || 'Invalid promo code');
+      }
+    } catch (err: any) {
+      console.error('Error applying promo code:', err);
+      setBuyNowAppliedDiscount(0);
+      setBuyNowPromoMessage(err.response?.data?.error || 'Failed to apply promo code');
+    }
+  };
+
+  const handleBuyNowRemovePromoCode = () => {
+    setBuyNowPromoCode('');
+    setBuyNowAppliedDiscount(0);
+    setBuyNowPromoMessage('');
+  };
+
   const subtotal = isBuyNow && buyNowProduct 
     ? (buyNowProduct.discountPrice || buyNowProduct.price) * buyNowQuantity 
     : cartItems.reduce((acc: number, item) => {
@@ -142,7 +192,8 @@ const CheckoutPage = () => {
         return acc + price * item.quantity;
       }, 0);
   const shippingFee = 0; // No shipping fees
-  const total = subtotal + shippingFee - appliedDiscount;
+  const discountToUse = isBuyNow ? buyNowAppliedDiscount : appliedDiscount;
+  const total = subtotal + shippingFee - discountToUse;
 
   const handleConfirmOrder = async () => {
     if (!user) {
@@ -157,14 +208,14 @@ const CheckoutPage = () => {
           customer_id: user.id,
           product_id: parseInt(buyNowProductId!),
           quantity: buyNowQuantity,
-          total: Math.max(((buyNowProduct.discountPrice || buyNowProduct.price) * buyNowQuantity) - appliedDiscount, 0),
+          total: Math.max(((buyNowProduct.discountPrice || buyNowProduct.price) * buyNowQuantity) - buyNowAppliedDiscount, 0),
           deliveryDetails: deliveryDetails,
-          promoCode: promoCode || null // Include promo code if applied
+          promoCode: buyNowPromoCode || null // Include promo code if applied
         };
 
         await orderService.create(orderData);
         setToast({ type: 'success', message: 'Your order has been placed successfully!' });
-        removePromoCode(); // Remove promo code after successful order
+        handleBuyNowRemovePromoCode(); // Remove promo code after successful order
       } else {
         // Handle cart checkout
         const orderPromises = cartItems.map(async (item) => {
@@ -401,26 +452,26 @@ const CheckoutPage = () => {
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        value={localPromoCode}
-                        onChange={(e) => setLocalPromoCode(e.target.value)}
+                        value={buyNowPromoCode}
+                        onChange={(e) => setBuyNowPromoCode(e.target.value)}
                         placeholder="Enter promo code"
                         className="flex-1 px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white placeholder-wood-light focus:outline-none focus:ring-2 focus:ring-wood-accent focus:border-transparent"
                       />
                       <button
-                        onClick={handleApplyPromoCode}
+                        onClick={handleBuyNowApplyPromoCode}
                         className="px-4 py-2 bg-wood-accent text-white rounded-lg hover:bg-wood-accent-hover transition-colors duration-200 font-medium"
                       >
                         Apply
                       </button>
                     </div>
-                    {promoMessage && (
-                      <p className={`text-sm mt-2 ${appliedDiscount > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {promoMessage}
+                    {buyNowPromoMessage && (
+                      <p className={`text-sm mt-2 ${buyNowAppliedDiscount > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {buyNowPromoMessage}
                       </p>
                     )}
-                    {appliedDiscount > 0 && (
+                    {buyNowAppliedDiscount > 0 && (
                       <button
-                        onClick={handleRemovePromoCode}
+                        onClick={handleBuyNowRemovePromoCode}
                         className="text-xs text-red-400 hover:text-red-300 mt-1 underline"
                       >
                         Remove promo code
@@ -434,10 +485,10 @@ const CheckoutPage = () => {
                         <p>Subtotal</p>
                         <p className="text-white font-semibold">Rs.{subtotal.toFixed(2)}</p>
                     </div>
-                    {appliedDiscount > 0 && (
+                    {discountToUse > 0 && (
                         <div className="flex justify-between text-green-400">
                             <p>Discount</p>
-                            <p className="font-semibold">-Rs.{appliedDiscount.toFixed(2)}</p>
+                            <p className="font-semibold">-Rs.{discountToUse.toFixed(2)}</p>
                         </div>
                     )}
                 </div>

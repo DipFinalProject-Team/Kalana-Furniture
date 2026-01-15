@@ -143,17 +143,30 @@ exports.createOrder = async (req, res) => {
 
     // Record promo code usage if promo code was applied
     if (promoCode) {
-      const { error: usageError } = await supabase
-        .from('promo_code_usage')
-        .insert([{
-          user_id: customer_id,
-          promo_code: promoCode.toUpperCase(),
-          order_id: orderData.id
-        }]);
+      // Get promotion details to get promotion_id
+      const { data: promotion, error: promoError } = await supabase
+        .from('promotions')
+        .select('id')
+        .eq('code', promoCode.toUpperCase())
+        .single();
 
-      if (usageError) {
-        console.error("Error recording promo code usage:", usageError);
-        // Don't fail the order for usage recording error
+      if (promoError || !promotion) {
+        console.error("Error finding promotion for code:", promoCode, promoError);
+        // Don't fail the order
+      } else {
+        const { error: usageError } = await supabase
+          .from('promo_code_usage')
+          .insert([{
+            user_id: customer_id,
+            promo_code: promoCode.toUpperCase(),
+            promotion_id: promotion.id,
+            order_id: orderData.id
+          }]);
+
+        if (usageError) {
+          console.error("Error recording promo code usage:", usageError);
+          // Don't fail the order for usage recording error
+        }
       }
     }
 

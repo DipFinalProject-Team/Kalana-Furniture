@@ -263,7 +263,7 @@ exports.applyPromoCode = async (req, res) => {
       .from('promo_code_usage')
       .select('id')
       .eq('user_id', userId)
-      .eq('promo_code', code.trim().toUpperCase())
+      .eq('promotion_id', promotion.id)
       .single();
 
     if (usageError && usageError.code !== 'PGRST116') { // PGRST116 is "not found" error
