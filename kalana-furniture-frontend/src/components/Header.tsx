@@ -95,30 +95,32 @@ const Header = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
               </svg>
             </Link>
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                className="flex items-center text-gray-600 hover:text-wood-accent transition duration-300"
-                title="User Profile"
-              >
-                <img
-                  src={user?.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name?.charAt(0) || 'U')}&background=8B4513&color=fff&size=32`}
-                  alt="Profile"
-                  className="w-10 h-10 rounded-full border-2 border-wood-accent object-cover hover:border-wood-accent-hover transition duration-300"
-                />
-              </button>
-              {showProfileDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-                  <Link
-                    to="/profile"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-wood-accent transition duration-300"
-                    onClick={() => setShowProfileDropdown(false)}
-                  >
-                    User Profile
-                  </Link>
-                </div>
-              )}
-            </div>
+            {isAuthenticated && (
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                  className="flex items-center text-gray-600 hover:text-wood-accent transition duration-300"
+                  title="User Profile"
+                >
+                  <img
+                    src={user?.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name?.charAt(0) || 'U')}&background=8B4513&color=fff&size=32`}
+                    alt="Profile"
+                    className="w-10 h-10 rounded-full border-2 border-wood-accent object-cover hover:border-wood-accent-hover transition duration-300"
+                  />
+                </button>
+                {showProfileDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                    <Link
+                      to="/profile"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-wood-accent transition duration-300"
+                      onClick={() => setShowProfileDropdown(false)}
+                    >
+                      User Profile
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
             {isAuthenticated && (
               <button
                 onClick={handleLogoutClick}
