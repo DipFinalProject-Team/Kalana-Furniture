@@ -127,6 +127,7 @@ const CheckoutPage = () => {
 
   const handleApplyPromoCode = () => {
     applyPromoCode(localPromoCode);
+    setLocalPromoCode('');
   };
 
   const handleRemovePromoCode = () => {
@@ -156,21 +157,24 @@ const CheckoutPage = () => {
           customer_id: user.id,
           product_id: parseInt(buyNowProductId!),
           quantity: buyNowQuantity,
-          total: (buyNowProduct.discountPrice || buyNowProduct.price) * buyNowQuantity,
+          total: Math.max(((buyNowProduct.discountPrice || buyNowProduct.price) * buyNowQuantity) - appliedDiscount, 0),
           deliveryDetails: deliveryDetails,
           promoCode: promoCode || null // Include promo code if applied
         };
 
         await orderService.create(orderData);
         setToast({ type: 'success', message: 'Your order has been placed successfully!' });
+        removePromoCode(); // Remove promo code after successful order
       } else {
         // Handle cart checkout
         const orderPromises = cartItems.map(async (item) => {
+          const itemSubtotal = (item.discountPrice || item.price) * item.quantity;
+          const discountPortion = appliedDiscount > 0 ? (itemSubtotal / subtotal) * appliedDiscount : 0;
           const orderData = {
             customer_id: user.id,
             product_id: item.product_id,
             quantity: item.quantity,
-            total: (item.discountPrice || item.price) * item.quantity,
+            total: Math.max(itemSubtotal - discountPortion, 0),
             deliveryDetails: deliveryDetails,
             promoCode: promoCode || null // Include promo code if applied
           };
@@ -182,6 +186,7 @@ const CheckoutPage = () => {
         await Promise.all(orderPromises);
         setToast({ type: 'success', message: 'Your orders have been placed successfully!' });
         clearCart();
+        removePromoCode(); // Remove promo code after successful order
       }
 
       // Navigate to home after showing the toast

@@ -64,7 +64,7 @@ const OrderModal = ({ order, onClose, onCancel }: { order: Order; onClose: () =>
           {/* Delivery Information */}
           <div className="bg-white/10 backdrop-blur-sm p-6 rounded-xl border border-white/20">
             <h3 className="text-lg font-serif font-bold text-white mb-4 flex items-center">
-              📍 Delivery Information
+              Delivery Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -89,7 +89,7 @@ const OrderModal = ({ order, onClose, onCancel }: { order: Order; onClose: () =>
           {/* Order Items */}
           <div className="bg-white/10 backdrop-blur-sm p-6 rounded-xl border border-white/20">
             <h3 className="text-lg font-serif font-bold text-white mb-4 flex items-center">
-              📦 Product Details
+              Product Details
             </h3>
             <div className="space-y-4">
               <div className="flex gap-6 items-center p-4 rounded-lg bg-white/5 border border-white/10 hover:border-white/30 transition-all duration-300">

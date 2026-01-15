@@ -27,6 +27,7 @@ const Cart = () => {
 
   const handleApplyPromoCode = () => {
     applyPromoCode(localPromoCode);
+    setLocalPromoCode('');
   };
 
   const handleRemovePromoCode = () => {
