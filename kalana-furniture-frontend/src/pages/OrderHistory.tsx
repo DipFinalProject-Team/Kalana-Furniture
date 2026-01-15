@@ -6,9 +6,9 @@ import { useAuth } from '../hooks/useAuth';
 import Toast from '../components/Toast';
 import AuthRequiredMessage from '../components/AuthRequiredMessage';
 import { orderService } from '../services/api';
-import type { Order } from '../services/api';
+import type { GroupedOrder } from '../services/api';
 
-const OrderModal = ({ order, onClose, onCancel }: { order: Order; onClose: () => void; onCancel: () => void }) => {
+const OrderModal = ({ order, onClose, onCancel }: { order: GroupedOrder; onClose: () => void; onCancel: () => void }) => {
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex justify-center items-center p-4">
@@ -53,7 +53,7 @@ const OrderModal = ({ order, onClose, onCancel }: { order: Order; onClose: () =>
             </div>
             <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20">
               <p className="text-xs uppercase tracking-wider text-wood-light mb-2 font-semibold">Total Amount</p>
-              <p className="font-serif font-bold text-2xl text-wood-accent">Rs. {order.total?.toFixed(2)}</p>
+              <p className="font-bold text-2xl text-wood-accent">Rs. {order.total?.toFixed(2)}</p>
             </div>
             <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20">
               <p className="text-xs uppercase tracking-wider text-wood-light mb-2 font-semibold">Payment Method</p>
@@ -63,7 +63,7 @@ const OrderModal = ({ order, onClose, onCancel }: { order: Order; onClose: () =>
 
           {/* Delivery Information */}
           <div className="bg-white/10 backdrop-blur-sm p-6 rounded-xl border border-white/20">
-            <h3 className="text-lg font-serif font-bold text-white mb-4 flex items-center">
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center">
               Delivery Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -92,44 +92,46 @@ const OrderModal = ({ order, onClose, onCancel }: { order: Order; onClose: () =>
               Product Details
             </h3>
             <div className="space-y-4">
-              <div className="flex gap-6 items-center p-4 rounded-lg bg-white/5 border border-white/10 hover:border-white/30 transition-all duration-300">
-                <div className="relative">
-                  <img
-                    src={order.product?.images?.[0] || '/placeholder-image.jpg'}
-                    alt={order.product?.productName}
-                    className="w-24 h-24 object-cover rounded-lg border-2 border-white/30 shadow-lg"
-                  />
-                  <div className="absolute -top-2 -right-2 bg-wood-accent text-white text-xs font-bold px-2 py-1 rounded-full">
-                    {order.quantity}
-                  </div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-white text-lg truncate block mb-2">
-                    {order.product?.productName || 'Product'}
-                  </p>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-wood-light">Unit Price</p>
-                      <p className="font-semibold text-white">Rs. {(order.total / order.quantity).toFixed(2)}</p>
-                    </div>
-                    <div>
-                      <p className="text-wood-light">Quantity</p>
-                      <p className="font-semibold text-white">{order.quantity}</p>
+              {order.items.map((item) => (
+                <div key={item.id} className="flex gap-6 items-center p-4 rounded-lg bg-white/5 border border-white/10 hover:border-white/30 transition-all duration-300">
+                  <div className="relative">
+                    <img
+                      src={item.product?.images?.[0] || '/placeholder-image.jpg'}
+                      alt={item.product?.productName}
+                      className="w-24 h-24 object-cover rounded-lg border-2 border-white/30 shadow-lg"
+                    />
+                    <div className="absolute -top-2 -right-2 bg-wood-accent text-white text-xs font-bold px-2 py-1 rounded-full">
+                      {item.quantity}
                     </div>
                   </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-white text-lg truncate block mb-2">
+                      {item.product?.productName || 'Product'}
+                    </p>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-wood-light">Unit Price</p>
+                        <p className="font-semibold text-white">Rs. {(item.total / item.quantity).toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-wood-light">Quantity</p>
+                        <p className="font-semibold text-white">{item.quantity}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-wood-light text-sm mb-1">Total</p>
+                    <p className="font-bold text-wood-accent text-xl">Rs. {item.total?.toFixed(2)}</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-wood-light text-sm mb-1">Total</p>
-                  <p className="font-bold text-wood-accent text-xl">Rs. {order.total?.toFixed(2)}</p>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
 
         {/* Footer */}
         <div className="p-6 border-t border-white/20 bg-white/5 backdrop-blur-md flex justify-end gap-3 rounded-b-2xl">
-          {order.status === 'pending' && (
+          {order.items.some((item) => item.status === 'pending') && (
             <button
               onClick={onCancel}
               className="px-6 py-3 text-red-300 bg-red-500/20 border border-red-400/50 rounded-lg hover:bg-red-500/30 font-bold transition-all duration-200"
@@ -149,8 +151,8 @@ const OrderModal = ({ order, onClose, onCancel }: { order: Order; onClose: () =>
   );
 };
 const OrderHistoryPage = () => {
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<GroupedOrder | null>(null);
+  const [orders, setOrders] = useState<GroupedOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const { user, isLoading: authLoading } = useAuth();
@@ -165,7 +167,41 @@ const OrderHistoryPage = () => {
     try {
       setLoading(true);
       const ordersData = await orderService.getUserOrders();
-      setOrders(ordersData);
+      
+      // Group orders by customer and creation time (within 5 minutes)
+      const groupedOrders: Record<string, GroupedOrder> = ordersData.reduce((groups: Record<string, GroupedOrder>, order) => {
+        const orderTime = order.created_at ? new Date(order.created_at).getTime() : Date.now();
+        const groupKey = `${order.customer_id || 'unknown'}_${Math.floor(orderTime / (5 * 60 * 1000))}`; // Group by 5-minute windows
+        
+        if (!groups[groupKey]) {
+          groups[groupKey] = {
+            id: order.id ?? 0, // Use first order ID as main ID
+            customer_id: order.customer_id || '',
+            created_at: order.created_at || '',
+            status: order.status || 'pending',
+            delivery_name: order.delivery_name || '',
+            delivery_address: order.delivery_address || '',
+            delivery_phone: order.delivery_phone || '',
+            delivery_email: order.delivery_email || '',
+            items: [],
+            total: 0
+          };
+        }
+        
+        groups[groupKey].items.push({
+          id: order.id ?? 0,
+          product: order.product || { productName: 'Product', images: [] },
+          quantity: order.quantity,
+          total: order.total,
+          status: order.status || 'pending'
+        });
+        groups[groupKey].total += order.total;
+        
+        return groups;
+      }, {});
+      
+      const groupedOrdersArray: GroupedOrder[] = Object.values(groupedOrders);
+      setOrders(groupedOrdersArray);
     } catch (error) {
       console.error('Error fetching orders:', error);
       setToast({ message: 'Failed to load orders', type: 'error' });
@@ -178,10 +214,16 @@ const OrderHistoryPage = () => {
     setToast({ message, type });
   };
 
-  const handleCancelOrder = async (orderId: number) => {
+  const handleCancelOrder = async (order: GroupedOrder) => {
     try {
-      await orderService.updateStatus(orderId, 'cancelled');
-      showToast(`Order ${orderId} has been successfully cancelled.`, 'success');
+      // Cancel all items in the order group
+      const cancelPromises = order.items.map((item) => 
+        orderService.updateStatus(item.id, 'cancelled')
+      );
+      
+      await Promise.all(cancelPromises);
+      
+      showToast(`Order #${order.id} has been successfully cancelled.`, 'success');
       setSelectedOrder(null);
       // Refresh orders list
       fetchOrders();
@@ -225,7 +267,7 @@ const OrderHistoryPage = () => {
             </h1>
           </div>
           <div className="bg-white/10 backdrop-blur-md shadow-2xl rounded-2xl overflow-hidden border border-white/20">
-            <div className="overflow-x-auto overflow-y-auto max-h-96">
+            <div className="overflow-x-auto overflow-y-auto max-h-106">
               <table className="min-w-full divide-y divide-white/10">
                 <thead className="bg-white/5">
                   <tr>
@@ -240,28 +282,40 @@ const OrderHistoryPage = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
-                  {orders.map((order) => (
+                  {orders.map((order: GroupedOrder) => (
                     <tr key={order.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-white">#{order.id}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-wood-light">
                         {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center space-x-4">
-                          <div className="relative group">
-                            <img
-                              className="h-16 w-16 rounded-lg object-cover border-2 border-white/30 shadow-lg"
-                              src={order.product?.images?.[0] || '/placeholder-image.jpg'}
-                              alt={order.product?.productName}
-                            />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
-                              <span className="text-white text-xs font-bold">Qty: {order.quantity}</span>
+                        <div className="space-y-2">
+                          {order.items.map((item, index: number) => (
+                            <div key={item.id} className="flex items-center space-x-4">
+                              {/* Horizontal Scrollable Image Gallery */}
+                              <div className="relative">
+                                <div className="flex overflow-x-auto space-x-2 max-w-24" style={{scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.3) transparent'}}>
+                                  {(item.product?.images && item.product.images.length > 0 ? item.product.images : ['/placeholder-image.jpg']).map((image, imgIndex) => (
+                                    <img
+                                      key={imgIndex}
+                                      className="h-12 w-12 flex-shrink-0 rounded-lg object-cover border-2 border-white/30 shadow-lg"
+                                      src={image}
+                                      alt={`${item.product?.productName || 'Product'} ${imgIndex + 1}`}
+                                    />
+                                  ))}
+                                </div>
+                                {/* Quantity badge */}
+                                <div className="absolute -top-2 -right-2 bg-wood-accent text-white text-xs font-bold px-2 py-1 rounded-full min-w-[20px] h-5 flex items-center justify-center">
+                                  {item.quantity}
+                                </div>
+                              </div>
+                              <div className="text-sm">
+                                <p className="font-semibold text-white truncate max-w-xs">{item.product?.productName || 'Product'}</p>
+                                <p className="text-xs text-wood-light">Qty: {item.quantity} × Rs.{(item.total / item.quantity).toFixed(2)}</p>
+                              </div>
+                              {index < order.items.length - 1 && <hr className="border-white/20 w-full mt-2" />}
                             </div>
-                          </div>
-                          <div className="text-sm">
-                            <p className="font-semibold text-white truncate max-w-xs">{order.product?.productName || 'Product'}</p>
-                            <p className="text-xs text-wood-light">Quantity: {order.quantity}</p>
-                          </div>
+                          ))}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-wood-accent">Rs.{order.total?.toFixed(2)}</td>
@@ -302,7 +356,7 @@ const OrderHistoryPage = () => {
           )}
         </div>
 
-        {selectedOrder && <OrderModal order={selectedOrder} onClose={() => setSelectedOrder(null)} onCancel={() => handleCancelOrder(selectedOrder.id!)} />}
+        {selectedOrder && <OrderModal order={selectedOrder} onClose={() => setSelectedOrder(null)} onCancel={() => handleCancelOrder(selectedOrder)} />}
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </div>
       )}

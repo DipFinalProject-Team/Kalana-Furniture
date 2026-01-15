@@ -305,6 +305,30 @@ export interface Order {
   };
 }
 
+export interface GroupedOrderItem {
+  id: number;
+  product: {
+    productName: string;
+    images: string[];
+  };
+  quantity: number;
+  total: number;
+  status: string;
+}
+
+export interface GroupedOrder {
+  id: number;
+  customer_id: string;
+  created_at: string;
+  status: string;
+  delivery_name: string;
+  delivery_address: string;
+  delivery_phone: string;
+  delivery_email: string;
+  items: GroupedOrderItem[];
+  total: number;
+}
+
 export const orderService = {
   create: async (orderData: { product_id: number, quantity: number, total: number, deliveryDetails: DeliveryDetails }): Promise<{ message: string; order: Order }> => {
     const response = await api.post('/orders', orderData);

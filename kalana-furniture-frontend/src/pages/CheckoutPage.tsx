@@ -62,7 +62,7 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, isLoading } = useAuth();
-  const { cartItems, clearCart, appliedDiscount, promoCode, applyPromoCode, removePromoCode, promoMessage } = useCart();
+  const { cartItems, clearCart, appliedDiscount, promoCode, removePromoCode } = useCart();
 
   const isBuyNow = searchParams.get('buyNow') === 'true';
   const buyNowProductId = searchParams.get('productId');
@@ -80,7 +80,6 @@ const CheckoutPage = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [toast, setToast] = useState<{type: 'success' | 'error', message: string} | null>(null);
-  const [localPromoCode, setLocalPromoCode] = useState('');
 
   // Buy now specific promo code state
   const [buyNowPromoCode, setBuyNowPromoCode] = useState('');
@@ -130,16 +129,6 @@ const CheckoutPage = () => {
     setDeliveryDetails(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleApplyPromoCode = () => {
-    applyPromoCode(localPromoCode);
-    setLocalPromoCode('');
-  };
-
-  const handleRemovePromoCode = () => {
-    removePromoCode();
-    setLocalPromoCode('');
-  };
-
   const handleBuyNowApplyPromoCode = async () => {
     if (!user) {
       setBuyNowPromoMessage('Please log in to apply promo codes');
@@ -172,10 +161,20 @@ const CheckoutPage = () => {
         setBuyNowAppliedDiscount(0);
         setBuyNowPromoMessage(response.error || 'Invalid promo code');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error applying promo code:', err);
       setBuyNowAppliedDiscount(0);
-      setBuyNowPromoMessage(err.response?.data?.error || 'Failed to apply promo code');
+      let errorMessage = 'Failed to apply promo code';
+      
+      // Check if it's an axios error with response
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosError = err as { response?: { data?: { error?: string } } };
+        if (axiosError.response?.data?.error) {
+          errorMessage = axiosError.response.data.error;
+        }
+      }
+      
+      setBuyNowPromoMessage(errorMessage);
     }
   };
 
