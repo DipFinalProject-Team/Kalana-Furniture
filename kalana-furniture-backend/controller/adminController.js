@@ -1057,3 +1057,288 @@ exports.deleteReview = async (req, res) => {
     res.status(500).json({ message: 'Failed to delete review' });
   }
 };
+
+// Analytics functions
+exports.getMonthlySales = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('total, created_at')
+      .eq('status', 'Placed'); // Only count placed orders as sales
+
+    if (error) throw error;
+
+    // Group by month
+    const monthlyData = {};
+    data.forEach(order => {
+      const date = new Date(order.created_at);
+      const monthKey = date.toLocaleString('default', { month: 'short' });
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = 0;
+      }
+      monthlyData[monthKey] += parseFloat(order.total);
+    });
+
+    // Convert to array format for charts
+    const result = Object.keys(monthlyData).map(month => ({
+      name: month,
+      sales: Math.round(monthlyData[month])
+    }));
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error fetching monthly sales:', error);
+    res.status(500).json({ message: 'Failed to fetch monthly sales data' });
+  }
+};
+
+exports.getOrdersTrend = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('created_at')
+      .eq('status', 'Placed')
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    // Group by date (last 30 days)
+    const ordersByDate = {};
+    const today = new Date();
+    
+    // Initialize last 30 days
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dateKey = date.toISOString().split('T')[0];
+      ordersByDate[dateKey] = 0;
+    }
+
+    // Count orders per date
+    data.forEach(order => {
+      const date = new Date(order.created_at).toISOString().split('T')[0];
+      if (ordersByDate.hasOwnProperty(date)) {
+        ordersByDate[date] += 1;
+      }
+    });
+
+    // Convert to array format
+    const result = Object.keys(ordersByDate).map(date => ({
+      date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      orders: ordersByDate[date]
+    }));
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error fetching orders trend:', error);
+    res.status(500).json({ message: 'Failed to fetch orders trend data' });
+  }
+};
+
+exports.getSalesByCategory = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .select(`
+        products:product_id (
+          category
+        )
+      `)
+      .eq('status', 'Placed');
+
+    if (error) throw error;
+
+    // Group by category and count orders
+    const categoryData = {};
+    data.forEach(order => {
+      const category = order.products?.category || 'Uncategorized';
+      if (!categoryData[category]) {
+        categoryData[category] = 0;
+      }
+      categoryData[category] += 1; // Count orders, not revenue
+    });
+
+    // Define colors for categories
+    const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F'];
+    
+    // Convert to array format
+    const result = Object.keys(categoryData).map((category, index) => ({
+      name: category,
+      value: categoryData[category],
+      color: colors[index % colors.length]
+    }));
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error fetching sales by category:', error);
+    res.status(500).json({ message: 'Failed to fetch sales by category data' });
+  }
+};
+
+exports.getTopSellingProducts = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .select(`
+        quantity,
+        products:product_id (
+          id,
+          productName,
+          category,
+          price,
+          images
+        )
+      `)
+      .eq('status', 'Placed');
+
+    if (error) throw error;
+
+    // Group by product
+    const productData = {};
+    data.forEach(order => {
+      const product = order.products;
+      if (product) {
+        const productId = product.id;
+        if (!productData[productId]) {
+          productData[productId] = {
+            id: productId,
+            name: product.productName,
+            category: product.category,
+            price: product.price,
+            image: product.images?.[0] || '/placeholder-image.jpg',
+            sales: 0
+          };
+        }
+        productData[productId].sales += parseInt(order.quantity);
+      }
+    });
+
+    // Sort by sales and take top 5
+    const result = Object.values(productData)
+      .sort((a, b) => b.sales - a.sales)
+      .slice(0, 5);
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error fetching top selling products:', error);
+    res.status(500).json({ message: 'Failed to fetch top selling products data' });
+  }
+};
+
+// Dashboard stats
+exports.getDashboardStats = async (req, res) => {
+  try {
+    // Get total customers
+    const { count: totalCustomers } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .eq('role', 'customer');
+
+    // Get total products
+    const { count: totalProducts } = await supabase
+      .from('products')
+      .select('*', { count: 'exact', head: true });
+
+    // Get order statistics
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('status, total, created_at');
+
+    const totalOrders = orders.length;
+    const pendingOrders = orders.filter(order => order.status === 'pending').length;
+    const cancelledOrders = orders.filter(order => order.status === 'cancelled').length;
+    const placedOrders = orders.filter(order => order.status === 'Placed');
+
+    // Calculate total revenue from placed orders
+    const totalRevenue = placedOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
+
+    // Calculate monthly sales (current month)
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const monthlySales = placedOrders
+      .filter(order => {
+        const orderDate = new Date(order.created_at);
+        return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
+      })
+      .reduce((sum, order) => sum + parseFloat(order.total), 0);
+
+    // Get total suppliers
+    const { count: totalSuppliers } = await supabase
+      .from('suppliers')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'approved');
+
+    // Calculate trends (simplified - in real app you'd compare with previous periods)
+    const stats = [
+      {
+        id: 1,
+        title: 'Total Customers',
+        value: totalCustomers.toString(),
+        icon: 'FaUsers',
+        color: 'bg-blue-500',
+        trend: '+12%', // You'd calculate this based on previous data
+      },
+      {
+        id: 2,
+        title: 'Total Products',
+        value: totalProducts.toString(),
+        icon: 'FaBoxOpen',
+        color: 'bg-indigo-500',
+        trend: '+5%',
+      },
+      {
+        id: 3,
+        title: 'Total Orders',
+        value: totalOrders.toString(),
+        icon: 'FaShoppingCart',
+        color: 'bg-green-500',
+        trend: '+8%',
+      },
+      {
+        id: 4,
+        title: 'Pending Orders',
+        value: pendingOrders.toString(),
+        icon: 'FaClock',
+        color: 'bg-yellow-500',
+        trend: '-2%',
+      },
+      {
+        id: 5,
+        title: 'Cancelled Orders',
+        value: cancelledOrders.toString(),
+        icon: 'FaTimesCircle',
+        color: 'bg-red-500',
+        trend: '-1%',
+      },
+      {
+        id: 6,
+        title: 'Total Revenue',
+        value: `Rs. ${totalRevenue.toLocaleString()}`,
+        icon: 'FaWallet',
+        color: 'bg-purple-500',
+        trend: '+15%',
+      },
+      {
+        id: 7,
+        title: 'Monthly Sales',
+        value: `Rs. ${monthlySales.toLocaleString()}`,
+        icon: 'FaMoneyBillWave',
+        color: 'bg-teal-500',
+        trend: '+10%',
+      },
+      {
+        id: 8,
+        title: 'Total Suppliers',
+        value: totalSuppliers.toString(),
+        icon: 'FaTruck',
+        color: 'bg-orange-500',
+        trend: '+2%',
+      },
+    ];
+
+    res.status(200).json(stats);
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    res.status(500).json({ message: 'Failed to fetch dashboard statistics' });
+  }
+};

@@ -49,4 +49,13 @@ router.get('/orders', orderController.getAllOrders);
 router.get('/orders/:id', orderController.getOrderById);
 router.put('/orders/:id/status', orderController.updateOrderStatus);
 
+// Dashboard stats route
+router.get('/dashboard/stats', adminController.getDashboardStats);
+
+// Analytics routes
+router.get('/analytics/monthly-sales', adminController.getMonthlySales);
+router.get('/analytics/orders-trend', adminController.getOrdersTrend);
+router.get('/analytics/sales-by-category', adminController.getSalesByCategory);
+router.get('/analytics/top-selling-products', adminController.getTopSellingProducts);
+
 module.exports = router;

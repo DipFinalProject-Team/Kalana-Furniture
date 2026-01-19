@@ -1,18 +1,34 @@
 import React, { useEffect, useState } from 'react';
-import { dashboardStats } from '../data/mockData';
-import { FaExclamationTriangle, FaClock, FaArrowRight } from 'react-icons/fa';
+import { FaExclamationTriangle, FaClock, FaArrowRight, FaUsers, FaBoxOpen, FaShoppingCart, FaTimesCircle, FaWallet, FaMoneyBillWave, FaTruck } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
-import { productService, type Product } from '../services/api';
+import { productService, type Product, adminService, type DashboardStat } from '../services/api';
 
 const Dashboard: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStat[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Icon mapping for dynamic rendering
+  const iconMap: { [key: string]: React.ComponentType<{ size?: number }> } = {
+    FaUsers,
+    FaBoxOpen,
+    FaShoppingCart,
+    FaClock,
+    FaTimesCircle,
+    FaWallet,
+    FaMoneyBillWave,
+    FaTruck,
+  };
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const data = await productService.getAll();
-        setProducts(data);
+        const [productsData, statsData] = await Promise.all([
+          productService.getAll(),
+          adminService.getDashboardStats()
+        ]);
+        setProducts(productsData);
+        setDashboardStats(statsData);
       } catch (error) {
         console.error('Failed to load dashboard data', error);
       } finally {
@@ -55,7 +71,7 @@ const Dashboard: React.FC = () => {
                 </span>
               </div>
               <div className={`p-3 rounded-full text-white ${stat.color}`}>
-                <stat.icon size={24} />
+                {React.createElement(iconMap[stat.icon] || FaUsers, { size: 24 })}
               </div>
             </div>
           </div>

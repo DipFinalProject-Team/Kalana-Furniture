@@ -44,6 +44,15 @@ export interface Review {
   productUrl: string;
 }
 
+export interface DashboardStat {
+  id: number;
+  title: string;
+  value: string;
+  icon: string;
+  color: string;
+  trend: string;
+}
+
 interface BackendProduct {
   id: number;
   productName: string;
@@ -353,6 +362,12 @@ export const adminService = {
   deleteReview: async (id: number): Promise<{ message: string }> => {
     const response = await api.delete(`/admin/reviews/${id}`);
     return response.data;
+  },
+
+  // Dashboard stats function
+  getDashboardStats: async (): Promise<DashboardStat[]> => {
+    const response = await api.get('/admin/dashboard/stats');
+    return response.data;
   }
 };
 
@@ -448,6 +463,28 @@ export const orderService = {
 
   updateStatus: async (id: number, status: string): Promise<Order> => {
     const response = await api.put(`/admin/orders/${id}/status`, { status });
+    return response.data;
+  }
+};
+
+export const analyticsService = {
+  getMonthlySales: async () => {
+    const response = await api.get('/admin/analytics/monthly-sales');
+    return response.data;
+  },
+
+  getOrdersTrend: async () => {
+    const response = await api.get('/admin/analytics/orders-trend');
+    return response.data;
+  },
+
+  getSalesByCategory: async () => {
+    const response = await api.get('/admin/analytics/sales-by-category');
+    return response.data;
+  },
+
+  getTopSellingProducts: async () => {
+    const response = await api.get('/admin/analytics/top-selling-products');
     return response.data;
   }
 };
