@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { FaSearch, FaFilter, FaEye, FaTrash, FaCheckCircle, FaClock, FaBoxOpen, FaChevronDown, FaTimesCircle } from 'react-icons/fa';
-import { orderService, Order } from '../services/api';
+import { FaSearch, FaFilter, FaEye, FaCheck, FaTimes } from 'react-icons/fa';
+import { orderService } from '../services/api';
+import type { Order } from '../services/api';
 import ConfirmationModal from '../components/ConfirmationModal';
 import Toast from '../components/Toast';
 
-interface OrderItem {
+interface OrderManagement {
   name: string;
   quantity: number;
   price: number;
@@ -32,8 +33,8 @@ const OrderManagement: React.FC = () => {
       setLoading(false);
     }
   };
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  
+
+
   // View Details Modal State
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -45,7 +46,7 @@ const OrderManagement: React.FC = () => {
   // Place Order Confirmation State
   const [orderToPlace, setOrderToPlace] = useState<Order | null>(null);
   const [isPlaceOrderModalOpen, setIsPlaceOrderModalOpen] = useState(false);
-  
+
   // Toast State
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error'; isVisible: boolean }>({
     message: '',
@@ -103,10 +104,7 @@ const OrderManagement: React.FC = () => {
 
   const confirmDeleteOrder = () => {
     if (orderToDelete) {
-      setOrders(orders.map(order => 
-        order.id === orderToDelete.id ? { ...order, status: 'Cancelled' } : order
-      ));
-      showToast(`Order ${orderToDelete.id} has been cancelled`, 'success');
+      handleStatusChange(orderToDelete.id, 'cancelled');
       setIsDeleteModalOpen(false);
       setOrderToDelete(null);
     }
@@ -125,7 +123,7 @@ const OrderManagement: React.FC = () => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen rounded-2xl">
-      <Toast 
+      <Toast
         message={toast.message}
         type={toast.type}
         isVisible={toast.isVisible}
@@ -137,8 +135,8 @@ const OrderManagement: React.FC = () => {
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDeleteOrder}
         title="Cancel Order"
-        message={`Are you sure you want to cancel order ${orderToDelete?.id}?`}
-        confirmText="Cancel Order"
+        message={`Are you sure you want to cancel order #${orderToDelete?.id}? This action cannot be undone.`}
+        confirmText="Yes, Cancel Order"
         cancelText="Keep Order"
       />
 
@@ -146,10 +144,15 @@ const OrderManagement: React.FC = () => {
         isOpen={isPlaceOrderModalOpen}
         onClose={() => setIsPlaceOrderModalOpen(false)}
         onConfirm={confirmPlaceOrder}
-        title="Confirm Order Placement"
-        message={`Are you sure you want to mark order ${orderToPlace?.id} as Placed?`}
-        confirmText="Yes"
+        title="Place Order Confirmation"
+        message={`Are you sure you want to place order #${orderToPlace?.id}? This will change the order status from Pending to Placed.`}
+        confirmText="Yes, Place Order"
         cancelText="Cancel"
+        icon={<FaCheck className="text-xl" />}
+        iconColor="text-green-600"
+        borderColor="border-green-500"
+        iconBgColor="bg-green-100"
+        confirmButtonColor="bg-green-600 hover:bg-green-700 shadow-green-200 focus:ring-green-500"
       />
 
       {/* Header */}
@@ -170,7 +173,7 @@ const OrderManagement: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          
+
           <div className="relative">
             <FaFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <select
@@ -179,7 +182,7 @@ const OrderManagement: React.FC = () => {
               onChange={(e) => setFilterStatus(e.target.value)}
             >
               <option value="all">All Status</option>
-              <option value="Pending">Pending</option>
+              <option value="pending">Pending</option>
               <option value="Placed">Placed</option>
             </select>
           </div>
@@ -226,50 +229,66 @@ const OrderManagement: React.FC = () => {
                     </td>
                     <td className="p-4 font-bold text-gray-800">Rs. {order.total.toFixed(2)}</td>
                     <td className="p-4">
-                      <select
-                        value={order.status}
-                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 ${
-                          order.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                          order.status === 'processing' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                          order.status === 'shipped' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                          order.status === 'delivered' ? 'bg-green-50 text-green-700 border-green-200' :
-                          'bg-red-50 text-red-700 border-red-200'
-                        }`}
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="processing">Processing</option>
-                        <option value="shipped">Shipped</option>
-                        <option value="delivered">Delivered</option>
-                        <option value="cancelled">Cancelled</option>
-                      </select>
+                      {order.status === 'cancelled' ? (
+                        <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-300 inline-flex items-center gap-2">
+                          <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                          Cancelled
+                        </span>
+                      ) : order.status === 'Placed' ? (
+                        <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-300 inline-flex items-center gap-2">
+                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                          Placed
+                        </span>
+                      ) : order.status === 'pending' ? (
+                        <button
+                          onClick={() => handlePlaceOrderClick(order)}
+                          className="px-3 py-1.5 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-300 hover:bg-yellow-200 transition-colors inline-flex items-center gap-2 cursor-pointer"
+                          title="Click to place order"
+                        >
+                          <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+                          Pending
+                        </button>
+                      ) : (
+                        <select
+                          value={order.status}
+                          onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all duration-200 ${order.status === 'processing' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                            order.status === 'shipped' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                              order.status === 'delivered' ? 'bg-green-50 text-green-700 border-green-200' :
+                                'bg-red-50 text-red-700 border-red-200'
+                            }`}
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                      )}
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
-                        onClick={() => handleViewDetails(order)}
-                        className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="View Details"
-                      >
-                        <FaEye />
-                      </button>
-                      {order.status === 'Pending' && (
-                        <button
-                          onClick={() => handleDeleteClick(order)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Cancel Order"
+                          onClick={() => handleViewDetails(order)}
+                          className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="View Details"
                         >
-                          <FaTrash />
+                          <FaEye />
                         </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        {order.status === 'pending' && (
+                          <button
+                            onClick={() => handleDeleteClick(order)}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Cancel Order"
+                          >
+                            <FaTimes />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )))}
             </tbody>
           </table>
         </div>
-        
+
         {filteredOrders.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500">No orders found matching your criteria.</p>
@@ -287,7 +306,7 @@ const OrderManagement: React.FC = () => {
                 <p className="text-sm text-gray-500">ID: {selectedOrder.id}</p>
               </div>
             </div>
-            
+
             <div className="p-6">
               <div className="grid grid-cols-2 gap-6 mb-6">
                 <div>
@@ -307,23 +326,41 @@ const OrderManagement: React.FC = () => {
 
               <div className="mb-6">
                 <h3 className="text-sm font-bold text-gray-500 uppercase mb-2">Order Status</h3>
-                <select
-                  value={selectedOrder.status}
-                  onChange={(e) => handleStatusChange(selectedOrder.id, e.target.value)}
-                  className={`px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-wood-brown ${
-                    selectedOrder.status === 'pending' ? 'bg-yellow-50 border-yellow-200' :
-                    selectedOrder.status === 'processing' ? 'bg-blue-50 border-blue-200' :
-                    selectedOrder.status === 'shipped' ? 'bg-purple-50 border-purple-200' :
-                    selectedOrder.status === 'delivered' ? 'bg-green-50 border-green-200' :
-                    'bg-red-50 border-red-200'
-                  }`}
-                >
-                  <option value="pending">Pending</option>
-                  <option value="processing">Processing</option>
-                  <option value="shipped">Shipped</option>
-                  <option value="delivered">Delivered</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
+                {selectedOrder.status === 'cancelled' ? (
+                  <div className="px-4 py-2 rounded-lg bg-red-50 border border-red-200 inline-flex items-center gap-3">
+                    <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+                    <span className="text-red-800 font-semibold">Cancelled</span>
+                    <span className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded-full">Final Status</span>
+                  </div>
+                ) : selectedOrder.status === 'Placed' ? (
+                  <div className="px-4 py-2 rounded-lg bg-green-50 border border-green-200 inline-flex items-center gap-3">
+                    <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+                    <span className="text-green-800 font-semibold">Placed</span>
+                    <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">Confirmed</span>
+                  </div>
+                ) : selectedOrder.status === 'pending' ? (
+                  <button
+                    onClick={() => handlePlaceOrderClick(selectedOrder)}
+                    className="px-4 py-2 rounded-lg bg-yellow-50 border border-yellow-300 hover:bg-yellow-100 transition-colors inline-flex items-center gap-3 cursor-pointer"
+                    title="Click to place this order"
+                  >
+                    <span className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></span>
+                    <span className="text-yellow-800 font-semibold">Pending</span>
+                  </button>
+                ) : (
+                  <select
+                    value={selectedOrder.status}
+                    onChange={(e) => handleStatusChange(selectedOrder.id, e.target.value)}
+                    className={`px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-wood-brown ${selectedOrder.status === 'processing' ? 'bg-blue-50 border-blue-200' :
+                      selectedOrder.status === 'shipped' ? 'bg-purple-50 border-purple-200' :
+                        selectedOrder.status === 'delivered' ? 'bg-green-50 border-green-200' :
+                          'bg-red-50 border-red-200'
+                      }`}
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                )}
               </div>
 
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
@@ -343,21 +380,19 @@ const OrderManagement: React.FC = () => {
                   <p className="font-medium text-gray-800">Rs. {(selectedOrder.total / selectedOrder.quantity).toFixed(2)} each</p>
                 </div>
               </div>
-                </div>
-                <div className="mt-4 pt-3 border-t border-gray-200 flex justify-between items-center">
-                  <p className="font-bold text-gray-800">Total Amount</p>
-                  <p className="text-xl font-bold text-wood-brown">Rs. {selectedOrder.total.toFixed(2)}</p>
-                </div>
-              </div>
+            </div>
+            <div className="mt-4 pt-3 px-8 border-t border-gray-200 flex justify-between items-center">
+              <p className="font-bold text-gray-800">Total Amount</p>
+              <p className="text-xl font-bold text-wood-brown">Rs. {selectedOrder.total.toFixed(2)}</p>
+            </div>
 
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setIsDetailsModalOpen(false)}
-                  className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
+            <div className="flex justify-end gap-3 p-6 border-t border-gray-100 bg-gray-50">
+              <button
+                onClick={() => setIsDetailsModalOpen(false)}
+                className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

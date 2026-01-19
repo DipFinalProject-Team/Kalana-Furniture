@@ -6,9 +6,14 @@ interface ConfirmationModalProps {
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  message: string;
+  message: string | React.ReactNode;
   confirmText?: string;
   cancelText?: string;
+  icon?: React.ReactNode;
+  iconColor?: string;
+  borderColor?: string;
+  iconBgColor?: string;
+  confirmButtonColor?: string;
 }
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -19,17 +24,22 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   message,
   confirmText = 'Delete',
   cancelText = 'Cancel',
+  icon,
+  iconColor = 'text-orange-600',
+  borderColor = 'border-wood-brown',
+  iconBgColor = 'bg-orange-100',
+  confirmButtonColor = 'bg-red-600 hover:bg-red-700 shadow-red-200 focus:ring-red-500',
 }) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm transition-opacity">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md transform transition-all scale-100 border-t-4 border-wood-brown overflow-hidden">
+      <div className={`bg-white rounded-xl shadow-2xl w-full max-w-md transform transition-all scale-100 border-t-4 ${borderColor} overflow-hidden`}>
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3 text-wood-brown">
-              <div className="bg-orange-100 p-2 rounded-full">
-                <FaExclamationTriangle className="text-xl text-orange-600" />
+              <div className={`${iconBgColor} p-2 rounded-full`}>
+                {icon || <FaExclamationTriangle className={`text-xl ${iconColor}`} />}
               </div>
               <h3 className="text-xl font-bold text-gray-800">{title}</h3>
             </div>
@@ -57,7 +67,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                 onConfirm();
                 onClose();
               }}
-              className="px-5 py-2.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 shadow-lg shadow-red-200 transition-all transform hover:-translate-y-0.5 focus:ring-2 focus:ring-red-500"
+              className={`px-5 py-2.5 rounded-lg text-white font-medium shadow-lg transition-all transform hover:-translate-y-0.5 focus:ring-2 ${confirmButtonColor}`}
             >
               {confirmText}
             </button>

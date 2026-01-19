@@ -1,5 +1,6 @@
 const express = require('express');
 const adminController = require('../controller/adminController');
+const orderController = require('../controller/orderController');
 
 const router = express.Router();
 
@@ -42,5 +43,10 @@ router.get('/customers/:id', adminController.getCustomerDetails);
 // Review management routes
 router.get('/reviews', adminController.getAllReviews);
 router.delete('/reviews/:id', adminController.deleteReview);
+
+// Order management routes
+router.get('/orders', orderController.getAllOrders);
+router.get('/orders/:id', orderController.getOrderById);
+router.put('/orders/:id/status', orderController.updateOrderStatus);
 
 module.exports = router;

@@ -417,6 +417,7 @@ export interface Customer {
   totalSpent: number;
   status: string;
   avatar: string;
+}
 export interface Order {
   id: number;
   customer_id: string;
