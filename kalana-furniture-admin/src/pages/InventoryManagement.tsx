@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaSearch, FaFilter, FaBoxOpen, FaExclamationTriangle, FaTimesCircle, FaEdit, FaCheck, FaPlus, FaMinus, FaHistory, FaCartPlus, FaClipboardList } from 'react-icons/fa';
 import { adminService } from '../services/api';
-import type { InventoryItem, PurchaseOrder, SupplierApplication } from '../services/api';
+import type { InventoryItem, SupplierOrder, SupplierApplication } from '../services/api';
 import Toast from '../components/Toast';
 
 const InventoryManagement: React.FC = () => {
@@ -20,12 +20,12 @@ const InventoryManagement: React.FC = () => {
   const [orderSearchTerm, setOrderSearchTerm] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
 
-  // Purchase Order State
+  // Supplier Order State
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showOrdersList, setShowOrdersList] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<SupplierOrder | null>(null);
   const [showOrderDetailsModal, setShowOrderDetailsModal] = useState(false);
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<SupplierOrder[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierApplication[]>([]);
   const [newOrder, setNewOrder] = useState({
     productId: '',
@@ -142,7 +142,7 @@ const InventoryManagement: React.FC = () => {
 
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    const product = inventory.find(p => p.id.toString() === newOrder.productId);
+    const product = inventory.find(p => p.id === parseInt(newOrder.productId));
     if (!product) {
       showToast('Please select a product', 'error');
       return;
@@ -165,8 +165,8 @@ const InventoryManagement: React.FC = () => {
       const response = await adminService.createPurchaseOrder(orderData);
       
       // Add to local state
-      const supplier = suppliers.find(s => s.id === newOrder.supplierId);
-      const newOrderObj: PurchaseOrder = {
+      const supplier = suppliers.find(s => s.id === parseInt(newOrder.supplierId));
+      const newOrderObj: SupplierOrder = {
         id: response.order.id.toString(),
         productName: product.productName,
         quantity: newOrder.quantity,
@@ -189,7 +189,7 @@ const InventoryManagement: React.FC = () => {
     }
   };
 
-  const handleViewOrderDetails = (order: PurchaseOrder) => {
+  const handleViewOrderDetails = (order: SupplierOrder) => {
     if (['Dispatched', 'Delivered', 'Completed'].includes(order.status)) {
       setSelectedOrder(order);
       setShowOrderDetailsModal(true);
@@ -290,7 +290,7 @@ const InventoryManagement: React.FC = () => {
               : 'text-gray-600 hover:text-gray-800'
           }`}
         >
-          Recent Purchase Orders
+          Recent Supplier Orders
         </button>
       </div>
 

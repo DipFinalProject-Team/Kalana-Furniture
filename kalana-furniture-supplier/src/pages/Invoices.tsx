@@ -15,11 +15,29 @@ interface Invoice {
   paymentDate: string | null;
 }
 
+interface InvoiceItem {
+  product: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+interface InvoiceDetails {
+  id: string;
+  orderId: string;
+  amount: number;
+  date: string;
+  dueDate: string;
+  status: string;
+  paymentDate: string | null;
+  items: InvoiceItem[];
+}
+
 interface SupplierProfile {
   companyName: string;
   email: string;
   phone: string;
-  contactPerson: string;
+  address: string;
 }
 
 const Invoices: React.FC = () => {
@@ -52,9 +70,10 @@ const Invoices: React.FC = () => {
         if (verifyData.success) {
           setSupplier(verifyData.supplier);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error fetching data:', err);
-        if (err.response?.status === 401) {
+        const error = err as { response?: { status: number } };
+        if (error.response?.status === 401) {
           setError('Session expired. Please login again.');
         } else {
           setError('Failed to load invoices. Please try again later.');
@@ -79,7 +98,7 @@ const Invoices: React.FC = () => {
         return;
       }
 
-      const invoice = response.invoice;
+      const invoice: InvoiceDetails = response.invoice;
       const doc = new jsPDF();
 
       // Add Company Logo/Header
@@ -94,7 +113,7 @@ const Invoices: React.FC = () => {
       doc.setFont('helvetica', 'normal');
       if (supplier) {
         doc.text(supplier.companyName, 14, 45);
-        doc.text(supplier.contactPerson, 14, 50);
+        doc.text(supplier.address, 14, 50);
         doc.text(supplier.email, 14, 55);
         doc.text(supplier.phone || '', 14, 60);
       }
@@ -120,10 +139,10 @@ const Invoices: React.FC = () => {
       
       // Table
       const tableColumn = ["Item", "Quantity", "Unit Price (LKR)", "Total (LKR)"];
-      const tableRows: any[] = [];
+      const tableRows: (string | number)[][] = [];
 
       if (invoice.items && invoice.items.length > 0) {
-        invoice.items.forEach((item: any) => {
+        invoice.items.forEach((item: InvoiceItem) => {
           const row = [
               item.product,
               item.quantity.toString(),
@@ -147,8 +166,7 @@ const Invoices: React.FC = () => {
       });
 
       // Footer
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const finalY = (doc as any).lastAutoTable.finalY || 95;
+      const finalY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || 95;
       doc.setFontSize(10);
       doc.text('Thank you for your business!', 105, finalY + 20, { align: 'center' });
 

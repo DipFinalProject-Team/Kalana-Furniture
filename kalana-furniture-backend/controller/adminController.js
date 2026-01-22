@@ -511,7 +511,7 @@ exports.updateStock = async (req, res) => {
 exports.getPurchaseOrders = async (req, res) => {
   try {
     const { data: orders, error } = await supabase
-      .from('purchase_orders')
+      .from('supplier_orders')
       .select(`
         *,
         products (
@@ -565,7 +565,7 @@ exports.createPurchaseOrder = async (req, res) => {
     }
 
     const { data: order, error } = await supabase
-      .from('purchase_orders')
+      .from('supplier_orders')
       .insert({
         supplier_id: supplierId,
         product_id: productId,
@@ -624,7 +624,7 @@ exports.updatePurchaseOrderStatus = async (req, res) => {
     updates.updated_at = new Date().toISOString();
 
     const { data: order, error } = await supabase
-      .from('purchase_orders')
+      .from('supplier_orders')
       .update(updates)
       .eq('id', id)
       .select(`
@@ -669,7 +669,7 @@ exports.updatePurchaseOrderStatus = async (req, res) => {
         .from('invoices')
         .insert({
           supplier_id: order.supplier_id,
-          purchase_order_id: order.id,
+          supplier_order_id: order.id,
           invoice_number: `INV-${new Date().getFullYear()}-${String(order.id).padStart(4, '0')}`,
           amount: baseAmount,
           total_amount: baseAmount,
@@ -704,7 +704,7 @@ exports.getInvoices = async (req, res) => {
         suppliers (
           company_name
         ),
-        purchase_orders (
+        supplier_orders (
           id
         )
       `)
@@ -714,7 +714,7 @@ exports.getInvoices = async (req, res) => {
 
     const formattedInvoices = invoices.map(invoice => ({
       id: invoice.invoice_number.toString(),
-      orderId: invoice.purchase_orders?.id ? `PO-${String(invoice.purchase_orders.id).padStart(4, '0')}` : 'N/A',
+      orderId: invoice.supplier_orders?.id ? `SO-${String(invoice.supplier_orders.id).padStart(4, '0')}` : 'N/A',
       supplierName: invoice.suppliers?.company_name || 'Unknown Supplier',
       amount: parseFloat(invoice.amount),
       date: invoice.issue_date,
@@ -748,7 +748,7 @@ exports.markInvoiceAsPaid = async (req, res) => {
         updated_at: new Date().toISOString()
       })
       .eq('invoice_number', id)
-      .select('id, invoice_number, amount, total_amount, issue_date, due_date, status, supplier_id, purchase_order_id')
+      .select('id, invoice_number, amount, total_amount, issue_date, due_date, status, supplier_id, supplier_order_id')
       .single();
 
     console.log('Update result:', { error, invoice: invoice ? 'found' : 'not found' });
@@ -786,21 +786,21 @@ exports.markInvoiceAsPaid = async (req, res) => {
       console.log('Supplier query failed:', err.message);
     }
 
-    console.log('Step 2: Fetching purchase order');
+    console.log('Step 2: Fetching supplier order');
     try {
-      if (invoice.purchase_order_id) {
-        const { data: purchaseOrder } = await supabase
-          .from('purchase_orders')
+      if (invoice.supplier_order_id) {
+        const { data: supplierOrder } = await supabase
+          .from('supplier_orders')
           .select('id')
-          .eq('id', invoice.purchase_order_id)
+          .eq('id', invoice.supplier_order_id)
           .single();
 
-        if (purchaseOrder) {
-          orderId = `PO-${String(purchaseOrder.id).padStart(4, '0')}`;
+        if (supplierOrder) {
+          orderId = `SO-${String(supplierOrder.id).padStart(4, '0')}`;
         }
       }
     } catch (err) {
-      console.log('Purchase order query failed:', err.message);
+      console.log('Supplier order query failed:', err.message);
     }
 
     console.log('Step 3: Formatting invoice');

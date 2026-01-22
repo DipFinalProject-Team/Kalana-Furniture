@@ -34,9 +34,9 @@ const Profile: React.FC = () => {
   // Form State
   const [profileData, setProfileData] = useState({
     companyName: '',
-    contactPerson: '',
     contactNumber: '',
     email: '',
+    address: '',
     categories: '',
     message: ''
   });
@@ -52,9 +52,9 @@ const Profile: React.FC = () => {
           const supplier = response.supplier;
           setProfileData({
             companyName: supplier.companyName || '',
-            contactPerson: supplier.contactPerson || '',
             contactNumber: supplier.phone || '',
             email: supplier.email || '',
+            address: supplier.address || '',
             categories: supplier.categories || '',
             message: supplier.message || ''
           });
@@ -77,10 +77,6 @@ const Profile: React.FC = () => {
       newErrors.companyName = 'Company name is required';
     }
 
-    if (!profileData.contactPerson.trim()) {
-      newErrors.contactPerson = 'Contact person is required';
-    }
-
     if (!profileData.contactNumber.trim()) {
       newErrors.contactNumber = 'Contact number is required';
     } else if (!/^\+?[\d\s-]{10,}$/.test(profileData.contactNumber)) {
@@ -91,6 +87,10 @@ const Profile: React.FC = () => {
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email)) {
       newErrors.email = 'Invalid email address';
+    }
+
+    if (!profileData.address.trim()) {
+      newErrors.address = 'Address is required';
     }
 
     setErrors(newErrors);
@@ -234,8 +234,8 @@ const Profile: React.FC = () => {
         try {
           const response = await supplierService.updateProfile({
             companyName: profileData.companyName,
-            contactPerson: profileData.contactPerson,
             phone: profileData.contactNumber,
+            address: profileData.address,
             categories: profileData.categories,
             message: profileData.message
           });
@@ -348,22 +348,6 @@ const Profile: React.FC = () => {
                 {errors.companyName && <p className="text-red-500 text-xs mt-1">{errors.companyName}</p>}
               </div>
 
-              {/* Contact Person */}
-              <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-stone-600 mb-1">Contact Person</label>
-                <div className="relative">
-                  <input 
-                    type="text" 
-                    name="contactPerson"
-                    value={profileData.contactPerson}
-                    onChange={handleInputChange}
-                    className={`w-full pl-10 p-2 border rounded-md focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none ${errors.contactPerson ? 'border-red-500' : 'border-stone-300'}`}
-                  />
-                  <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-                </div>
-                {errors.contactPerson && <p className="text-red-500 text-xs mt-1">{errors.contactPerson}</p>}
-              </div>
-
               {/* Contact Number */}
               <div>
                 <label className="block text-sm font-medium text-stone-600 mb-1">Contact Number</label>
@@ -395,8 +379,26 @@ const Profile: React.FC = () => {
                 </div>
                 {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
               </div>
+            </div>
 
-              {/* Categories */}
+            {/* Address */}
+            <div>
+              <label className="block text-sm font-medium text-stone-600 mb-1">Address</label>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  name="address"
+                  value={profileData.address}
+                  onChange={handleInputChange}
+                  className={`w-full pl-10 p-2 border rounded-md focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none ${errors.address ? 'border-red-500' : 'border-stone-300'}`}
+                  placeholder="123 Main St, City, State, ZIP"
+                />
+                <FiTag className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+              </div>
+              {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="col-span-1 md:col-span-2">
                 <label className="block text-sm font-medium text-stone-600 mb-1">Product Categories</label>
                 <div className="relative">

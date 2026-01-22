@@ -7,7 +7,7 @@ import ProductManagement from './pages/ProductManagement';
 import OrderManagement from './pages/OrderManagement';
 import CustomerManagement from './pages/CustomerManagement';
 import InventoryManagement from './pages/InventoryManagement';
-import CreatePurchaseOrder from './pages/CreatePurchaseOrder';
+import CreateSupplierOrder from './pages/CreateSupplierOrder';
 import SupplierInvoices from './pages/SupplierInvoices';
 import SupplierApprovals from './pages/SupplierApprovals';
 import Promotions from './pages/Promotions';
@@ -77,7 +77,7 @@ const AppContent: React.FC = () => {
         <Route path="orders" element={<OrderManagement />} />
         <Route path="customers" element={<CustomerManagement />} />
         <Route path="inventory" element={<InventoryManagement />} />
-        <Route path="create-order" element={<CreatePurchaseOrder />} />
+        <Route path="create-order" element={<CreateSupplierOrder />} />
         <Route path="approvals" element={<SupplierApprovals />} />
         <Route path="invoices" element={<SupplierInvoices />} />
         <Route path="promotions" element={<Promotions />} />

@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FaSearch, FaArrowLeft, FaUser, FaEnvelope, FaPhone, FaCalendar, FaTags, FaCheck, FaEye, FaTimes } from 'react-icons/fa';
+import { FaSearch, FaArrowLeft, FaEnvelope, FaPhone, FaCalendar, FaTags, FaCheck, FaEye, FaTimes } from 'react-icons/fa';
 import { adminService } from '../services/api';
 import type { InventoryItem, SupplierApplication } from '../services/api';
 import Toast from '../components/Toast';
 
 interface Supplier {
-  id: string;
+  id: number;
   name: string;
-  contactPerson: string;
+  address: string;
   email: string;
   phone: string;
   categories: string;
@@ -16,7 +16,7 @@ interface Supplier {
   status: string;
 }
 
-const CreatePurchaseOrder: React.FC = () => {
+const CreateSupplierOrder: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const productId = location.state?.productId;
@@ -54,7 +54,7 @@ const CreatePurchaseOrder: React.FC = () => {
         const mappedSuppliers = approvedSuppliers.map((s: SupplierApplication) => ({
           id: s.id,
           name: s.company_name,
-          contactPerson: s.contact_person,
+          address: s.address,
           email: s.email,
           phone: s.phone,
           categories: s.categories,
@@ -77,7 +77,7 @@ const CreatePurchaseOrder: React.FC = () => {
 
   const filteredSuppliers = suppliersList.filter(supplier =>
     supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    supplier.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    supplier.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
     supplier.categories.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -90,7 +90,7 @@ const CreatePurchaseOrder: React.FC = () => {
     try {
       const orderData = {
         productId: product.id,
-        supplierId: parseInt(selectedSupplier.id),
+        supplierId: selectedSupplier.id,
         quantity: parseInt(quantity),
         expectedDelivery: expectedDelivery,
         pricePerUnit: product.price
@@ -145,7 +145,7 @@ const CreatePurchaseOrder: React.FC = () => {
           <FaArrowLeft />
         </button>
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Create Purchase Order</h1>
+          <h1 className="text-3xl font-bold text-gray-800">Create Supplier Order</h1>
           <p className="text-gray-500 mt-1">Select a supplier and create an order for {product.productName}</p>
         </div>
       </div>
@@ -164,7 +164,6 @@ const CreatePurchaseOrder: React.FC = () => {
             <p className="text-gray-600">SKU: {product.sku}</p>
             <p className="text-gray-600">Category: {product.category}</p>
             <p className="text-gray-600">Current Stock: {product.stock}</p>
-            <p className="text-gray-600">Price: Rs. {product.price}</p>
           </div>
         </div>
       </div>
@@ -208,10 +207,6 @@ const CreatePurchaseOrder: React.FC = () => {
                       )}
                     </div>
                     <div className="space-y-1 text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <FaUser size={12} />
-                        <span>{supplier.contactPerson}</span>
-                      </div>
                       <div className="flex items-center gap-2">
                         <FaEnvelope size={12} />
                         <span>{supplier.email}</span>
@@ -261,7 +256,7 @@ const CreatePurchaseOrder: React.FC = () => {
             <div className="mb-6 p-4 bg-gray-50 rounded-lg">
               <h3 className="font-bold text-gray-800 mb-2">Selected Supplier</h3>
               <p className="text-gray-600">{selectedSupplier.name}</p>
-              <p className="text-sm text-gray-500">{selectedSupplier.contactPerson}</p>
+              <p className="text-sm text-gray-500">{selectedSupplier.address}</p>
             </div>
           )}
 
@@ -300,7 +295,7 @@ const CreatePurchaseOrder: React.FC = () => {
                 className="w-full py-3 bg-wood-brown text-white rounded-lg hover:bg-opacity-90 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 style={{ backgroundColor: selectedSupplier && expectedDelivery && quantity ? '#8B4513' : undefined }}
               >
-                Create Purchase Order
+                Create Supplier Order
               </button>
             </div>
           </div>
@@ -332,8 +327,8 @@ const CreatePurchaseOrder: React.FC = () => {
                       <p className="font-medium text-gray-800">{supplierForDetails.name}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Contact Person</p>
-                      <p className="font-medium text-gray-800">{supplierForDetails.contactPerson}</p>
+                      <p className="text-sm text-gray-500">Address</p>
+                      <p className="font-medium text-gray-800">{supplierForDetails.address}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Categories</p>
@@ -367,7 +362,7 @@ const CreatePurchaseOrder: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Supplier ID</p>
-                      <p className="font-medium text-gray-800 font-mono">{supplierForDetails.id}</p>
+                      <p className="font-medium text-gray-800 font-mono">#{supplierForDetails.id}</p>
                     </div>
                   </div>
                 </div>
@@ -401,4 +396,4 @@ const CreatePurchaseOrder: React.FC = () => {
   );
 };
 
-export default CreatePurchaseOrder;
+export default CreateSupplierOrder;

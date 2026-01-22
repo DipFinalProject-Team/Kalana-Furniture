@@ -3,7 +3,7 @@ import { supplierService } from '../services/api';
 import { FaCheck, FaTimes, FaTruck, FaBoxOpen, FaSearch } from 'react-icons/fa';
 import Toast from '../components/Toast';
 
-interface PurchaseOrderBackend {
+interface SupplierOrderBackend {
   id: number;
   productName: string;
   quantity: number;
@@ -15,7 +15,7 @@ interface PurchaseOrderBackend {
   deliveryNotes: string | null;
 }
 
-interface PurchaseOrder {
+interface SupplierOrder {
   id: string;
   product: string;
   quantity: number;
@@ -28,10 +28,10 @@ interface PurchaseOrder {
 }
 
 const Orders: React.FC = () => {
-  const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+  const [orders, setOrders] = useState<SupplierOrder[]>([]);
   const [filterStatus, setFilterStatus] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<SupplierOrder | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning'; isVisible: boolean }>({
     message: '',
     type: 'success',
@@ -44,9 +44,9 @@ const Orders: React.FC = () => {
 
   const fetchOrders = async () => {
     try {
-      const response = await supplierService.getPurchaseOrders();
+      const response = await supplierService.getSupplierOrders();
       if (response.success) {
-        const mappedOrders = response.orders.map((order: PurchaseOrderBackend) => ({
+        const mappedOrders = response.orders.map((order: SupplierOrderBackend) => ({
           id: order.id.toString(),
           product: order.productName,
           quantity: order.quantity,
@@ -84,7 +84,7 @@ const Orders: React.FC = () => {
       const actualDeliveryDate = newStatus === 'Dispatched' ? order?.actualDeliveryDate : undefined;
       const deliveryNotes = newStatus === 'Dispatched' ? order?.deliveryNotes : undefined;
       
-      await supplierService.updatePurchaseOrderStatus(id, newStatus, actualDeliveryDate, deliveryNotes);
+      await supplierService.updateSupplierOrderStatus(id, newStatus, actualDeliveryDate, deliveryNotes);
       
       const updatedOrders = orders.map(order => 
         order.id === id ? { ...order, status: newStatus } : order
@@ -135,7 +135,7 @@ const Orders: React.FC = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-serif text-amber-900 mb-6">Purchase Order Management</h1>
+      <h1 className="text-3xl font-serif text-amber-900 mb-6">Supplier Order Management</h1>
 
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <div className="flex flex-wrap gap-2">

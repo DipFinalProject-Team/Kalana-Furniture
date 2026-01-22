@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminService, type SupplierApplication } from '../services/api';
-import { FaCheck, FaTimes, FaEye, FaBuilding, FaUser, FaEnvelope, FaPhone, FaList, FaCalendarAlt, FaUserCheck, FaSpinner } from 'react-icons/fa';
+import { FaCheck, FaTimes, FaEye, FaBuilding, FaUser, FaEnvelope, FaPhone, FaList, FaCalendarAlt, FaUserCheck, FaSpinner, FaMap } from 'react-icons/fa';
 import Toast from '../components/Toast';
 import ConfirmationModal from '../components/ConfirmationModal';
 
@@ -170,7 +170,7 @@ const SupplierApprovals: React.FC = () => {
                   
                   <h3 className="text-xl font-bold text-gray-900 mb-1">{app.company_name}</h3>
                   <p className="text-sm text-gray-500 mb-4 flex items-center gap-2">
-                    <FaUser className="w-3 h-3" /> {app.contact_person}
+                    <FaMap className="w-3 h-3" /> {app.address}
                   </p>
 
                   <div className="space-y-2 text-sm text-gray-600 mb-6">
@@ -233,7 +233,7 @@ const SupplierApprovals: React.FC = () => {
                   
                   <h3 className="text-xl font-bold text-gray-900 mb-1">{supplier.company_name}</h3>
                   <p className="text-sm text-gray-500 mb-4 flex items-center gap-2">
-                    <FaUser className="w-3 h-3" /> {supplier.contact_person}
+                    <FaMap className="w-3 h-3" /> {supplier.address}
                   </p>
 
                   <div className="space-y-2 text-sm text-gray-600 mb-6">
@@ -275,7 +275,7 @@ const SupplierApprovals: React.FC = () => {
                 <h2 className="text-2xl font-serif font-bold text-nav-brown">
                   {activeTab === 'pending' ? 'Application Details' : 'Supplier Profile'}
                 </h2>
-                <p className="text-sm text-gray-500">ID: {selectedApp.id}</p>
+                <p className="text-sm text-gray-500">ID: #{selectedApp.id}</p>
               </div>
               <button 
                 onClick={() => setIsDetailsModalOpen(false)}
@@ -314,8 +314,8 @@ const SupplierApprovals: React.FC = () => {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-6 rounded-xl border border-gray-100">
                   <div>
-                    <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Contact Person</p>
-                    <p className="text-gray-900 font-medium">{selectedApp.contact_person}</p>
+                    <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Address</p>
+                    <p className="text-gray-900 font-medium">{selectedApp.address}</p>
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Email Address</p>

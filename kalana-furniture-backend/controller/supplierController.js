@@ -9,13 +9,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 
 exports.register = async (req, res) => {
   try {
-    const { companyName, contactPerson, email, phone, password, categories, message } = req.body;
+    const { company_name, email, phone, address, password, categories, message } = req.body;
 
     // Validate input
-    if (!companyName || !contactPerson || !email || !password) {
+    if (!company_name || !address || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Company name, contact person, email, and password are required'
+        message: 'Company name, address, email, and password are required'
       });
     }
 
@@ -48,10 +48,10 @@ exports.register = async (req, res) => {
     const { data: supplierData, error: supplierError } = await supabase
       .from('suppliers')
       .insert([{
-        company_name: companyName,
-        contact_person: contactPerson,
+        company_name: company_name,
         email: email,
         phone: phone,
+        address: address,
         password: hashedPassword,
         categories: categories,
         message: message,
@@ -74,9 +74,10 @@ exports.register = async (req, res) => {
       message: 'Registration submitted successfully. Please wait for admin approval.',
       supplier: {
         id: supplierData.id,
-        companyName: supplierData.company_name,
-        contactPerson: supplierData.contact_person,
+        company_name: supplierData.company_name,
         email: supplierData.email,
+        phone: supplierData.phone,
+        address: supplierData.address,
         status: supplierData.status
       }
     });
@@ -160,9 +161,9 @@ exports.login = async (req, res) => {
       supplier: {
         id: supplier.id,
         companyName: supplier.company_name,
-        contactPerson: supplier.contact_person,
         email: supplier.email,
         phone: supplier.phone,
+        address: supplier.address,
         categories: supplier.categories,
         message: supplier.message,
         status: supplier.status,
@@ -389,9 +390,9 @@ exports.verifyToken = async (req, res) => {
       supplier: {
         id: supplier.id,
         companyName: supplier.company_name,
-        contactPerson: supplier.contact_person,
         email: supplier.email,
         phone: supplier.phone,
+        address: supplier.address,
         categories: supplier.categories,
         message: supplier.message,
         status: supplier.status,
@@ -458,14 +459,14 @@ exports.deleteAccount = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const supplierId = req.supplier.sub;
-    const { companyName, contactPerson, phone, categories, message } = req.body;
+    const { companyName, phone, address, categories, message } = req.body;
 
     const { data: updatedSupplier, error } = await supabase
       .from('suppliers')
       .update({
         company_name: companyName,
-        contact_person: contactPerson,
         phone: phone,
+        address: address,
         categories: categories,
         message: message
       })
@@ -481,9 +482,9 @@ exports.updateProfile = async (req, res) => {
       supplier: {
         id: updatedSupplier.id,
         companyName: updatedSupplier.company_name,
-        contactPerson: updatedSupplier.contact_person,
         email: updatedSupplier.email,
         phone: updatedSupplier.phone,
+        address: updatedSupplier.address,
         categories: updatedSupplier.categories,
         status: updatedSupplier.status,
         message: updatedSupplier.message,
@@ -613,7 +614,7 @@ exports.getPurchaseOrders = async (req, res) => {
     const supplierId = req.supplier.sub;
 
     const { data: orders, error } = await supabase
-      .from('purchase_orders')
+      .from('supplier_orders')
       .select(`
         *,
         products (
@@ -674,7 +675,7 @@ exports.updatePurchaseOrderStatus = async (req, res) => {
     }
 
     const { data: order, error } = await supabase
-      .from('purchase_orders')
+      .from('supplier_orders')
       .update(updates)
       .eq('id', id)
       .eq('supplier_id', supplierId)
@@ -708,7 +709,7 @@ exports.updatePurchaseOrderDetails = async (req, res) => {
     if (notes) updates.notes = notes;
 
     const { data: order, error } = await supabase
-      .from('purchase_orders')
+      .from('supplier_orders')
       .update(updates)
       .eq('id', id)
       .eq('supplier_id', supplierId)
@@ -747,7 +748,7 @@ exports.getInvoices = async (req, res) => {
         due_date,
         status,
         notes,
-        purchase_order_id
+        supplier_order_id
       `)
       .eq('supplier_id', supplierId)
       .order('issue_date', { ascending: false });
@@ -758,7 +759,7 @@ exports.getInvoices = async (req, res) => {
     const formattedInvoices = invoices?.map(invoice => {
       return {
         id: invoice.invoice_number,
-        orderId: invoice.purchase_order_id ? `PO-${String(invoice.purchase_order_id).padStart(4, '0')}` : 'N/A',
+        orderId: invoice.supplier_order_id ? `SO-${String(invoice.supplier_order_id).padStart(4, '0')}` : 'N/A',
         amount: parseFloat(invoice.total_amount),
         date: new Date(invoice.issue_date).toLocaleDateString(),
         dueDate: new Date(invoice.due_date).toLocaleDateString(),
@@ -789,7 +790,7 @@ exports.getInvoiceDetails = async (req, res) => {
     // 1. Get Invoice
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .select('id, supplier_id, purchase_order_id, invoice_number, amount, total_amount, issue_date, due_date, status, notes')
+      .select('id, supplier_id, supplier_order_id, invoice_number, amount, total_amount, issue_date, due_date, status, notes')
       .eq('supplier_id', supplierId)
       .eq('invoice_number', invoiceNumber)
       .single();
@@ -803,16 +804,16 @@ exports.getInvoiceDetails = async (req, res) => {
 
     // 2. Get Purchase Order
     let purchaseOrder = null;
-    if (invoice.purchase_order_id) {
+    if (invoice.supplier_order_id) {
       const { data: po, error: poError } = await supabase
-        .from('purchase_orders')
+        .from('supplier_orders')
         .select(`
           *,
           products (
             productName
           )
         `)
-        .eq('id', invoice.purchase_order_id)
+        .eq('id', invoice.supplier_order_id)
         .single();
       
       if (!poError) {
@@ -823,7 +824,7 @@ exports.getInvoiceDetails = async (req, res) => {
     // Format the response
     const formattedInvoice = {
       id: invoice.invoice_number,
-      orderId: invoice.purchase_order_id ? `PO-${String(invoice.purchase_order_id).padStart(4, '0')}` : 'N/A',
+      orderId: invoice.supplier_order_id ? `SO-${String(invoice.supplier_order_id).padStart(4, '0')}` : 'N/A',
       amount: parseFloat(invoice.total_amount),
       date: new Date(invoice.issue_date).toLocaleDateString(),
       dueDate: new Date(invoice.due_date).toLocaleDateString(),
@@ -859,7 +860,7 @@ exports.getDashboardStats = async (req, res) => {
 
     // Get total products supplied (distinct products with completed orders)
     const { data: totalProductsData, error: totalProductsError } = await supabase
-      .from('purchase_orders')
+      .from('supplier_orders')
       .select('product_id')
       .eq('supplier_id', supplierId)
       .eq('status', 'Completed');
@@ -870,7 +871,7 @@ exports.getDashboardStats = async (req, res) => {
 
     // Get pending supply orders
     const { count: pendingOrdersCount, error: pendingError } = await supabase
-      .from('purchase_orders')
+      .from('supplier_orders')
       .select('*', { count: 'exact', head: true })
       .eq('supplier_id', supplierId)
       .in('status', ['Pending', 'Accepted']);
@@ -879,7 +880,7 @@ exports.getDashboardStats = async (req, res) => {
 
     // Get completed supplies
     const { count: completedCount, error: completedError } = await supabase
-      .from('purchase_orders')
+      .from('supplier_orders')
       .select('*', { count: 'exact', head: true })
       .eq('supplier_id', supplierId)
       .eq('status', 'Completed');
@@ -888,7 +889,7 @@ exports.getDashboardStats = async (req, res) => {
 
     // Get total earnings (sum of completed purchase orders)
     const { data: earningsData, error: earningsError } = await supabase
-      .from('purchase_orders')
+      .from('supplier_orders')
       .select('quantity, price_per_unit')
       .eq('supplier_id', supplierId)
       .eq('status', 'Completed');
@@ -902,7 +903,7 @@ exports.getDashboardStats = async (req, res) => {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const { count: newRequestsCount, error: newRequestsError } = await supabase
-      .from('purchase_orders')
+      .from('supplier_orders')
       .select('*', { count: 'exact', head: true })
       .eq('supplier_id', supplierId)
       .gte('created_at', sevenDaysAgo.toISOString());
@@ -937,7 +938,7 @@ exports.getRecentSupplyOrders = async (req, res) => {
 
     // Get recent purchase orders with product details
     const { data: ordersData, error: ordersError } = await supabase
-      .from('purchase_orders')
+      .from('supplier_orders')
       .select(`
         id,
         quantity,
@@ -959,7 +960,7 @@ exports.getRecentSupplyOrders = async (req, res) => {
     // Format the orders
     const orders = ordersData.map(order => ({
       id: order.id,
-      orderNumber: `PO-${order.id.toString().padStart(6, '0')}`,
+      orderNumber: `SO-${order.id.toString().padStart(6, '0')}`,
       customerName: 'Admin', // Since it's admin ordering from supplier
       items: [{
         productName: order.products.productName,
@@ -991,7 +992,7 @@ exports.getLowStockRequests = async (req, res) => {
 
     // Get products supplied by this supplier that are low in stock
     const { data: suppliedProducts, error: suppliedError } = await supabase
-      .from('purchase_orders')
+      .from('supplier_orders')
       .select('product_id')
       .eq('supplier_id', supplierId);
 
@@ -1057,7 +1058,7 @@ exports.getOrderTrends = async (req, res) => {
       const endOfMonth = new Date(year, month, 1);
 
       const { count: orderCount, error } = await supabase
-        .from('purchase_orders')
+        .from('supplier_orders')
         .select('*', { count: 'exact', head: true })
         .eq('supplier_id', supplierId)
         .gte('created_at', startOfMonth.toISOString())

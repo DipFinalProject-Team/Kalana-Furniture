@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FaUser, FaEnvelope, FaPhone, FaBuilding, FaArrowLeft, FaList, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEnvelope, FaPhone, FaBuilding, FaArrowLeft, FaList, FaLock, FaEye, FaEyeSlash, FaMap } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { supplierService } from "../services/api";
 import Toast from "./Toast";
@@ -8,12 +8,11 @@ const SupplierRegistrationPage = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     companyName: "",
-    contactPerson: "",
-    username: "",
     password: "",
     confirmPassword: "",
     email: "",
     phone: "",
+    address: "",
     categories: "",
     message: "",
   });
@@ -27,14 +26,6 @@ const SupplierRegistrationPage = () => {
     const newErrors: { [key: string]: string } = {};
 
     if (!formData.companyName) newErrors.companyName = "Company Name is required";
-    if (!formData.contactPerson) newErrors.contactPerson = "Contact Person is required";
-    if (!formData.username) {
-      newErrors.username = "Username is required";
-    } else if (formData.username.length < 3) {
-      newErrors.username = "Username must be at least 3 characters";
-    } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-      newErrors.username = "Username can only contain letters, numbers, and underscores";
-    }
     if (!formData.password) {
       newErrors.password = "Password is required";
     } else if (formData.password.length < 6) {
@@ -51,6 +42,7 @@ const SupplierRegistrationPage = () => {
       newErrors.email = "Please enter a valid email address";
     }
     if (!formData.phone) newErrors.phone = "Phone number is required";
+    if (!formData.address) newErrors.address = "Address is required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -80,8 +72,15 @@ const SupplierRegistrationPage = () => {
     setIsSubmitting(true);
 
     try {
-      const { confirmPassword, ...submissionData } = formData;
-      void confirmPassword;
+      const submissionData = {
+        company_name: formData.companyName,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        password: formData.password,
+        categories: formData.categories,
+        message: formData.message
+      };
       
       const response = await supplierService.register(submissionData);
       
@@ -181,54 +180,6 @@ const SupplierRegistrationPage = () => {
                   />
                 </div>
                 {errors.companyName && <p className="text-red-500 text-xs mt-1 ml-1">{errors.companyName}</p>}
-              </div>
-
-              {/* Contact Person */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="contactPerson">
-                  Contact Person *
-                </label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-wood-brown transition-colors">
-                    <FaUser className="w-5 h-5" />
-                  </div>
-                  <input
-                    className={`w-full pl-10 pr-4 py-3 bg-white border rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-wood-accent/50 focus:border-wood-accent transition-all duration-200 ${
-                      errors.contactPerson ? "border-red-500 bg-red-50" : "border-gray-200 hover:border-wood-accent/50"
-                    }`}
-                    id="contactPerson"
-                    name="contactPerson"
-                    type="text"
-                    placeholder="John Doe"
-                    value={formData.contactPerson}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                {errors.contactPerson && <p className="text-red-500 text-xs mt-1 ml-1">{errors.contactPerson}</p>}
-              </div>
-
-              {/* Username */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="username">
-                  Username *
-                </label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-wood-brown transition-colors">
-                    <FaUser className="w-5 h-5" />
-                  </div>
-                  <input
-                    className={`w-full pl-10 pr-4 py-3 bg-white border rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-wood-accent/50 focus:border-wood-accent transition-all duration-200 ${
-                      errors.username ? "border-red-500 bg-red-50" : "border-gray-200 hover:border-wood-accent/50"
-                    }`}
-                    id="username"
-                    name="username"
-                    type="text"
-                    placeholder="your_username"
-                    value={formData.username}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                {errors.username && <p className="text-red-500 text-xs mt-1 ml-1">{errors.username}</p>}
               </div>
 
               {/* Password & Confirm Password Grid */}
@@ -339,6 +290,30 @@ const SupplierRegistrationPage = () => {
                   </div>
                   {errors.phone && <p className="text-red-500 text-xs mt-1 ml-1">{errors.phone}</p>}
                 </div>
+              </div>
+
+              {/* Address */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="address">
+                  Address *
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-wood-brown transition-colors">
+                    <FaMap className="w-5 h-5" />
+                  </div>
+                  <input
+                    className={`w-full pl-10 pr-4 py-3 bg-white border rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-wood-accent/50 focus:border-wood-accent transition-all duration-200 ${
+                      errors.address ? "border-red-500 bg-red-50" : "border-gray-200 hover:border-wood-accent/50"
+                    }`}
+                    id="address"
+                    name="address"
+                    type="text"
+                    placeholder="123 Main St, City, State, ZIP"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                {errors.address && <p className="text-red-500 text-xs mt-1 ml-1">{errors.address}</p>}
               </div>
 
               {/* Categories */}

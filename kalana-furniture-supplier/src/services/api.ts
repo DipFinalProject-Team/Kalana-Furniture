@@ -106,12 +106,12 @@ export const supplierService = {
   },
 
   // Order management methods
-  getPurchaseOrders: async () => {
+  getSupplierOrders: async () => {
     const response = await api.get('/suppliers/orders');
     return response.data;
   },
 
-  updatePurchaseOrderStatus: async (id: string, status: string, actualDeliveryDate?: string, deliveryNotes?: string) => {
+  updateSupplierOrderStatus: async (id: string, status: string, actualDeliveryDate?: string, deliveryNotes?: string) => {
     const response = await api.put(`/suppliers/orders/${id}/status`, { 
       status, 
       actualDeliveryDate, 
@@ -120,7 +120,7 @@ export const supplierService = {
     return response.data;
   },
 
-  updatePurchaseOrderDetails: async (id: string, data: { deliveryDate?: string; notes?: string }) => {
+  updateSupplierOrderDetails: async (id: string, data: { deliveryDate?: string; notes?: string }) => {
     const response = await api.put(`/suppliers/orders/${id}/details`, data);
     return response.data;
   }

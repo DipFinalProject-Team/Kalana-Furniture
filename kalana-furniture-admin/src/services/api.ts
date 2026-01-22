@@ -32,6 +32,21 @@ export interface Product {
   images?: string[];
 }
 
+export type SupplierApplication = {
+  id: number;
+  company_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  categories: string;
+  message: string;
+  status: string;
+  created_at: string;
+  approved_at?: string;
+  rejected_at?: string;
+  profile_image?: string;
+};
+
 export interface Review {
   id: number;
   customerName: string;
@@ -211,9 +226,9 @@ export interface AdminCredentials {
 }
 
 export interface SupplierApplication {
-  id: string;
+  id: number;
   company_name: string;
-  contact_person: string;
+  address: string;
   email: string;
   phone: string;
   categories: string;
@@ -238,7 +253,7 @@ export interface InventoryItem {
   images?: string[];
 }
 
-export interface PurchaseOrder {
+export interface SupplierOrder {
   id: string;
   productName: string;
   quantity: number;
@@ -297,12 +312,12 @@ export const adminService = {
     return response.data;
   },
 
-  approveSupplier: async (id: string): Promise<{ success: boolean; message: string; supplier: SupplierApplication }> => {
+  approveSupplier: async (id: number): Promise<{ success: boolean; message: string; supplier: SupplierApplication }> => {
     const response = await api.put(`/admin/suppliers/${id}/approve`);
     return response.data;
   },
 
-  rejectSupplier: async (id: string): Promise<{ success: boolean; message: string; supplier: SupplierApplication }> => {
+  rejectSupplier: async (id: number): Promise<{ success: boolean; message: string; supplier: SupplierApplication }> => {
     const response = await api.put(`/admin/suppliers/${id}/reject`);
     return response.data;  },
 
@@ -317,8 +332,8 @@ export const adminService = {
     return response.data;
   },
 
-  // Purchase order management functions
-  getPurchaseOrders: async (): Promise<PurchaseOrder[]> => {
+  // Supplier order management functions
+  getPurchaseOrders: async (): Promise<SupplierOrder[]> => {
     const response = await api.get('/admin/purchase-orders');
     return response.data.orders;
   },
@@ -329,7 +344,7 @@ export const adminService = {
     quantity: number;
     expectedDelivery: string;
     pricePerUnit: number;
-  }): Promise<{ success: boolean; message: string; order: PurchaseOrder }> => {
+  }): Promise<{ success: boolean; message: string; order: SupplierOrder }> => {
     const response = await api.post('/admin/purchase-orders', orderData);
     return response.data;
   },
@@ -337,7 +352,7 @@ export const adminService = {
   updatePurchaseOrderStatus: async (id: number, status: string, additionalData?: {
     actualDeliveryDate?: string;
     deliveryNotes?: string;
-  }): Promise<{ success: boolean; message: string; order: PurchaseOrder }> => {
+  }): Promise<{ success: boolean; message: string; order: SupplierOrder }> => {
     const response = await api.put(`/admin/purchase-orders/${id}/status`, { status, ...additionalData });
     return response.data;
   },
