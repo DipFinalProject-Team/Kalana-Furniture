@@ -124,7 +124,7 @@ create table public.supplier_orders (
   supplier_id bigint references public.suppliers(id) on delete cascade,
   product_id bigint references public.products(id) on delete cascade,
   quantity integer not null,
-  price_per_unit numeric not null,
+  total_price numeric,
   expected_delivery date not null,
   actual_delivery_date date,
   delivery_notes text,

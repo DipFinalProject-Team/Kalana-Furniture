@@ -186,15 +186,21 @@ const Reviews: React.FC = () => {
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    <a
-                      href={review.productUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="View on Website"
-                    >
-                      <FaExternalLinkAlt />
-                    </a>
+                    {review.product_id ? (
+                      <a
+                        href={`http://localhost:5173/product/${review.product_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="View on Website"
+                      >
+                        <FaExternalLinkAlt />
+                      </a>
+                    ) : (
+                      <span className="p-2 text-gray-400 cursor-not-allowed" title="Product not available">
+                        <FaExternalLinkAlt />
+                      </span>
+                    )}
                     <button
                       onClick={() => handleDeleteClick(review.id)}
                       className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"

@@ -43,6 +43,7 @@ const OrderModal = ({ order, onClose, onCancel }: { order: GroupedOrder; onClose
               <p className="text-xs uppercase tracking-wider text-wood-light mb-2 font-semibold">Status</p>
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
                 order.status === 'delivered' ? 'bg-green-500/20 text-green-300 border border-green-400/50' :
+                order.status === 'placed' || order.status === 'Placed' ? 'bg-green-500/20 text-green-300 border border-green-400/50' :
                 order.status === 'shipped' ? 'bg-blue-500/20 text-blue-300 border border-blue-400/50' :
                 order.status === 'processing' ? 'bg-purple-500/20 text-purple-300 border border-purple-400/50' :
                 order.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-400/50' :
@@ -168,14 +169,13 @@ const OrderHistoryPage = () => {
       setLoading(true);
       const ordersData = await orderService.getUserOrders();
       
-      // Group orders by customer and creation time (within 5 minutes)
+      // Group orders by order ID (assuming multiple products share the same order ID)
       const groupedOrders: Record<string, GroupedOrder> = ordersData.reduce((groups: Record<string, GroupedOrder>, order) => {
-        const orderTime = order.created_at ? new Date(order.created_at).getTime() : Date.now();
-        const groupKey = `${order.customer_id || 'unknown'}_${Math.floor(orderTime / (5 * 60 * 1000))}`; // Group by 5-minute windows
+        const orderId = order.id?.toString() || 'unknown';
         
-        if (!groups[groupKey]) {
-          groups[groupKey] = {
-            id: order.id ?? 0, // Use first order ID as main ID
+        if (!groups[orderId]) {
+          groups[orderId] = {
+            id: order.id ?? 0,
             customer_id: order.customer_id || '',
             created_at: order.created_at || '',
             status: order.status || 'pending',
@@ -188,19 +188,27 @@ const OrderHistoryPage = () => {
           };
         }
         
-        groups[groupKey].items.push({
+        groups[orderId].items.push({
           id: order.id ?? 0,
           product: order.product || { productName: 'Product', images: [] },
           quantity: order.quantity,
           total: order.total,
           status: order.status || 'pending'
         });
-        groups[groupKey].total += order.total;
+        groups[orderId].total += order.total;
         
         return groups;
       }, {});
       
       const groupedOrdersArray: GroupedOrder[] = Object.values(groupedOrders);
+      
+      // Sort orders by creation date (newest first)
+      groupedOrdersArray.sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA; // Descending order (newest first)
+      });
+      
       setOrders(groupedOrdersArray);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -322,6 +330,7 @@ const OrderHistoryPage = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <span className={`px-3 py-1.5 inline-flex text-xs leading-5 font-bold rounded-full border ${
                           order.status === 'delivered' ? 'bg-green-500/20 text-green-300 border-green-400/50' :
+                          order.status === 'Placed' ? 'bg-green-500/20 text-green-300 border-green-400/50' :
                           order.status === 'shipped' ? 'bg-blue-500/20 text-blue-300 border-blue-400/50' :
                           order.status === 'processing' ? 'bg-purple-500/20 text-purple-300 border-purple-400/50' :
                           order.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-400/50' :

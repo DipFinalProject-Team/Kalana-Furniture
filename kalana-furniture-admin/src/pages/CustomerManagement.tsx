@@ -335,11 +335,11 @@ const CustomerManagement: React.FC = () => {
                   <div className="bg-gray-50 p-4 rounded-xl flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                        <span className="font-bold">$</span>
+                        <span className="font-bold">Rs.</span>
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Total Spent</p>
-                        <p className="text-xl font-bold text-gray-800">${selectedCustomer.totalSpent.toLocaleString()}</p>
+                        <p className="text-xl font-bold text-gray-800">Rs. {selectedCustomer.totalSpent.toLocaleString()}</p>
                       </div>
                     </div>
                   </div>

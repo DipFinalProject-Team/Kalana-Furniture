@@ -631,7 +631,7 @@ exports.getPurchaseOrders = async (req, res) => {
       id: order.id,
       productName: order.products?.productName || 'Unknown Product',
       quantity: order.quantity,
-      totalAmount: order.quantity * order.price_per_unit,
+      totalAmount: parseFloat(order.total_price),
       status: order.status,
       orderDate: order.created_at,
       deliveryDate: order.expected_delivery,
@@ -701,12 +701,13 @@ exports.updatePurchaseOrderStatus = async (req, res) => {
 exports.updatePurchaseOrderDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    const { deliveryDate, notes } = req.body;
+    const { deliveryDate, notes, totalPrice } = req.body;
     const supplierId = req.supplier.sub;
 
     const updates = {};
     if (deliveryDate) updates.expected_delivery_date = deliveryDate;
     if (notes) updates.notes = notes;
+    if (totalPrice !== undefined) updates.total_price = parseFloat(totalPrice);
 
     const { data: order, error } = await supabase
       .from('supplier_orders')
@@ -834,8 +835,8 @@ exports.getInvoiceDetails = async (req, res) => {
       items: purchaseOrder ? [{
         product: purchaseOrder.products?.productName || 'Unknown Product',
         quantity: purchaseOrder.quantity,
-        unitPrice: parseFloat(purchaseOrder.price_per_unit),
-        total: purchaseOrder.quantity * parseFloat(purchaseOrder.price_per_unit)
+        unitPrice: parseFloat(purchaseOrder.total_price) / purchaseOrder.quantity,
+        total: parseFloat(purchaseOrder.total_price)
       }] : []
     };
 
@@ -890,13 +891,13 @@ exports.getDashboardStats = async (req, res) => {
     // Get total earnings (sum of completed purchase orders)
     const { data: earningsData, error: earningsError } = await supabase
       .from('supplier_orders')
-      .select('quantity, price_per_unit')
+      .select('total_price')
       .eq('supplier_id', supplierId)
       .eq('status', 'Completed');
 
     if (earningsError) throw earningsError;
 
-    const totalEarnings = earningsData.reduce((sum, order) => sum + (parseFloat(order.quantity) * parseFloat(order.price_per_unit)), 0);
+    const totalEarnings = earningsData.reduce((sum, order) => sum + parseFloat(order.total_price), 0);
 
     // Get new purchase requests (orders from last 7 days)
     const sevenDaysAgo = new Date();
@@ -942,7 +943,7 @@ exports.getRecentSupplyOrders = async (req, res) => {
       .select(`
         id,
         quantity,
-        price_per_unit,
+        total_price,
         status,
         order_date,
         products (
@@ -965,9 +966,9 @@ exports.getRecentSupplyOrders = async (req, res) => {
       items: [{
         productName: order.products.productName,
         quantity: order.quantity,
-        price: parseFloat(order.price_per_unit)
+        price: parseFloat(order.total_price) / order.quantity // Calculate unit price for display
       }],
-      total: parseFloat(order.price_per_unit) * order.quantity,
+      total: parseFloat(order.total_price),
       status: order.status.toLowerCase(),
       date: new Date(order.order_date).toLocaleDateString()
     }));

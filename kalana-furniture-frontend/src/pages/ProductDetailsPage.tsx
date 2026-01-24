@@ -5,6 +5,13 @@ import Toast from "../components/Toast";
 import { productService, promotionService, type Product, type Promotion } from '../services/api';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../hooks/useAuth';
+import { AxiosError } from 'axios';
+
+interface ErrorResponseData {
+  message?: string;
+  error?: string;
+  [key: string]: unknown;
+}
 
 const ProductDetailsPage = () => {
   const { id } = useParams();
@@ -73,7 +80,14 @@ const ProductDetailsPage = () => {
 
   useEffect(() => {
     const fetchProduct = async () => {
-      if (!id) return;
+      console.log('ProductDetailsPage - ID from params:', id, 'Type:', typeof id);
+      
+      if (!id || id === 'undefined' || isNaN(Number(id))) {
+        console.log('ProductDetailsPage - Invalid ID detected:', { id, isFalsy: !id, isUndefinedString: id === 'undefined', isNaN: isNaN(Number(id)) });
+        setError('Invalid product ID');
+        setLoading(false);
+        return;
+      }
       
       try {
         setLoading(true);
@@ -100,9 +114,32 @@ const ProductDetailsPage = () => {
           const hasDiscounts = similarWithDiscounts.some(p => p.discountPrice && p.discountPrice < p.price);
           setCategoryHasDiscounts(hasDiscounts);
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('Error fetching product:', err);
-        setError('Failed to load product details');
+        
+        // Type guard to check if error is AxiosError
+        const isAxiosError = (error: unknown): error is AxiosError => {
+          return error !== null && typeof error === 'object' && 'response' in error;
+        };
+        
+        if (isAxiosError(err)) {
+          const responseData = err.response?.data as ErrorResponseData;
+          console.error('Error details:', {
+            message: responseData?.message || responseData?.error || 'Unknown error',
+            stack: err instanceof Error ? err.stack : undefined,
+            response: responseData,
+            status: err.response?.status
+          });
+          setError(responseData?.message || responseData?.error || 'Failed to load product details');
+        } else {
+          // Handle non-Axios errors
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+          console.error('Error details:', {
+            message: errorMessage,
+            stack: err instanceof Error ? err.stack : undefined
+          });
+          setError('Failed to load product details');
+        }
       } finally {
         setLoading(false);
       }

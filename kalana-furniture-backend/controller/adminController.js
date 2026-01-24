@@ -530,7 +530,7 @@ exports.getPurchaseOrders = async (req, res) => {
       productName: order.products?.productName || 'Unknown Product',
       quantity: order.quantity,
       expectedDelivery: order.expected_delivery,
-      pricePerUnit: parseFloat(order.price_per_unit),
+      totalPrice: parseFloat(order.total_price),
       status: order.status,
       orderDate: order.order_date,
       actualDeliveryDate: order.actual_delivery_date,
@@ -557,23 +557,29 @@ exports.createPurchaseOrder = async (req, res) => {
     const { productId, supplierId, quantity, expectedDelivery, pricePerUnit } = req.body;
 
     // Validate required fields
-    if (!productId || !supplierId || !quantity || !expectedDelivery || !pricePerUnit) {
+    if (!productId || !supplierId || !quantity || !expectedDelivery) {
       return res.status(400).json({
         success: false,
-        message: 'All fields are required'
+        message: 'Product ID, supplier ID, quantity, and expected delivery are required'
       });
+    }
+
+    const orderData = {
+      supplier_id: supplierId,
+      product_id: productId,
+      quantity,
+      expected_delivery: expectedDelivery,
+      status: 'Pending'
+    };
+
+    // Only include total_price if provided
+    if (pricePerUnit !== undefined) {
+      orderData.total_price = pricePerUnit;
     }
 
     const { data: order, error } = await supabase
       .from('supplier_orders')
-      .insert({
-        supplier_id: supplierId,
-        product_id: productId,
-        quantity,
-        price_per_unit: pricePerUnit,
-        expected_delivery: expectedDelivery,
-        status: 'Pending'
-      })
+      .insert(orderData)
       .select(`
         *,
         products (
@@ -592,7 +598,7 @@ exports.createPurchaseOrder = async (req, res) => {
       productName: order.products?.productName || 'Unknown Product',
       quantity: order.quantity,
       expectedDelivery: order.expected_delivery,
-      pricePerUnit: parseFloat(order.price_per_unit),
+      totalPrice: order.total_price ? parseFloat(order.total_price) : null,
       status: order.status,
       orderDate: order.order_date,
       supplierId: order.supplier_id,
@@ -663,7 +669,7 @@ exports.updatePurchaseOrderStatus = async (req, res) => {
       }
 
       // Generate invoice
-      const baseAmount = order.quantity * parseFloat(order.price_per_unit);
+      const baseAmount = parseFloat(order.total_price);
 
       await supabase
         .from('invoices')
@@ -1340,5 +1346,78 @@ exports.getDashboardStats = async (req, res) => {
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
     res.status(500).json({ message: 'Failed to fetch dashboard statistics' });
+  }
+};
+
+// Review management functions
+exports.getAllReviews = async (req, res) => {
+  try {
+    const { data: reviews, error } = await supabase
+      .from('reviews')
+      .select(`
+        id,
+        comment,
+        rating,
+        created_at,
+        product_id,
+        products (
+          productName,
+          category
+        ),
+        users!inner (
+          name,
+          profile_picture
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const formattedReviews = reviews
+      .filter(review => review.product_id && review.product_id !== null && review.product_id !== undefined)
+      .map(review => ({
+      id: review.id,
+      customerName: review.users.name,
+      productName: review.products.productName,
+      category: review.products.category,
+      rating: review.rating,
+      comment: review.comment,
+      date: new Date(review.created_at).toLocaleDateString(),
+      avatar: review.users.profile_picture || generateDefaultAvatar(review.users.name),
+      productUrl: `http://localhost:5173/product/${review.product_id}`,
+      product_id: review.product_id
+    }));
+
+    res.status(200).json(formattedReviews);
+  } catch (error) {
+    console.error('Get all reviews error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch reviews'
+    });
+  }
+};
+
+exports.deleteReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { error } = await supabase
+      .from('reviews')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: 'Review deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete review error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete review'
+    });
   }
 };

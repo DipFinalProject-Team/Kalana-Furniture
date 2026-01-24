@@ -120,7 +120,7 @@ export const supplierService = {
     return response.data;
   },
 
-  updateSupplierOrderDetails: async (id: string, data: { deliveryDate?: string; notes?: string }) => {
+  updateSupplierOrderDetails: async (id: string, data: { deliveryDate?: string; notes?: string; totalPrice?: number }) => {
     const response = await api.put(`/suppliers/orders/${id}/details`, data);
     return response.data;
   }

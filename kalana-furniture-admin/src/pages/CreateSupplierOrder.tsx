@@ -92,8 +92,7 @@ const CreateSupplierOrder: React.FC = () => {
         productId: product.id,
         supplierId: selectedSupplier.id,
         quantity: parseInt(quantity),
-        expectedDelivery: expectedDelivery,
-        pricePerUnit: product.price
+        expectedDelivery: expectedDelivery
       };
 
       await adminService.createPurchaseOrder(orderData);
@@ -104,7 +103,7 @@ const CreateSupplierOrder: React.FC = () => {
       setTimeout(() => {
         navigate('/admin/inventory');
       }, 2000);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error creating order:', error);
       showToast('Failed to create order', 'error');
     }
@@ -284,11 +283,6 @@ const CreateSupplierOrder: React.FC = () => {
             </div>
 
             <div className="pt-4 border-t border-gray-100">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-gray-600">Estimated Total:</span>
-                <span className="font-bold text-gray-800">Rs. {quantity ? parseInt(quantity) * product.price : 0}</span>
-              </div>
-
               <button
                 onClick={handleCreateOrder}
                 disabled={!selectedSupplier || !expectedDelivery || !quantity}

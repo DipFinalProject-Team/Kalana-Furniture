@@ -21,6 +21,7 @@ interface SupplierOrder {
   quantity: number;
   expectedDelivery: string;
   pricePerUnit: number;
+  totalPrice: number;
   status: string;
   orderDate: string;
   actualDeliveryDate?: string;
@@ -40,7 +41,7 @@ const Orders: React.FC = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  });
 
   const fetchOrders = async () => {
     try {
@@ -52,6 +53,7 @@ const Orders: React.FC = () => {
           quantity: order.quantity,
           expectedDelivery: order.deliveryDate ? new Date(order.deliveryDate).toISOString().split('T')[0] : '',
           pricePerUnit: order.totalAmount ? Math.round(order.totalAmount / order.quantity) : 0,
+          totalPrice: order.totalAmount || 0,
           status: order.status,
           orderDate: new Date(order.orderDate).toISOString().split('T')[0],
           actualDeliveryDate: order.actualDeliveryDate ? new Date(order.actualDeliveryDate).toISOString().split('T')[0] : '',
@@ -79,7 +81,19 @@ const Orders: React.FC = () => {
       }
     }
 
+    if (newStatus === 'Accepted') {
+      if (!order?.totalPrice || order.totalPrice <= 0) {
+        showToast('Please enter the Total Price before accepting the order.', 'error');
+        return;
+      }
+    }
+
     try {
+      // For accepting orders, also update the total price
+      if (newStatus === 'Accepted' && order?.totalPrice) {
+        await supplierService.updateSupplierOrderDetails(id, { totalPrice: order.totalPrice });
+      }
+      
       // Pass actual delivery date and notes when dispatching
       const actualDeliveryDate = newStatus === 'Dispatched' ? order?.actualDeliveryDate : undefined;
       const deliveryNotes = newStatus === 'Dispatched' ? order?.deliveryNotes : undefined;
@@ -102,7 +116,7 @@ const Orders: React.FC = () => {
     }
   };
 
-  const handleDetailsUpdate = (id: string, field: 'actualDeliveryDate' | 'deliveryNotes', value: string) => {
+  const handleDetailsUpdate = (id: string, field: 'actualDeliveryDate' | 'deliveryNotes' | 'totalPrice', value: string | number) => {
     const updatedOrders = orders.map(order => 
       order.id === id ? { ...order, [field]: value } : order
     );
@@ -244,12 +258,27 @@ const Orders: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Total Value</p>
-                  <p className="font-bold text-amber-600 text-lg">LKR {(selectedOrder.quantity * selectedOrder.pricePerUnit).toLocaleString()}</p>
+                  <p className="font-bold text-amber-600 text-lg">LKR {selectedOrder.totalPrice.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Expected Delivery</p>
                   <p className="font-medium">{selectedOrder.expectedDelivery}</p>
                 </div>
+
+                {selectedOrder.status === 'Pending' && (
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Total Price (LKR)</label>
+                    <input
+                      type="number"
+                      value={selectedOrder.totalPrice || ''}
+                      onChange={(e) => handleDetailsUpdate(selectedOrder.id, 'totalPrice', parseFloat(e.target.value) || 0)}
+                      className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                      placeholder="Enter total price"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                )}
 
                 {['Accepted', 'Dispatched', 'Delivered', 'Completed'].includes(selectedOrder.status) && (
                   <>
@@ -276,24 +305,24 @@ const Orders: React.FC = () => {
                 )}
               </div>
 
-              <div className="border-t border-gray-200 pt-4">
-                <h3 className="text-sm font-medium text-gray-900 mb-3">Update Status</h3>
-                
+              <div className="border-t border-gray-200 pt-4">                
                 {selectedOrder.status === 'Pending' && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleStatusUpdate(selectedOrder.id, 'Accepted')}
-                      className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center justify-center gap-2"
-                    >
-                      <FaCheck /> Accept
-                    </button>
-                    <button
-                      onClick={() => handleStatusUpdate(selectedOrder.id, 'Rejected')}
-                      className="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 flex items-center justify-center gap-2"
-                    >
-                      <FaTimes /> Reject
-                    </button>
-                  </div>
+                  <>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleStatusUpdate(selectedOrder.id, 'Accepted')}
+                        className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center justify-center gap-2"
+                      >
+                        <FaCheck /> Accept
+                      </button>
+                      <button
+                        onClick={() => handleStatusUpdate(selectedOrder.id, 'Rejected')}
+                        className="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 flex items-center justify-center gap-2"
+                      >
+                        <FaTimes /> Reject
+                      </button>
+                    </div>
+                  </>
                 )}
 
                 {selectedOrder.status === 'Accepted' && (

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useAuth } from '../hooks/useAuth';
 
@@ -14,15 +14,30 @@ const LoginPage = ({
 }: LoginPageProps) => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [blockSubmit, setBlockSubmit] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showLoadingScreen, setShowLoadingScreen] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    // Check for blocked message in URL
+    const message = searchParams.get('message');
+    if (message === 'blocked') {
+      setErrors({ login: 'Your account has been blocked by the administrator. Please contact support for assistance.' });
+      // Clear the message from URL
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete('message');
+      const newUrl = `${window.location.pathname}${newSearchParams.toString() ? '?' + newSearchParams.toString() : ''}`;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams]);
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -63,11 +78,12 @@ const LoginPage = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    if (!validateForm() || blockSubmit) {
       return;
     }
 
     setIsSubmitting(true);
+    setShowLoadingScreen(false); // Ensure loading screen is not shown
 
     try {
       const result = await login({
@@ -88,12 +104,17 @@ const LoginPage = ({
           setTimeout(() => {
             navigate('/');
           }, 2000); // Show loading screen for 2 seconds
-        });
+        }, 100); // Small delay to ensure state is set
       } else {
+        // For blocked or failed login, show error immediately
         setErrors({ login: result.message });
+        setShowLoadingScreen(false); // Explicitly ensure no loading screen
+        setBlockSubmit(true); // Block further submissions temporarily
+        setTimeout(() => setBlockSubmit(false), 3000); // Re-enable after 3 seconds
       }
     } catch {
       setErrors({ login: 'Login failed. Please try again.' });
+      setShowLoadingScreen(false); // Explicitly ensure no loading screen
     } finally {
       setIsSubmitting(false);
     }
@@ -192,9 +213,9 @@ const LoginPage = ({
             <button
               className="w-full bg-wood-accent text-white font-bold py-3 px-4 rounded-md hover:bg-wood-accent-hover transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || blockSubmit}
             >
-              {isSubmitting ? "Logging In..." : "Log In"}
+              {isSubmitting ? "Logging In..." : blockSubmit ? "Please wait..." : "Log In"}
             </button>
           </form>
 

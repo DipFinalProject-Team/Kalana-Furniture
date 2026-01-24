@@ -57,6 +57,7 @@ export interface Review {
   date: string;
   avatar: string;
   productUrl: string;
+  product_id: number;
 }
 
 export interface DashboardStat {
@@ -225,20 +226,6 @@ export interface AdminCredentials {
   password: string;
 }
 
-export interface SupplierApplication {
-  id: number;
-  company_name: string;
-  address: string;
-  email: string;
-  phone: string;
-  categories: string;
-  message?: string;
-  status: string;
-  created_at: string;
-  approved_at?: string;
-  rejected_at?: string;
-}
-
 export interface InventoryItem {
   id: number;
   productName: string;
@@ -258,7 +245,7 @@ export interface SupplierOrder {
   productName: string;
   quantity: number;
   expectedDelivery: string;
-  pricePerUnit: number;
+  totalPrice: number | null;
   status: 'Pending' | 'Accepted' | 'Rejected' | 'Dispatched' | 'Delivered' | 'Completed';
   orderDate: string;
   actualDeliveryDate?: string;
@@ -343,7 +330,7 @@ export const adminService = {
     supplierId: number;
     quantity: number;
     expectedDelivery: string;
-    pricePerUnit: number;
+    pricePerUnit?: number;
   }): Promise<{ success: boolean; message: string; order: SupplierOrder }> => {
     const response = await api.post('/admin/purchase-orders', orderData);
     return response.data;

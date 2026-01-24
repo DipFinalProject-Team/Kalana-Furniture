@@ -41,6 +41,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           try {
             const response = await userService.verifyToken();
             if (response.success && response.user) {
+              // Check if user is blocked
+              if (response.user.status === 'Blocked' || response.user.status === 'blocked') {
+                deleteCookie('userToken');
+                deleteCookie('userLoginTime');
+                setIsLoading(false);
+                return;
+              }
               setUser(response.user);
             } else {
               deleteCookie('userToken');
@@ -63,10 +70,63 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuthStatus();
   }, []);
 
+  // Periodic check for user status (every 30 seconds)
+  useEffect(() => {
+    if (!user) return;
+
+    const checkUserStatus = async () => {
+      try {
+        // First check authentication (token validity)
+        const tokenResponse = await userService.verifyToken();
+        if (!tokenResponse.success) {
+          // Token invalid, logout
+          deleteCookie('userToken');
+          deleteCookie('userLoginTime');
+          setUser(null);
+          return;
+        }
+
+        // If token is valid, check user status from database
+        const profileResponse = await userService.getProfile(user.id);
+        if (profileResponse) {
+          // Check if user is blocked
+          if (profileResponse.status === 'Blocked' || profileResponse.status === 'blocked') {
+            console.log('User account blocked, logging out...');
+            deleteCookie('userToken');
+            deleteCookie('userLoginTime');
+            setUser(null);
+            // Redirect to login page
+            window.location.href = '/login?message=blocked';
+          }
+        }
+      } catch (error) {
+        console.error('Status check failed:', error);
+        // If any check fails, logout as safety measure
+        deleteCookie('userToken');
+        deleteCookie('userLoginTime');
+        setUser(null);
+      }
+    };
+
+    // Check immediately, then every 30 seconds
+    const timeoutId = setTimeout(checkUserStatus, 1000); // Check after 1 second initially
+    const interval = setInterval(checkUserStatus, 30000); // 30 seconds
+
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(interval);
+    };
+  }, [user]);
+
   const login = async (credentials: LoginCredentials): Promise<{ success: boolean; message: string }> => {
     try {
       const response = await userService.login(credentials);
       if (response.success && response.token && response.user) {
+        // Check if user is blocked
+        if (response.user.status === 'Blocked' || response.user.status === 'blocked') {
+          return { success: false, message: 'Your account has been blocked by the administrator. Please contact support for assistance.' };
+        }
+        
         const maxAge = credentials.rememberMe ? 7 * 24 * 60 * 60 : 24 * 60 * 60; // 7 days or 1 day
         setCookie('userToken', response.token, maxAge);
         setCookie('userLoginTime', Date.now().toString(), maxAge);

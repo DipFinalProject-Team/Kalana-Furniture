@@ -96,15 +96,24 @@ exports.getProductById = async (req, res) => {
   try {
     const { id } = req.params;
     
+    // Validate id parameter
+    if (!id || id === 'undefined' || isNaN(Number(id))) {
+      return res.status(400).json({ error: 'Invalid product ID' });
+    }
+    
+    const productId = Number(id);
+    
     // Get product
-    const { data: product, error: productError } = await supabase
+    const { data: products, error: productError } = await supabase
       .from('products')
       .select('*')
-      .eq('id', id)
-      .single();
+      .eq('id', productId);
 
     if (productError) throw productError;
-    if (!product) return res.status(404).json({ error: 'Product not found' });
+    if (!products || products.length === 0) return res.status(404).json({ error: 'Product not found' });
+
+    // Take the first product if multiple exist (data integrity issue)
+    const product = products[0];
 
     // Get reviews for this product
     const { data: reviews, error: reviewsError } = await supabase
@@ -116,7 +125,7 @@ exports.getProductById = async (req, res) => {
         created_at,
         users!inner(name)
       `)
-      .eq('product_id', id)
+      .eq('product_id', productId)
       .order('created_at', { ascending: false });
 
     if (reviewsError) {

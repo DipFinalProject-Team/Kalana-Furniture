@@ -60,6 +60,7 @@ export interface User {
   address?: string;
   profile_picture?: string;
   role: string;
+  status?: string; // Add status field
 }
 
 export interface LoginCredentials {

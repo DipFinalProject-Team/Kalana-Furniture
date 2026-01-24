@@ -26,8 +26,14 @@ const SupplierInvoices: React.FC = () => {
       setLoading(true);
       const data = await adminService.getInvoices();
       setInvoices(data);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error fetching invoices:', err);
+      const axiosError = err as any;
+      console.error('Error details:', {
+        message: axiosError?.response?.data?.message || axiosError?.response?.data?.error || axiosError?.message || 'Unknown error',
+        status: axiosError?.response?.status,
+        url: axiosError?.config?.url
+      });
       showToast('Failed to load invoices', 'error');
     } finally {
       setLoading(false);

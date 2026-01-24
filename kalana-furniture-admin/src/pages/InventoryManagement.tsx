@@ -159,7 +159,7 @@ const InventoryManagement: React.FC = () => {
         supplierId: parseInt(newOrder.supplierId),
         quantity: newOrder.quantity,
         expectedDelivery: newOrder.expectedDelivery,
-        pricePerUnit: product.price
+        pricePerUnit: product.price * newOrder.quantity // Send total price
       };
 
       const response = await adminService.createPurchaseOrder(orderData);
@@ -171,7 +171,7 @@ const InventoryManagement: React.FC = () => {
         productName: product.productName,
         quantity: newOrder.quantity,
         expectedDelivery: newOrder.expectedDelivery,
-        pricePerUnit: product.price,
+        totalPrice: product.price * newOrder.quantity,
         status: 'Pending',
         orderDate: new Date().toISOString().split('T')[0],
         supplierId: newOrder.supplierId,
@@ -580,7 +580,7 @@ const InventoryManagement: React.FC = () => {
                     <th className="p-4 font-semibold">Product</th>
                     <th className="p-4 font-semibold">Supplier</th>
                     <th className="p-4 font-semibold">Quantity</th>
-                    <th className="p-4 font-semibold">Price/Unit</th>
+                    <th className="p-4 font-semibold">Total Price (LKR)</th>
                     <th className="p-4 font-semibold">Expected Delivery</th>
                     <th className="p-4 font-semibold">Status</th>
                     <th className="p-4 font-semibold">Date</th>
@@ -597,7 +597,7 @@ const InventoryManagement: React.FC = () => {
                       <td className="p-4 font-medium text-gray-800">{order.productName}</td>
                       <td className="p-4 text-gray-600 text-sm">{order.supplierName || '-'}</td>
                       <td className="p-4 text-gray-600">{order.quantity}</td>
-                      <td className="p-4 text-gray-600">Rs. {order.pricePerUnit}</td>
+                      <td className="p-4 text-gray-600">{order.totalPrice ? order.totalPrice.toLocaleString() : 'N/A'}</td>
                       <td className="p-4 text-gray-600">{order.expectedDelivery}</td>
                       <td className="p-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -750,7 +750,7 @@ const InventoryManagement: React.FC = () => {
                       <th className="p-4 font-semibold">Product</th>
                       <th className="p-4 font-semibold">Supplier</th>
                       <th className="p-4 font-semibold">Quantity</th>
-                      <th className="p-4 font-semibold">Price/Unit</th>
+                      <th className="p-4 font-semibold">Total Price</th>
                       <th className="p-4 font-semibold">Expected Delivery</th>
                       <th className="p-4 font-semibold">Status</th>
                       <th className="p-4 font-semibold">Date</th>
@@ -767,7 +767,7 @@ const InventoryManagement: React.FC = () => {
                         <td className="p-4 font-medium text-gray-800">{order.productName}</td>
                         <td className="p-4 text-gray-600 text-sm">{order.supplierName || '-'}</td>
                         <td className="p-4 text-gray-600">{order.quantity}</td>
-                        <td className="p-4 text-gray-600">Rs. {order.pricePerUnit}</td>
+                        <td className="p-4 text-gray-600">Rs. {order.totalPrice ? order.totalPrice.toLocaleString() : 'N/A'}</td>
                         <td className="p-4 text-gray-600">{order.expectedDelivery}</td>
                         <td className="p-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -840,12 +840,12 @@ const InventoryManagement: React.FC = () => {
                   <p className="font-medium text-gray-800">{selectedOrder.quantity}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Price per Unit</p>
-                  <p className="font-medium text-gray-800">Rs. {selectedOrder.pricePerUnit.toLocaleString()}</p>
+                  <p className="text-sm text-gray-500">Total Price</p>
+                  <p className="font-medium text-gray-800">Rs. {selectedOrder.totalPrice ? selectedOrder.totalPrice.toLocaleString() : 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Total Value</p>
-                  <p className="font-medium text-gray-800">Rs. {(selectedOrder.quantity * selectedOrder.pricePerUnit).toLocaleString()}</p>
+                  <p className="font-medium text-gray-800">Rs. {selectedOrder.totalPrice ? selectedOrder.totalPrice.toLocaleString() : 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Expected Delivery</p>
