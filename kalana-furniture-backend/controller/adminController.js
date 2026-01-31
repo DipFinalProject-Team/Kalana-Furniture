@@ -676,13 +676,10 @@ exports.updatePurchaseOrderStatus = async (req, res) => {
         .insert({
           supplier_id: order.supplier_id,
           supplier_order_id: order.id,
-          invoice_number: `INV-${new Date().getFullYear()}-${String(order.id).padStart(4, '0')}`,
           amount: baseAmount,
-          total_amount: baseAmount,
           issue_date: new Date().toISOString().split('T')[0],
           due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          status: 'Pending',
-          notes: `Invoice for Purchase Order ${order.id}`
+          status: 'Pending'
         });
     }
 
@@ -703,31 +700,68 @@ exports.updatePurchaseOrderStatus = async (req, res) => {
 // Invoice Management Functions
 exports.getInvoices = async (req, res) => {
   try {
+    // First, test Supabase connection
+    const { data: testData, error: testError } = await supabase
+      .from('suppliers')
+      .select('count')
+      .limit(1);
+
+    if (testError) {
+      console.error('Supabase connection test failed:', testError);
+      return res.status(500).json({
+        success: false,
+        message: 'Database connection failed',
+        error: testError.message
+      });
+    }
+
+    // For now, let's just get basic invoice data without joins
     const { data: invoices, error } = await supabase
       .from('invoices')
-      .select(`
-        *,
-        suppliers (
-          company_name
-        ),
-        supplier_orders (
-          id
-        )
-      `)
+      .select('id, supplier_id, supplier_order_id, amount, issue_date, due_date, payment_date, status, created_at, updated_at')
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Invoices query error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to query invoices table',
+        error: error.message
+      });
+    }
 
-    const formattedInvoices = invoices.map(invoice => ({
-      id: invoice.invoice_number.toString(),
-      orderId: invoice.supplier_orders?.id ? `SO-${String(invoice.supplier_orders.id).padStart(4, '0')}` : 'N/A',
-      supplierName: invoice.suppliers?.company_name || 'Unknown Supplier',
-      amount: parseFloat(invoice.amount),
-      date: invoice.issue_date,
-      dueDate: invoice.due_date,
-      status: invoice.status,
-      paymentDate: invoice.payment_date
-    }));
+    // If we have invoices, try to get supplier names separately
+    let formattedInvoices = [];
+    if (invoices && invoices.length > 0) {
+      // Get unique supplier IDs
+      const supplierIds = [...new Set(invoices.map(inv => inv.supplier_id).filter(id => id))];
+      
+      let supplierMap = {};
+      if (supplierIds.length > 0) {
+        const { data: suppliers, error: supplierError } = await supabase
+          .from('suppliers')
+          .select('id, company_name')
+          .in('id', supplierIds);
+
+        if (!supplierError && suppliers) {
+          supplierMap = suppliers.reduce((map, supplier) => {
+            map[supplier.id] = supplier.company_name;
+            return map;
+          }, {});
+        }
+      }
+
+      formattedInvoices = invoices.map(invoice => ({
+        id: `INV-${String(invoice.supplier_order_id).padStart(4, '0')}`,
+        orderId: invoice.supplier_order_id ? `SO-${String(invoice.supplier_order_id).padStart(4, '0')}` : 'N/A',
+        supplierName: supplierMap[invoice.supplier_id] || 'Unknown Supplier',
+        amount: parseFloat(invoice.amount || 0),
+        date: invoice.issue_date,
+        dueDate: invoice.due_date,
+        status: invoice.status || 'Pending',
+        paymentDate: invoice.payment_date
+      }));
+    }
 
     res.status(200).json({
       success: true,
@@ -737,7 +771,8 @@ exports.getInvoices = async (req, res) => {
     console.error('Get invoices error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch invoices'
+      message: 'Failed to fetch invoices',
+      error: error.message
     });
   }
 };
@@ -747,14 +782,18 @@ exports.markInvoiceAsPaid = async (req, res) => {
     const { id } = req.params;
     console.log('Marking invoice as paid:', id);
 
+    // Extract supplier_order_id from invoice number (format: INV-XXXX)
+    const supplierOrderId = parseInt(id.replace('INV-', ''));
+
     const { data: invoice, error } = await supabase
       .from('invoices')
       .update({
         status: 'Paid',
+        payment_date: new Date().toISOString().split('T')[0],
         updated_at: new Date().toISOString()
       })
-      .eq('invoice_number', id)
-      .select('id, invoice_number, amount, total_amount, issue_date, due_date, status, supplier_id, supplier_order_id')
+      .eq('supplier_order_id', supplierOrderId)
+      .select('id, amount, issue_date, due_date, payment_date, status, supplier_id, supplier_order_id')
       .single();
 
     console.log('Update result:', { error, invoice: invoice ? 'found' : 'not found' });
@@ -811,10 +850,10 @@ exports.markInvoiceAsPaid = async (req, res) => {
 
     console.log('Step 3: Formatting invoice');
     const formattedInvoice = {
-      id: invoice.invoice_number.toString(),
+      id: `INV-${String(invoice.supplier_order_id).padStart(4, '0')}`,
       orderId: orderId,
       supplierName: supplierName,
-      amount: parseFloat(invoice.amount || invoice.total_amount || 0),
+      amount: parseFloat(invoice.amount || 0),
       date: invoice.issue_date,
       dueDate: invoice.due_date,
       status: invoice.status,

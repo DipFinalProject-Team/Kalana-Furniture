@@ -72,17 +72,15 @@ const Orders: React.FC = () => {
   };
 
   const handleStatusUpdate = async (id: string, newStatus: string) => {
-    const order = orders.find(o => o.id === id);
-    
     if (newStatus === 'Dispatched') {
-      if (!order?.actualDeliveryDate) {
+      if (!selectedOrder?.actualDeliveryDate) {
         showToast('Please enter the Actual Delivery Date before marking as Dispatched.', 'error');
         return;
       }
     }
 
     if (newStatus === 'Accepted') {
-      if (!order?.totalPrice || order.totalPrice <= 0) {
+      if (!selectedOrder?.totalPrice || selectedOrder.totalPrice <= 0) {
         showToast('Please enter the Total Price before accepting the order.', 'error');
         return;
       }
@@ -90,13 +88,13 @@ const Orders: React.FC = () => {
 
     try {
       // For accepting orders, also update the total price
-      if (newStatus === 'Accepted' && order?.totalPrice) {
-        await supplierService.updateSupplierOrderDetails(id, { totalPrice: order.totalPrice });
+      if (newStatus === 'Accepted' && selectedOrder?.totalPrice) {
+        await supplierService.updateSupplierOrderDetails(id, { totalPrice: selectedOrder.totalPrice });
       }
       
       // Pass actual delivery date and notes when dispatching
-      const actualDeliveryDate = newStatus === 'Dispatched' ? order?.actualDeliveryDate : undefined;
-      const deliveryNotes = newStatus === 'Dispatched' ? order?.deliveryNotes : undefined;
+      const actualDeliveryDate = newStatus === 'Dispatched' ? selectedOrder?.actualDeliveryDate : undefined;
+      const deliveryNotes = newStatus === 'Dispatched' ? selectedOrder?.deliveryNotes : undefined;
       
       await supplierService.updateSupplierOrderStatus(id, newStatus, actualDeliveryDate, deliveryNotes);
       
@@ -246,15 +244,9 @@ const Orders: React.FC = () => {
                   <p className="text-sm text-gray-500">Product</p>
                   <p className="font-medium text-lg">{selectedOrder.product}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Quantity</p>
-                    <p className="font-medium">{selectedOrder.quantity}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Price per Unit</p>
-                    <p className="font-medium">LKR {selectedOrder.pricePerUnit.toLocaleString()}</p>
-                  </div>
+                <div>
+                  <p className="text-sm text-gray-500">Quantity</p>
+                  <p className="font-medium">{selectedOrder.quantity}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Total Value</p>
@@ -364,6 +356,7 @@ const Orders: React.FC = () => {
         type={toast.type}
         isVisible={toast.isVisible}
         onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+        duration={2000}
       />
     </div>
   );

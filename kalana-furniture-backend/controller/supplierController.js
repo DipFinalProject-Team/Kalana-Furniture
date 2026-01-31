@@ -740,17 +740,7 @@ exports.getInvoices = async (req, res) => {
 
     const { data: invoices, error } = await supabase
       .from('invoices')
-      .select(`
-        id,
-        invoice_number,
-        amount,
-        total_amount,
-        issue_date,
-        due_date,
-        status,
-        notes,
-        supplier_order_id
-      `)
+      .select('id, amount, issue_date, due_date, payment_date, status, supplier_order_id')
       .eq('supplier_id', supplierId)
       .order('issue_date', { ascending: false });
 
@@ -759,13 +749,13 @@ exports.getInvoices = async (req, res) => {
     // Format the response to match frontend interface
     const formattedInvoices = invoices?.map(invoice => {
       return {
-        id: invoice.invoice_number,
+        id: `INV-${String(invoice.supplier_order_id).padStart(4, '0')}`,
         orderId: invoice.supplier_order_id ? `SO-${String(invoice.supplier_order_id).padStart(4, '0')}` : 'N/A',
-        amount: parseFloat(invoice.total_amount),
+        amount: parseFloat(invoice.amount),
         date: new Date(invoice.issue_date).toLocaleDateString(),
         dueDate: new Date(invoice.due_date).toLocaleDateString(),
         status: invoice.status === 'Paid' ? 'Paid' : 'Pending',
-        paymentDate: null
+        paymentDate: invoice.payment_date ? new Date(invoice.payment_date).toLocaleDateString() : null
       };
     }) || [];
 
@@ -788,12 +778,15 @@ exports.getInvoiceDetails = async (req, res) => {
     const supplierId = parseInt(req.supplier.sub);
     const { id: invoiceNumber } = req.params;
 
+    // Extract supplier_order_id from invoice number (format: INV-XXXX)
+    const supplierOrderId = parseInt(invoiceNumber.replace('INV-', ''));
+
     // 1. Get Invoice
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
-      .select('id, supplier_id, supplier_order_id, invoice_number, amount, total_amount, issue_date, due_date, status, notes')
+      .select('id, supplier_id, supplier_order_id, amount, issue_date, due_date, status, payment_date')
       .eq('supplier_id', supplierId)
-      .eq('invoice_number', invoiceNumber)
+      .eq('supplier_order_id', supplierOrderId)
       .single();
 
     if (invoiceError || !invoice) {
@@ -824,14 +817,13 @@ exports.getInvoiceDetails = async (req, res) => {
 
     // Format the response
     const formattedInvoice = {
-      id: invoice.invoice_number,
+      id: `INV-${String(invoice.supplier_order_id).padStart(4, '0')}`,
       orderId: invoice.supplier_order_id ? `SO-${String(invoice.supplier_order_id).padStart(4, '0')}` : 'N/A',
-      amount: parseFloat(invoice.total_amount),
+      amount: parseFloat(invoice.amount),
       date: new Date(invoice.issue_date).toLocaleDateString(),
       dueDate: new Date(invoice.due_date).toLocaleDateString(),
       status: invoice.status === 'Paid' ? 'Paid' : 'Pending',
       paymentDate: invoice.payment_date ? new Date(invoice.payment_date).toLocaleDateString() : null,
-      notes: invoice.notes,
       items: purchaseOrder ? [{
         product: purchaseOrder.products?.productName || 'Unknown Product',
         quantity: purchaseOrder.quantity,

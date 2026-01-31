@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { FaFileInvoiceDollar, FaCheckCircle, FaClock, FaSearch, FaFilter, FaEye, FaTimesCircle } from 'react-icons/fa';
+import { AxiosError } from 'axios';
 import { adminService } from '../services/api';
 import type { Invoice } from '../services/api';
 import Toast from '../components/Toast';
+
+interface ErrorResponse {
+  message?: string;
+  error?: string;
+}
 
 const SupplierInvoices: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -28,13 +34,12 @@ const SupplierInvoices: React.FC = () => {
       setInvoices(data);
     } catch (err: unknown) {
       console.error('Error fetching invoices:', err);
-      const axiosError = err as any;
-      console.error('Error details:', {
-        message: axiosError?.response?.data?.message || axiosError?.response?.data?.error || axiosError?.message || 'Unknown error',
-        status: axiosError?.response?.status,
-        url: axiosError?.config?.url
-      });
-      showToast('Failed to load invoices', 'error');
+      const axiosError = err as AxiosError<ErrorResponse>;
+      const errorMessage = axiosError?.response?.data?.message || 
+                          axiosError?.response?.data?.error || 
+                          axiosError?.message || 
+                          'Failed to load invoices. Please check your connection and try again.';
+      showToast(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -57,10 +62,18 @@ const SupplierInvoices: React.FC = () => {
         setSelectedInvoice({ ...selectedInvoice, status: 'Paid', paymentDate: new Date().toISOString().split('T')[0] });
       }
       
+      // Close the modal
+      setShowDetailsModal(false);
+      
       showToast('Invoice marked as Paid successfully!', 'success');
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error marking invoice as paid:', err);
-      showToast('Failed to mark invoice as paid', 'error');
+      const axiosError = err as AxiosError<ErrorResponse>;
+      const errorMessage = axiosError?.response?.data?.message || 
+                          axiosError?.response?.data?.error || 
+                          axiosError?.message || 
+                          'Failed to mark invoice as paid. Please try again.';
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -121,13 +134,14 @@ const SupplierInvoices: React.FC = () => {
               <option value="All">All Status</option>
               <option value="Paid">Paid</option>
               <option value="Pending">Pending</option>
+              <option value="Overdue">Overdue</option>
             </select>
           </div>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
           <div className="p-4 bg-blue-100 text-blue-600 rounded-full">
             <FaFileInvoiceDollar size={24} />
@@ -151,13 +165,13 @@ const SupplierInvoices: React.FC = () => {
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
-          <div className="p-4 bg-green-100 text-green-600 rounded-full">
-            <FaCheckCircle size={24} />
+          <div className="p-4 bg-red-100 text-red-600 rounded-full">
+            <FaTimesCircle size={24} />
           </div>
           <div>
-            <p className="text-gray-500 text-sm">Paid Invoices</p>
+            <p className="text-gray-500 text-sm">Overdue Invoices</p>
             <h3 className="text-2xl font-bold text-gray-800">
-              {invoices.filter(i => i.status === 'Paid').length}
+              {invoices.filter(i => i.status === 'Overdue').length}
             </h3>
           </div>
         </div>
@@ -179,6 +193,7 @@ const SupplierInvoices: React.FC = () => {
                   <th className="p-4 font-semibold">Supplier</th>
                   <th className="p-4 font-semibold">Amount</th>
                   <th className="p-4 font-semibold">Due Date</th>
+                  <th className="p-4 font-semibold">Payment Date</th>
                   <th className="p-4 font-semibold">Status</th>
                   <th className="p-4 font-semibold text-right">Actions</th>
                 </tr>
@@ -191,6 +206,7 @@ const SupplierInvoices: React.FC = () => {
                     <td className="p-4 text-gray-800 font-medium">{invoice.supplierName}</td>
                     <td className="p-4 font-bold text-gray-800">Rs. {invoice.amount.toLocaleString()}</td>
                     <td className="p-4 text-gray-600">{invoice.dueDate}</td>
+                    <td className="p-4 text-gray-600">{invoice.paymentDate || '-'}</td>
                     <td className="p-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
                         {invoice.status}
@@ -264,19 +280,6 @@ const SupplierInvoices: React.FC = () => {
                   <p className="text-sm text-gray-500">Due Date</p>
                   <p className="font-medium text-gray-800">{selectedInvoice.dueDate}</p>
                 </div>
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <p className="font-medium text-gray-700">Total Amount</p>
-                  <p className="font-bold text-xl text-gray-900">Rs. {selectedInvoice.amount.toLocaleString()}</p>
-                </div>
-                {selectedInvoice.paymentDate && (
-                  <div className="flex justify-between items-center mt-2 text-sm">
-                    <p className="text-gray-500">Paid on</p>
-                    <p className="text-green-600 font-medium">{selectedInvoice.paymentDate}</p>
-                  </div>
-                )}
               </div>
 
               {selectedInvoice.status === 'Pending' && (
