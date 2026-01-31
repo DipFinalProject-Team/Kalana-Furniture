@@ -67,7 +67,7 @@ exports.createPromotion = async (req, res) => {
 
     // Prepare promotion object
     const promotion = {
-      code: promotionData.code || 'GENERAL_DISCOUNT', // Use default for general discounts
+      code: promotionData.code || null, // Use null for general discounts, keep specific codes
       description: promotionData.description,
       type: promotionData.type,
       value: promotionData.value,
@@ -82,13 +82,13 @@ exports.createPromotion = async (req, res) => {
       return res.status(400).json({ error: 'Description, type, and value are required' });
     }
 
-    // For general discounts (using default code), only allow percentage type
-    if (promotion.code === 'GENERAL_DISCOUNT' && promotion.type !== 'percentage') {
+    // For general discounts (no code), only allow percentage type
+    if (!promotion.code && promotion.type !== 'percentage') {
       return res.status(400).json({ error: 'General discounts can only be percentage-based' });
     }
 
-    // For discount codes, code is required and cannot be the default
-    if (promotion.code && promotion.code !== 'GENERAL_DISCOUNT' && !promotion.code.trim()) {
+    // For discount codes, code is required and cannot be empty
+    if (promotion.code && !promotion.code.trim()) {
       return res.status(400).json({ error: 'Discount code cannot be empty' });
     }
 

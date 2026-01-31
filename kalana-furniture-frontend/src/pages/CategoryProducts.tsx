@@ -22,8 +22,8 @@ const CategoryProducts = () => {
     let bestDiscountPercentage = 0;
 
     promotionsList.forEach(promotion => {
-      // Only apply general discounts (where code is null)
-      if (promotion.code !== null) return;
+      // Only apply general discounts (where code is null or 'GENERAL_DISCOUNT')
+      if (promotion.code && promotion.code !== 'GENERAL_DISCOUNT') return;
       
       // Skip inactive promotions (though getActive should only return active ones)
       if (!promotion.is_active) return;

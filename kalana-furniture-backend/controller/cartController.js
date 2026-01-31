@@ -52,7 +52,8 @@ exports.getCart = async (req, res) => {
       if (promotionsList) {
         promotionsList.forEach(promotion => {
           // Only apply general discounts (where code is null)
-          if (promotion.code !== null) return;
+          // Only apply general discounts (where code is null or 'GENERAL_DISCOUNT')
+          if (promotion.code && promotion.code !== 'GENERAL_DISCOUNT') return;
 
           // Check if promotion applies to this product
           let appliesToProduct = false;

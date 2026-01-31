@@ -288,12 +288,6 @@ const OrderManagement: React.FC = () => {
             </tbody>
           </table>
         </div>
-
-        {filteredOrders.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No orders found matching your criteria.</p>
-          </div>
-        )}
       </div>
 
       {/* Order Details Modal */}

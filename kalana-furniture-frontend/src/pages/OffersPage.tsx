@@ -6,7 +6,7 @@ import type { Product, Promotion } from '../services/api';
 
 const OffersPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [priceRange, setPriceRange] = useState([0, 100000]);
+  const [priceRange, setPriceRange] = useState([0, 1000000]);
   const [sortOrder, setSortOrder] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [products, setProducts] = useState<Product[]>([]);
@@ -27,6 +27,18 @@ const OffersPage = () => {
           productService.getAll(),
           promotionService.getActive()
         ]);
+        console.log('OffersPage - Products data:', productsData?.length || 0, 'items');
+        console.log('OffersPage - Promotions data:', promotionsData?.length || 0, 'items');
+        promotionsData?.forEach((promo, index) => {
+          console.log(`Promotion ${index}:`, {
+            id: promo.id,
+            code: promo.code,
+            description: promo.description,
+            start_date: promo.start_date,
+            end_date: promo.end_date,
+            is_active: promo.is_active
+          });
+        });
         setProducts(productsData);
         setPromotions(promotionsData);
       } catch (error) {
@@ -45,8 +57,8 @@ const OffersPage = () => {
     let bestDiscountPercentage = 0;
 
     promotions.forEach(promotion => {
-      // Only apply general discounts (where code is null)
-      if (promotion.code !== null) return;
+      // Skip code-based promotions, only apply general discounts (where code is empty/falsy or 'GENERAL_DISCOUNT')
+      if (promotion.code && promotion.code !== 'GENERAL_DISCOUNT') return;
       
       // Skip inactive promotions (though getActive should only return active ones)
       if (!promotion.is_active) return;
@@ -90,7 +102,9 @@ const OffersPage = () => {
 
   // Get products with applied promotions
   const productsWithDiscounts = useMemo(() => {
-    return products.map(applyPromotionsToProduct).filter(product => product.discountPrice);
+    const discountedProducts = products.map(applyPromotionsToProduct).filter(product => product.discountPrice);
+    console.log('OffersPage - Products with discounts:', discountedProducts.length, 'out of', products.length);
+    return discountedProducts;
   }, [products, applyPromotionsToProduct]);
 
   // Calculate maximum price from all products for dynamic range
