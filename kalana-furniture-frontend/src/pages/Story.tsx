@@ -5,8 +5,9 @@ const Story = () => {
   return (
     <>
       <Header />
-      <div className="bg-[url('/wood-bg.jpg')] bg-cover bg-fixed min-h-screen pt-20">
-        <div className="max-w-4xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+      <div className="bg-[url('/wood-bg.jpg')] bg-cover bg-fixed min-h-screen pt-20 relative">
+        <div className="absolute inset-0 bg-black/30"></div>
+        <div className="max-w-4xl mx-auto py-16 px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="bg-white bg-opacity-95 rounded-lg shadow-xl p-8 md:p-12">
             <div className="text-center mb-12">
               <h1 className="font-serif text-4xl md:text-5xl font-bold text-wood-brown mb-4">

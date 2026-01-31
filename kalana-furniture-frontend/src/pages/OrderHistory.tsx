@@ -18,11 +18,6 @@ const OrderModal = ({ order, onClose, onCancel }: { order: GroupedOrder; onClose
           <div>
             <h2 className="text-2xl font-serif font-bold text-white">Order Details</h2>
             <p className="text-sm text-wood-light mt-1">Order ID: #{order.id}</p>
-            <div className="mt-2">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-wood-accent/20 text-wood-accent border border-wood-accent/50">
-                Order #{order.id}
-              </span>
-            </div>
           </div>
           <button
             onClick={onClose}
@@ -300,18 +295,13 @@ const OrderHistoryPage = () => {
                         <div className="space-y-2">
                           {order.items.map((item, index: number) => (
                             <div key={item.id} className="flex items-center space-x-4">
-                              {/* Horizontal Scrollable Image Gallery */}
+                              {/* Product Image */}
                               <div className="relative">
-                                <div className="flex overflow-x-auto space-x-2 max-w-24" style={{scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.3) transparent'}}>
-                                  {(item.product?.images && item.product.images.length > 0 ? item.product.images : ['/placeholder-image.jpg']).map((image, imgIndex) => (
-                                    <img
-                                      key={imgIndex}
-                                      className="h-12 w-12 flex-shrink-0 rounded-lg object-cover border-2 border-white/30 shadow-lg"
-                                      src={image}
-                                      alt={`${item.product?.productName || 'Product'} ${imgIndex + 1}`}
-                                    />
-                                  ))}
-                                </div>
+                                <img
+                                  className="h-12 w-12 flex-shrink-0 rounded-lg object-cover border-2 border-white/30 shadow-lg"
+                                  src={item.product?.images?.[0] || '/placeholder-image.jpg'}
+                                  alt={item.product?.productName || 'Product'}
+                                />
                                 {/* Quantity badge */}
                                 <div className="absolute -top-2 -right-2 bg-wood-accent text-white text-xs font-bold px-2 py-1 rounded-full min-w-[20px] h-5 flex items-center justify-center">
                                   {item.quantity}
