@@ -161,8 +161,9 @@ const ProductsPage = () => {
     <div>
       <Header />
     </div>
-    <div className="bg-[url('/wood-bg.jpg')] pt-20 bg-cover bg-fixed min-h-screen">
-      <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+    <div className="bg-[url('/wood-bg.jpg')] pt-20 bg-cover bg-fixed min-h-screen relative">
+      <div className="absolute inset-0 bg-black opacity-30"></div>
+      <div className="relative max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12 border border-wood-brown rounded-lg p-6 bg-wood-brown bg-opacity-60">
           <h1 className="font-serif text-4xl font-bold text-white tracking-tight sm:text-5xl">All Products</h1>
           <p className="mt-4 text-xl text-white">

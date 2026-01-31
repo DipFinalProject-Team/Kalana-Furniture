@@ -9,10 +9,10 @@ const CategoryProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [allCategoryProducts, setAllCategoryProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [priceRange, setPriceRange] = useState([0, 100000]);
+  const [priceRange, setPriceRange] = useState([0, 1000000]);
   const [sortOrder, setSortOrder] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [maxPrice] = useState(100000);
+  const [maxPrice] = useState(1000000);
   const [loading, setLoading] = useState(true);
   const itemsPerPage = 9;
 
@@ -122,8 +122,9 @@ const CategoryProducts = () => {
     return (
       <>
         <Header />
-        <div className="bg-[url('/wood-bg.jpg')] pt-20 bg-cover bg-fixed min-h-screen">
-          <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+        <div className="bg-[url('/wood-bg.jpg')] pt-20 bg-cover bg-fixed min-h-screen relative">
+          <div className="absolute inset-0 bg-black opacity-30"></div>
+          <div className="relative max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12 border border-wood-brown rounded-lg p-6 bg-wood-brown bg-opacity-60">
               <h1 className="font-serif text-4xl font-bold text-white tracking-tight sm:text-5xl">
                 Category Not Found
@@ -147,8 +148,9 @@ const CategoryProducts = () => {
       <div>
         <Header />
       </div>
-      <div className="bg-[url('/wood-bg.jpg')] pt-20 bg-cover bg-fixed min-h-screen">
-        <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+      <div className="bg-[url('/wood-bg.jpg')] pt-20 bg-cover bg-fixed min-h-screen relative">
+        <div className="absolute inset-0 bg-black opacity-30"></div>
+        <div className="relative max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12 border border-wood-brown rounded-lg p-6 bg-wood-brown bg-opacity-60">
             <h1 className="font-serif text-4xl font-bold text-white tracking-tight sm:text-5xl">
               {decodeURIComponent(categoryName)} Products
@@ -236,10 +238,17 @@ const CategoryProducts = () => {
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-wood-brown"></div>
                   <span className="ml-3 text-white">Loading products...</span>
                 </div>
-              ) : products.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-xl text-gray-600">No products found matching your filters.</p>
-                  <p className="text-gray-500 mt-2">Try adjusting your search or price range.</p>
+              ) : paginatedProducts.length === 0 ? (
+                <div className="text-center py-20">
+                  <div className="text-6xl mb-4">🛋️</div>
+                  <h3 className="text-2xl font-bold text-gray-800 mb-2">No Products Found</h3>
+                  <p className="text-gray-600 mb-6">No products match your current filters. Try adjusting your search or price range.</p>
+                  <Link 
+                    to="/products" 
+                    className="inline-block bg-wood-brown text-white px-6 py-3 rounded-lg hover:bg-wood-accent transition duration-300"
+                  >
+                    Browse All Products
+                  </Link>
                 </div>
               ) : (
                 <>

@@ -139,8 +139,9 @@ const OffersPage = () => {
       <div>
         <Header />
       </div>
-      <div className="bg-[url('/wood-bg.jpg')] pt-20 bg-cover bg-fixed min-h-screen">
-        <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+      <div className="bg-[url('/wood-bg.jpg')] pt-20 bg-cover bg-fixed min-h-screen relative">
+        <div className="absolute inset-0 bg-black opacity-30"></div>
+        <div className="relative max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12 border border-wood-brown rounded-lg p-6 bg-wood-brown bg-opacity-60">
             <h1 className="font-serif text-4xl font-bold text-white tracking-tight sm:text-5xl">
               Special Offers
@@ -229,84 +230,100 @@ const OffersPage = () => {
 
               {/* Products Grid */}
               <div className="w-full md:w-3/4">
-                <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:gap-x-8">
-                  {paginatedProducts.map((product) => (
-                    <div key={product.id} className="group bg-white rounded-lg shadow-lg overflow-hidden relative">
-                      {/* Discount Badge */}
-                      <div className="absolute top-3 left-3 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold z-10">
-                        {product.discountPercentage}% OFF
-                      </div>
-
-                      <div className="w-full h-64 overflow-hidden rounded-t-lg bg-gray-200">
-                        <img
-                          src={product.images[0]}
-                          alt={product.productName}
-                          className="h-full w-full object-cover object-center group-hover:opacity-75"
-                        />
-                      </div>
-                      <div className="p-4">
-                        <Link to={`/product/${product.id}`} className="block">
-                          <h3 className="font-bold text-lg text-wood-brown hover:text-wood-accent hover:underline transition duration-200">{product.productName}</h3>
-                        </Link>
-                        <div className="mt-2">
-                          {product.discountPrice && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-gray-500 line-through text-sm">Rs.{product.price}</span>
-                              <span className="text-red-600 font-bold text-lg">Rs.{product.discountPrice}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex justify-center mt-12">
-                    <nav className="flex items-center space-x-2">
-                      <button
-                        onClick={() => {
-                          setCurrentPage(Math.max(1, currentPage - 1));
-                          scrollToTop();
-                        }}
-                        disabled={currentPage === 1}
-                        className="px-3 py-2 rounded-md bg-wood-brown text-white hover:bg-opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                      </button>
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <button
-                          key={page}
-                          onClick={() => {
-                            setCurrentPage(page);
-                            scrollToTop();
-                          }}
-                          className={`px-4 py-2 rounded-md transition duration-200 ${
-                            currentPage === page
-                              ? 'bg-wood-brown text-white'
-                              : 'bg-gray-200 text-gray-700 hover:bg-wood-brown hover:text-white'
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      ))}
-                      <button
-                        onClick={() => {
-                          setCurrentPage(Math.min(totalPages, currentPage + 1));
-                          scrollToTop();
-                        }}
-                        disabled={currentPage === totalPages}
-                        className="px-3 py-2 rounded-md bg-wood-brown text-white hover:bg-opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </button>
-                    </nav>
+                {paginatedProducts.length === 0 ? (
+                  <div className="text-center py-20">
+                    <div className="text-6xl mb-4">🛋️</div>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">No Offers Available</h3>
+                    <p className="text-gray-600 mb-6">We're currently updating our special offers. Check back soon for amazing deals!</p>
+                    <Link 
+                      to="/products" 
+                      className="inline-block bg-wood-brown text-white px-6 py-3 rounded-lg hover:bg-wood-accent transition duration-300"
+                    >
+                      Browse All Products
+                    </Link>
                   </div>
+                ) : (
+                  <>
+                    <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 xl:gap-x-8">
+                      {paginatedProducts.map((product) => (
+                        <div key={product.id} className="group bg-white rounded-lg shadow-lg overflow-hidden relative">
+                          {/* Discount Badge */}
+                          <div className="absolute top-3 left-3 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-bold z-10">
+                            {product.discountPercentage}% OFF
+                          </div>
+
+                          <div className="w-full h-64 overflow-hidden rounded-t-lg bg-gray-200">
+                            <img
+                              src={product.images[0]}
+                              alt={product.productName}
+                              className="h-full w-full object-cover object-center group-hover:opacity-75"
+                            />
+                          </div>
+                          <div className="p-4">
+                            <Link to={`/product/${product.id}`} className="block">
+                              <h3 className="font-bold text-lg text-wood-brown hover:text-wood-accent hover:underline transition duration-200">{product.productName}</h3>
+                            </Link>
+                            <div className="mt-2">
+                              {product.discountPrice && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-500 line-through text-sm">Rs.{product.price}</span>
+                                  <span className="text-red-600 font-bold text-lg">Rs.{product.discountPrice}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div className="flex justify-center mt-12">
+                        <nav className="flex items-center space-x-2">
+                          <button
+                            onClick={() => {
+                              setCurrentPage(Math.max(1, currentPage - 1));
+                              scrollToTop();
+                            }}
+                            disabled={currentPage === 1}
+                            className="px-3 py-2 rounded-md bg-wood-brown text-white hover:bg-opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                          </button>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <button
+                              key={page}
+                              onClick={() => {
+                                setCurrentPage(page);
+                                scrollToTop();
+                              }}
+                              className={`px-4 py-2 rounded-md transition duration-200 ${
+                                currentPage === page
+                                  ? 'bg-wood-brown text-white'
+                                  : 'bg-gray-200 text-gray-700 hover:bg-wood-brown hover:text-white'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => {
+                              setCurrentPage(Math.min(totalPages, currentPage + 1));
+                              scrollToTop();
+                            }}
+                            disabled={currentPage === totalPages}
+                            className="px-3 py-2 rounded-md bg-wood-brown text-white hover:bg-opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                        </nav>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

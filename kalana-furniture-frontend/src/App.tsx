@@ -15,6 +15,8 @@ import ProductDetailsPage from './pages/ProductDetailsPage';
 import OffersPage from './pages/OffersPage';
 import ReviewPage from './pages/ReviewPage';
 import CheckoutPage from './pages/CheckoutPage';
+import Story from './pages/Story';
+import Contact from './pages/Contact';
 function App() {
   const navigate = useNavigate();
 
@@ -34,6 +36,8 @@ function App() {
             <Route path="/orders" element={<OrderHistoryPage />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/offers" element={<OffersPage />} />
+            <Route path="/story" element={<Story />} />
+            <Route path="/contact" element={<Contact />} />
             <Route path="/category/:categoryName" element={<CategoryProducts />} />
             <Route path="/product/:id" element={<ProductDetailsPage />} />
             <Route path="/review/:id" element={<ReviewPage />} />

@@ -39,7 +39,7 @@ const Hero = () => {
   };
 
   const handleProductClick = (product: Product) => {
-    navigate(`/products/${product.id}`);
+    navigate(`/product/${product.id}`);
     setShowResults(false);
     setSearchQuery('');
   };
@@ -89,6 +89,14 @@ const Hero = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+            {showResults && filteredProducts.length === 0 && searchQuery.trim() && (
+              <div className="absolute top-full mt-2 w-full bg-white rounded-lg shadow-lg border z-20">
+                <div className="px-4 py-6 text-center">
+                  <p className="text-gray-600 font-medium">No products found</p>
+                  <p className="text-sm text-gray-500 mt-1">Try searching for sofas, tables, chairs...</p>
+                </div>
               </div>
             )}
           </form>
