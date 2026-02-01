@@ -251,6 +251,9 @@ const InventoryManagement: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
+  // Check if any order has total price
+  const hasTotalPrice = filteredOrders.some(order => order.totalPrice);
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen rounded-2xl">
       <Toast 
@@ -580,7 +583,7 @@ const InventoryManagement: React.FC = () => {
                     <th className="p-4 font-semibold">Product</th>
                     <th className="p-4 font-semibold">Supplier</th>
                     <th className="p-4 font-semibold">Quantity</th>
-                    <th className="p-4 font-semibold">Total Price (LKR)</th>
+                    {hasTotalPrice && <th className="p-4 font-semibold">Total Price (LKR)</th>}
                     <th className="p-4 font-semibold">Expected Delivery</th>
                     <th className="p-4 font-semibold">Status</th>
                     <th className="p-4 font-semibold">Date</th>
@@ -593,11 +596,11 @@ const InventoryManagement: React.FC = () => {
                       className={`hover:bg-gray-50 ${['Dispatched', 'Delivered', 'Completed'].includes(order.status) ? 'cursor-pointer' : ''}`}
                       onClick={() => handleViewOrderDetails(order)}
                     >
-                      <td className="p-4 font-mono text-sm text-gray-600">PO-{String(order.id).padStart(4, '0')}</td>
-                      <td className="p-4 font-medium text-gray-800">{order.productName}</td>
+                      <td className="p-4 font-mono text-sm text-gray-600">SO-{String(order.id).padStart(4, '0')}</td>
+                      <td className="p-4 font-medium text-sm text-gray-800">{order.productName}</td>
                       <td className="p-4 text-gray-600 text-sm">{order.supplierName || '-'}</td>
                       <td className="p-4 text-gray-600">{order.quantity}</td>
-                      <td className="p-4 text-gray-600">{order.totalPrice ? order.totalPrice.toLocaleString() : 'N/A'}</td>
+                      {hasTotalPrice && <td className="p-4 text-gray-600">{order.totalPrice ? order.totalPrice.toLocaleString() : 'N/A'}</td>}
                       <td className="p-4 text-gray-600">{order.expectedDelivery}</td>
                       <td className="p-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -750,7 +753,7 @@ const InventoryManagement: React.FC = () => {
                       <th className="p-4 font-semibold">Product</th>
                       <th className="p-4 font-semibold">Supplier</th>
                       <th className="p-4 font-semibold">Quantity</th>
-                      <th className="p-4 font-semibold">Total Price</th>
+                      {hasTotalPrice && <th className="p-4 font-semibold">Total Price</th>}
                       <th className="p-4 font-semibold">Expected Delivery</th>
                       <th className="p-4 font-semibold">Status</th>
                       <th className="p-4 font-semibold">Date</th>
@@ -767,7 +770,7 @@ const InventoryManagement: React.FC = () => {
                         <td className="p-4 font-medium text-gray-800">{order.productName}</td>
                         <td className="p-4 text-gray-600 text-sm">{order.supplierName || '-'}</td>
                         <td className="p-4 text-gray-600">{order.quantity}</td>
-                        <td className="p-4 text-gray-600">Rs. {order.totalPrice ? order.totalPrice.toLocaleString() : 'N/A'}</td>
+                        {hasTotalPrice && <td className="p-4 text-gray-600">Rs. {order.totalPrice ? order.totalPrice.toLocaleString() : 'N/A'}</td>}
                         <td className="p-4 text-gray-600">{order.expectedDelivery}</td>
                         <td className="p-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-medium ${

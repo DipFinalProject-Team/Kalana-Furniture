@@ -133,6 +133,11 @@ const Orders: React.FC = () => {
     return matchesStatus && matchesSearch;
   });
 
+  const hasTotalPrice = filteredOrders.some(order => order.totalPrice && order.totalPrice > 0);
+
+  // Check if any order has actual delivery date (shown after dispatching)
+  const hasActualDelivery = filteredOrders.some(order => order.actualDeliveryDate && order.actualDeliveryDate.trim() !== '');
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Pending': return 'bg-orange-100 text-orange-800';
@@ -188,10 +193,10 @@ const Orders: React.FC = () => {
                   <tr>
                     <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
                     <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                    {hasTotalPrice && <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Total Price</th>}
                     <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Expected Delivery</th>
-                    <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Actual Delivery</th>
+                    {hasActualDelivery && <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Actual Delivery</th>}
                     <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -201,16 +206,16 @@ const Orders: React.FC = () => {
                       className={`hover:bg-gray-50 cursor-pointer ${selectedOrder?.id === order.id ? 'bg-amber-50' : ''}`}
                       onClick={() => setSelectedOrder(order)}
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{order.id}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-medium text-gray-900">SO-{String(order.id).padStart(4, '0')}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.product}</td>
+                      {hasTotalPrice && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">LKR {order.totalPrice ? order.totalPrice.toLocaleString() : '-'}</td>}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.expectedDelivery}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.actualDeliveryDate || '-'}</td>
+                      {hasActualDelivery && <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.actualDeliveryDate || '-'}</td>}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
                           {order.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate">{order.deliveryNotes || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -356,7 +361,6 @@ const Orders: React.FC = () => {
         type={toast.type}
         isVisible={toast.isVisible}
         onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
-        duration={2000}
       />
     </div>
   );
