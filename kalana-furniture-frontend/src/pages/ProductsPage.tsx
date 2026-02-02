@@ -34,8 +34,9 @@ const ProductsPage = () => {
 
       if (promotion.applies_to === 'All Products') {
         appliesToProduct = true;
-      } else if (promotion.applies_to && promotion.applies_to.startsWith('Category: ')) {
-        const category = promotion.applies_to.replace('Category: ', '');
+      } else if (promotion.applies_to) {
+        // Handle both "Category: Name" and simple "Name" formats
+        const category = promotion.applies_to.replace('Category: ', '').replace('Category ', '');
         appliesToProduct = product.category === category;
       }
 

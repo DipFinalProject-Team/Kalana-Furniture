@@ -20,7 +20,7 @@ exports.getAllProducts = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select('*, product_images(image_url)')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -28,19 +28,16 @@ exports.getAllProducts = async (req, res) => {
       throw error;
     }
 
-    // Sanitize data: Remove large Base64 strings (legacy data) to speed up response
-    // Cloudinary URLs are short (< 200 chars), Base64 images are huge (> 10000 chars)
+    // Transform data to flat structure expected by frontend
     const sanitizedData = data.map(product => {
       const newProduct = { ...product };
       
-      // Filter images array
-      if (Array.isArray(newProduct.images)) {
-        newProduct.images = newProduct.images.filter(img => img && img.length < 1000);
-      }
-      
-      // Clear legacy image field if it's a large string
-      if (typeof newProduct.image === 'string' && newProduct.image.length > 1000) {
-        newProduct.image = null;
+      // Convert joined product_images table to simple images array
+      if (newProduct.product_images) {
+        newProduct.images = newProduct.product_images.map(img => img.image_url);
+        delete newProduct.product_images;
+      } else {
+        newProduct.images = [];
       }
       
       return newProduct;
@@ -59,7 +56,7 @@ exports.getProductsByCategory = async (req, res) => {
     
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select('*, product_images(image_url)')
       .eq('category', category)
       .order('created_at', { ascending: false });
 
@@ -68,18 +65,16 @@ exports.getProductsByCategory = async (req, res) => {
       throw error;
     }
 
-    // Sanitize data: Remove large Base64 strings (legacy data) to speed up response
+    // Transform data
     const sanitizedData = data.map(product => {
       const newProduct = { ...product };
       
-      // Filter images array
-      if (Array.isArray(newProduct.images)) {
-        newProduct.images = newProduct.images.filter(img => img && img.length < 1000);
-      }
-      
-      // Clear legacy image field if it's a large string
-      if (typeof newProduct.image === 'string' && newProduct.image.length > 1000) {
-        newProduct.image = null;
+      // Convert joined product_images table to simple images array
+      if (newProduct.product_images) {
+        newProduct.images = newProduct.product_images.map(img => img.image_url);
+        delete newProduct.product_images;
+      } else {
+        newProduct.images = [];
       }
       
       return newProduct;
@@ -106,14 +101,22 @@ exports.getProductById = async (req, res) => {
     // Get product
     const { data: products, error: productError } = await supabase
       .from('products')
-      .select('*')
+      .select('*, product_images(image_url)')
       .eq('id', productId);
 
     if (productError) throw productError;
     if (!products || products.length === 0) return res.status(404).json({ error: 'Product not found' });
 
     // Take the first product if multiple exist (data integrity issue)
-    const product = products[0];
+    const product = { ...products[0] };
+
+    // Format images
+    if (product.product_images) {
+      product.images = product.product_images.map(img => img.image_url);
+      delete product.product_images;
+    } else {
+      product.images = [];
+    }
 
     // Get reviews for this product
     const { data: reviews, error: reviewsError } = await supabase
@@ -177,7 +180,6 @@ exports.createProduct = async (req, res) => {
       price: productData.price,
       stock: productData.stock,
       description: productData.description,
-      images: imageUrls,
       status: productData.status || 'In Stock'
     };
 
@@ -188,7 +190,8 @@ exports.createProduct = async (req, res) => {
 
     console.log(`Creating product: ${product.productName}`);
 
-    const { data, error } = await supabase
+    // 1. Insert product details first
+    const { data: productResult, error } = await supabase
       .from('products')
       .insert([product])
       .select();
@@ -198,8 +201,30 @@ exports.createProduct = async (req, res) => {
       throw error;
     }
 
+    const newProduct = productResult[0];
+
+    // 2. Insert images into product_images table
+    if (imageUrls.length > 0) {
+      const imageRecords = imageUrls.map(url => ({
+        product_id: newProduct.id,
+        image_url: url
+      }));
+
+      const { error: imageError } = await supabase
+        .from('product_images')
+        .insert(imageRecords);
+        
+      if (imageError) {
+        console.error('Error saving images:', imageError);
+        // We log but don't fail the request, product was created
+      }
+    }
+    
+    // Add images to response
+    newProduct.images = imageUrls;
+
     console.log(`Product created successfully in ${Date.now() - startTime}ms`);
-    res.status(201).json(data[0]);
+    res.status(201).json(newProduct);
   } catch (error) {
     console.error(`Product creation failed after ${Date.now() - startTime}ms:`, error);
     res.status(500).json({ error: error.message });
@@ -235,11 +260,11 @@ exports.updateProduct = async (req, res) => {
       price: productData.price,
       stock: productData.stock,
       description: productData.description,
-      images: imageUrls,
       status: productData.status,
       updated_at: new Date().toISOString()
     };
 
+    // 1. Update product details
     const { data, error } = await supabase
       .from('products')
       .update(updates)
@@ -249,7 +274,29 @@ exports.updateProduct = async (req, res) => {
     if (error) throw error;
     if (data.length === 0) return res.status(404).json({ error: 'Product not found' });
 
-    res.status(200).json(data[0]);
+    // 2. Update images (Delete all old, insert all new)
+    // First delete existing
+    await supabase.from('product_images').delete().eq('product_id', id);
+
+    // Then insert new ones
+    if (imageUrls.length > 0) {
+      const imageRecords = imageUrls.map(url => ({
+        product_id: id,
+        image_url: url
+      }));
+
+      const { error: imageError } = await supabase
+        .from('product_images')
+        .insert(imageRecords);
+
+      if (imageError) console.error('Error updating images:', imageError);
+    }
+    
+    // Add images to response
+    const updatedProduct = data[0];
+    updatedProduct.images = imageUrls;
+
+    res.status(200).json(updatedProduct);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

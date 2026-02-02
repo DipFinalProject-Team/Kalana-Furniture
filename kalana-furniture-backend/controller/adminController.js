@@ -430,19 +430,43 @@ exports.getInventory = async (req, res) => {
 
     if (error) throw error;
 
+    // Fetch images for all products
+    const { data: productImages, error: imagesError } = await supabase
+      .from('product_images')
+      .select('product_id, image_url');
+      
+    if (imagesError) {
+      console.error('Error fetching product images:', imagesError);
+      // Continue without images if there's an error
+    }
+
+    // Create a map of product_id -> images array
+    const imagesMap = {};
+    if (productImages) {
+      productImages.forEach(img => {
+        if (!imagesMap[img.product_id]) {
+          imagesMap[img.product_id] = [];
+        }
+        imagesMap[img.product_id].push(img.image_url);
+      });
+    }
+
     // Format products for frontend
-    const inventory = products.map(product => ({
-      id: product.id,
-      productName: product.productName,
-      sku: product.sku || 'N/A',
-      category: product.category || 'Uncategorized',
-      price: Number(product.price),
-      stock: product.stock || 0,
-      status: (product.stock || 0) > 10 ? 'In Stock' : (product.stock || 0) > 0 ? 'Low Stock' : 'Out of Stock',
-      lastUpdated: product.updated_at ? new Date(product.updated_at).toISOString().split('T')[0] : new Date(product.created_at).toISOString().split('T')[0],
-      image: product.images && product.images.length > 0 ? product.images[0] : '',
-      images: product.images || []
-    }));
+    const inventory = products.map(product => {
+      const images = imagesMap[product.id] || [];
+      return {
+        id: product.id,
+        productName: product.productName,
+        sku: product.sku || 'N/A',
+        category: product.category || 'Uncategorized',
+        price: Number(product.price),
+        stock: product.stock || 0,
+        status: (product.stock || 0) > 10 ? 'In Stock' : (product.stock || 0) > 0 ? 'Low Stock' : 'Out of Stock',
+        lastUpdated: product.updated_at ? new Date(product.updated_at).toISOString().split('T')[0] : new Date(product.created_at).toISOString().split('T')[0],
+        image: images.length > 0 ? images[0] : '',
+        images: images
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -1142,7 +1166,7 @@ exports.getOrdersTrend = async (req, res) => {
     const { data, error } = await supabase
       .from('orders')
       .select('created_at')
-      .eq('status', 'Placed')
+      // Removed status filters to show all order activity
       .order('created_at', { ascending: true });
 
     if (error) throw error;
@@ -1189,7 +1213,8 @@ exports.getSalesByCategory = async (req, res) => {
           category
         )
       `)
-      .eq('status', 'Placed');
+      // Removed status filter to show all data for now
+      // .eq('status', 'Placed'); 
 
     if (error) throw error;
 
@@ -1230,13 +1255,34 @@ exports.getTopSellingProducts = async (req, res) => {
           id,
           productName,
           category,
-          price,
-          images
+          price
         )
       `)
-      .eq('status', 'Placed');
+      // Removed status filter for now
+      // .eq('status', 'Placed');
 
     if (error) throw error;
+
+    // Fetch product images manually for the found products
+    // Get unique product IDs
+    const productIds = [...new Set(data.map(order => order.products?.id).filter(id => id))];
+    
+    // Fetch images for these products
+    let productImages = {};
+    if (productIds.length > 0) {
+      const { data: images } = await supabase
+        .from('product_images')
+        .select('product_id, image_url')
+        .in('product_id', productIds);
+        
+      if (images) {
+        images.forEach(img => {
+          if (!productImages[img.product_id]) {
+            productImages[img.product_id] = img.image_url;
+          }
+        });
+      }
+    }
 
     // Group by product
     const productData = {};
@@ -1250,7 +1296,7 @@ exports.getTopSellingProducts = async (req, res) => {
             name: product.productName,
             category: product.category,
             price: product.price,
-            image: product.images?.[0] || '/placeholder-image.jpg',
+            image: productImages[productId] || '/placeholder-image.jpg',
             sales: 0
           };
         }

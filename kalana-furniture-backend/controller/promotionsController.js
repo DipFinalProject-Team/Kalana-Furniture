@@ -65,6 +65,16 @@ exports.createPromotion = async (req, res) => {
   try {
     const promotionData = req.body;
 
+    // Remove "Category" prefix from applies_to if present (supports "Category " and "Category: ")
+    let appliesTo = promotionData.appliesTo;
+    if (appliesTo) {
+      if (appliesTo.startsWith('Category: ')) {
+        appliesTo = appliesTo.replace('Category: ', '');
+      } else if (appliesTo.startsWith('Category ')) {
+        appliesTo = appliesTo.replace('Category ', '');
+      }
+    }
+
     // Prepare promotion object
     const promotion = {
       code: promotionData.code || null, // Use null for general discounts, keep specific codes
@@ -73,7 +83,7 @@ exports.createPromotion = async (req, res) => {
       value: promotionData.value,
       start_date: promotionData.startDate,
       end_date: promotionData.endDate,
-      applies_to: promotionData.appliesTo,
+      applies_to: appliesTo,
       is_active: promotionData.isActive,
     };
 
@@ -99,7 +109,6 @@ exports.createPromotion = async (req, res) => {
 
     if (error) {
       console.error('Supabase insert error:', error);
-      // Handle unique constraint violation for code
       if (error.code === '23505') {
         return res.status(400).json({ error: 'Discount code already exists' });
       }
@@ -118,6 +127,16 @@ exports.updatePromotion = async (req, res) => {
     const { id } = req.params;
     const promotionData = req.body;
 
+    // Remove "Category" prefix from applies_to if present (supports "Category " and "Category: ")
+    let appliesTo = promotionData.appliesTo;
+    if (appliesTo) {
+      if (appliesTo.startsWith('Category: ')) {
+        appliesTo = appliesTo.replace('Category: ', '');
+      } else if (appliesTo.startsWith('Category ')) {
+        appliesTo = appliesTo.replace('Category ', '');
+      }
+    }
+
     const updates = {
       code: promotionData.code || null,
       description: promotionData.description,
@@ -125,7 +144,7 @@ exports.updatePromotion = async (req, res) => {
       value: promotionData.value,
       start_date: promotionData.startDate,
       end_date: promotionData.endDate,
-      applies_to: promotionData.appliesTo,
+      applies_to: appliesTo,
       is_active: promotionData.isActive,
       updated_at: new Date().toISOString(),
     };
@@ -224,7 +243,7 @@ exports.togglePromotionStatus = async (req, res) => {
 exports.applyPromoCode = async (req, res) => {
   try {
     const { code } = req.body;
-    const userId = req.user?.id; // Required for usage tracking
+    const userId = req.user?.id;
 
     if (!code || !code.trim()) {
       return res.status(400).json({ error: 'Promo code is required' });

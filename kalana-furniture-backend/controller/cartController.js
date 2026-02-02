@@ -30,7 +30,6 @@ exports.getCart = async (req, res) => {
           id,
           productName,
           price,
-          images,
           stock,
           category,
           sku
@@ -44,9 +43,35 @@ exports.getCart = async (req, res) => {
       throw error;
     }
 
+    // Fetch images for the products in cart
+    const productIds = data.map(item => item.products.id);
+    let productImages = {};
+    
+    if (productIds.length > 0) {
+      const { data: images } = await supabase
+        .from('product_images')
+        .select('product_id, image_url')
+        .in('product_id', productIds);
+        
+      if (images) {
+        images.forEach(img => {
+          if (!productImages[img.product_id]) {
+            productImages[img.product_id] = [];
+          }
+          productImages[img.product_id].push(img.image_url);
+        });
+      }
+    }
+
     // Apply promotions to products
     const applyPromotionsToProduct = (product, promotionsList) => {
-      let bestDiscountPrice = product.price;
+      // Attach images to product
+      const productWithImages = {
+        ...product,
+        images: productImages[product.id] || []
+      };
+
+      let bestDiscountPrice = productWithImages.price;
       let bestDiscountPercentage = 0;
 
       if (promotionsList) {
@@ -62,35 +87,35 @@ exports.getCart = async (req, res) => {
             appliesToProduct = true;
           } else if (promotion.applies_to && promotion.applies_to.startsWith('Category: ')) {
             const category = promotion.applies_to.replace('Category: ', '');
-            appliesToProduct = product.category === category;
+            appliesToProduct = productWithImages.category === category;
           }
 
           if (appliesToProduct) {
-            let discountPrice = product.price;
+            let discountPrice = productWithImages.price;
 
             if (promotion.type === 'percentage') {
-              discountPrice = product.price * (1 - promotion.value / 100);
+              discountPrice = productWithImages.price * (1 - promotion.value / 100);
             } else if (promotion.type === 'fixed') {
-              discountPrice = Math.max(0, product.price - promotion.value);
+              discountPrice = Math.max(0, productWithImages.price - promotion.value);
             }
 
             if (discountPrice < bestDiscountPrice) {
               bestDiscountPrice = discountPrice;
-              bestDiscountPercentage = promotion.type === 'percentage' ? promotion.value : Math.round(((product.price - discountPrice) / product.price) * 100);
+              bestDiscountPercentage = promotion.type === 'percentage' ? promotion.value : Math.round(((productWithImages.price - discountPrice) / productWithImages.price) * 100);
             }
           }
         });
       }
 
-      if (bestDiscountPrice < product.price) {
+      if (bestDiscountPrice < productWithImages.price) {
         return {
-          ...product,
+          ...productWithImages,
           discountPrice: Math.round(bestDiscountPrice * 100) / 100, // Round to 2 decimal places
           discountPercentage: bestDiscountPercentage
         };
       }
 
-      return product;
+      return productWithImages;
     };
 
     // Format the response to match frontend expectations
@@ -103,7 +128,7 @@ exports.getCart = async (req, res) => {
         price: productWithDiscount.price,
         discountPrice: productWithDiscount.discountPrice,
         discountPercentage: productWithDiscount.discountPercentage,
-        image: productWithDiscount.images[0],
+        image: productWithDiscount.images && productWithDiscount.images.length > 0 ? productWithDiscount.images[0] : '',
         quantity: item.quantity,
         stock: productWithDiscount.stock,
         category: productWithDiscount.category,

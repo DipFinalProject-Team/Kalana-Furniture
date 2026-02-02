@@ -7,13 +7,31 @@ exports.getAllOrders = async (req, res) => {
       .select(`
         *,
         customer:users(name, email),
-        product:products(productName, images)
+        product:products(productName)
       `)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    res.status(200).json(data);
+    
+    // Fetch product images manually since we changed the schema
+    const ordersWithImages = await Promise.all(data.map(async (order) => {
+      if (order.product_id) {
+        const { data: images } = await supabase
+          .from('product_images')
+          .select('image_url')
+          .eq('product_id', order.product_id)
+          .limit(1);
+          
+        if (order.product) {
+          order.product.images = images ? images.map(img => img.image_url) : [];
+        }
+      }
+      return order;
+    }));
+
+    res.status(200).json(ordersWithImages);
   } catch (error) {
+    console.error('Error getting orders:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -29,13 +47,30 @@ exports.getUserOrders = async (req, res) => {
       .from('orders')
       .select(`
         *,
-        product:products(productName, images)
+        product:products(productName)
       `)
       .eq('customer_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    res.status(200).json(data);
+
+    // Fetch product images manually
+    const ordersWithImages = await Promise.all(data.map(async (order) => {
+      if (order.product_id) {
+        const { data: images } = await supabase
+          .from('product_images')
+          .select('image_url')
+          .eq('product_id', order.product_id)
+          .limit(1);
+          
+        if (order.product) {
+          order.product.images = images ? images.map(img => img.image_url) : [];
+        }
+      }
+      return order;
+    }));
+
+    res.status(200).json(ordersWithImages);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -44,20 +79,30 @@ exports.getUserOrders = async (req, res) => {
 exports.getOrderById = async (req, res) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase
+    const { data: order, error } = await supabase
       .from('orders')
       .select(`
         *,
         customer:users(name, email),
-        product:products(productName, images)
+        product:products(productName)
       `)
       .eq('id', id)
       .single();
 
     if (error) throw error;
-    if (!data) return res.status(404).json({ error: 'Order not found' });
+    if (!order) return res.status(404).json({ error: 'Order not found' });
 
-    res.status(200).json(data);
+    // Fetch product images
+    if (order.product_id && order.product) {
+      const { data: images } = await supabase
+        .from('product_images')
+        .select('image_url')
+        .eq('product_id', order.product_id);
+        
+      order.product.images = images ? images.map(img => img.image_url) : [];
+    }
+
+    res.status(200).json(order);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -158,7 +203,6 @@ exports.createOrder = async (req, res) => {
           .from('promo_code_usage')
           .insert([{
             user_id: customer_id,
-            promo_code: promoCode.toUpperCase(),
             promotion_id: promotion.id,
             order_id: orderData.id
           }]);
