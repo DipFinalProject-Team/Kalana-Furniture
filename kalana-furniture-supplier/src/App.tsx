@@ -9,6 +9,8 @@ import SupplierLoginPage from "./components/SupplierLoginPage";
 import SupplierForgotPasswordPage from "./components/SupplierForgotPasswordPage";
 import SupplierRegistrationPage from "./components/SupplierRegistrationPage";
 import SupplierResetPasswordPage from "./components/SupplierResetPasswordPage";
+import ContactAdmin from "./pages/ContactAdmin";
+import Notifications from "./pages/Notifications";
 
 const router = createBrowserRouter([
   {
@@ -50,6 +52,14 @@ const router = createBrowserRouter([
       {
         path: "settings",
         element: <Settings />,
+      },
+      {
+        path: "contact-admin",
+        element: <ContactAdmin />,
+      },
+      {
+        path: "notifications",
+        element: <Notifications />,
       },
     ],
   },

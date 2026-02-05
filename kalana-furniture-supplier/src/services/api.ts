@@ -123,5 +123,10 @@ export const supplierService = {
   updateSupplierOrderDetails: async (id: string, data: { deliveryDate?: string; notes?: string; totalPrice?: number }) => {
     const response = await api.put(`/suppliers/orders/${id}/details`, data);
     return response.data;
+  },
+
+  submitContactForm: async (data: { supplier_id: string, message: string }): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post('/supplier-contact', data);
+    return response.data;
   }
 };
