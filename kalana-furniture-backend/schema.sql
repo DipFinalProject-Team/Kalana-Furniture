@@ -250,6 +250,8 @@ create table public.customer_contact_form (
   mobile_number text,
   email text not null,
   message text not null,
+  response text,
+  status text default 'Pending',
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

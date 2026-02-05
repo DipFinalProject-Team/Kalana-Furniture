@@ -83,9 +83,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
     { path: '/orders', name: 'Orders', icon: <FiShoppingCart /> },
     { path: '/invoices', name: 'Invoices', icon: <FiFileText /> },
     { path: '/profile', name: 'Profile', icon: <FiUser /> },
-    { path: '/settings', name: 'Settings', icon: <FiSettings /> },
     { path: '/contact-admin', name: 'Support', icon: <FiMessageSquare /> },
     { path: '/notifications', name: 'Notifications', icon: <FiBell /> },
+    { path: '/settings', name: 'Settings', icon: <FiSettings /> },
   ];
 
   return (
