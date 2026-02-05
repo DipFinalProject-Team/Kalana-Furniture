@@ -271,3 +271,5 @@ create table public.supplier_contact_form (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+A L T E R   T A B L E   p u b l i c . s u p p l i e r _ c o n t a c t _ f o r m   A D D   C O L U M N   I F   N O T   E X I S T S   r e s p o n s e   t e x t ;   A L T E R   T A B L E   p u b l i c . s u p p l i e r _ c o n t a c t _ f o r m   A D D   C O L U M N   I F   N O T   E X I S T S   s t a t u s   t e x t   D E F A U L T   ' P e n d i n g ' ;  
+ 

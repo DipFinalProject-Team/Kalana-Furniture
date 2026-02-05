@@ -34,6 +34,7 @@ const generateDefaultAvatar = (name) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('Admin Login Attempt:', { email, password });
 
     // Validate input
     if (!email || !password) {
@@ -350,6 +351,28 @@ exports.getApprovedSuppliers = async (req, res) => {
   }
 };
 
+exports.getAllSuppliers = async (req, res) => {
+  try {
+    const { data: suppliers, error } = await supabase
+      .from('suppliers')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      data: suppliers
+    });
+  } catch (error) {
+    console.error('Get all suppliers error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch suppliers'
+    });
+  }
+};
+
 exports.approveSupplier = async (req, res) => {
   try {
     const { id } = req.params;
@@ -416,6 +439,176 @@ exports.rejectSupplier = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to reject supplier'
+    });
+  }
+};
+
+exports.updateSupplierStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // Validate status
+    if (!['Active', 'Inactive'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be Active or Inactive.'
+      });
+    }
+
+    const { data: supplier, error } = await supabase
+      .from('suppliers')
+      .update({ status: status })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    if (!supplier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Supplier not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Supplier status updated successfully',
+      supplier: supplier
+    });
+  } catch (error) {
+    console.error('Update supplier status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update supplier status'
+    });
+  }
+};
+
+exports.getAllSupplierContacts = async (req, res) => {
+  try {
+    // Note: 'response' and 'status' columns might not exist in the database yet.
+    // Reverting to previous select but mapping defaults for them.
+    // Also reverting 'company_name' to 'name' inside suppliers join if that was what worked before,
+    // although schema says company_name. If name fails, change to company_name.
+    // Ideally we select * or check schema, but let's be conservative.
+    // If 'name' fails, it might be 'company_name'. The previous code used 'name'.
+    
+    // Using try-catch for the query itself if possible? No.
+    // Let's assume the issue is response/status not existing.
+    
+    const { data: contacts, error } = await supabase
+      .from('supplier_contact_form')
+      .select(`
+        supplier_contact_form_id,
+        supplier_id,
+        message,
+        created_at,
+        suppliers (
+          name,
+          email
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+       // Check if error is due to missing 'name' column in suppliers
+       if (error.message && error.message.includes('name')) {
+         // Retry with company_name
+         const { data: contactsRetry, error: errorRetry } = await supabase
+          .from('supplier_contact_form')
+          .select(`
+            supplier_contact_form_id,
+            supplier_id,
+            message,
+            created_at,
+            suppliers (
+              company_name,
+              email
+            )
+          `)
+          .order('created_at', { ascending: false });
+          
+          if (errorRetry) throw errorRetry;
+          
+          const transformedContactsRetry = contactsRetry.map(contact => ({
+            supplier_contact_form_id: contact.supplier_contact_form_id,
+            supplier_id: contact.supplier_id,
+            message: contact.message,
+            response: contact.response || null, // These won't be in the select result anyway
+            status: contact.status || 'Pending',
+            created_at: contact.created_at,
+            supplier: contact.suppliers ? {
+              name: contact.suppliers.company_name,
+              email: contact.suppliers.email
+            } : null
+          }));
+          
+          return res.status(200).json({
+            success: true,
+            data: transformedContactsRetry
+          });
+       }
+       throw error;
+    }
+
+    // Transform the data to match the expected format
+    const transformedContacts = contacts.map(contact => ({
+      supplier_contact_form_id: contact.supplier_contact_form_id,
+      supplier_id: contact.supplier_id,
+      message: contact.message,
+      // Default values since columns likely missing or not selected
+      response: contact.response || null,
+      status: contact.status || 'Pending',
+      created_at: contact.created_at,
+      supplier: contact.suppliers ? {
+        name: contact.suppliers.name, // The previous code expected 'name'
+        email: contact.suppliers.email
+      } : null
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: transformedContacts
+    });
+  } catch (error) {
+    console.error('Get supplier contacts error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch supplier contacts'
+    });
+  }
+};
+
+exports.updateSupplierContact = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, response } = req.body;
+
+    const updateData = {};
+    if (status) updateData.status = status;
+    if (response !== undefined) updateData.response = response;
+
+    const { data, error } = await supabase
+      .from('supplier_contact_form')
+      .update(updateData)
+      .eq('supplier_contact_form_id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: 'Contact updated successfully',
+      data
+    });
+  } catch (error) {
+    console.error('Update supplier contact error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update contact'
     });
   }
 };

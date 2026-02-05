@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { LuUsers, LuMessageSquare, LuTrendingUp, LuActivity, LuCreditCard, LuChartBar, LuDownload } from 'react-icons/lu';
 import { customerService, inquiryService, refundService, type Inquiry, type RefundRequest } from '../services/api';
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -74,105 +75,62 @@ const Dashboard: React.FC = () => {
 
   const downloadAnalyticsReport = () => {
     const doc = new jsPDF();
+    const today = new Date().toLocaleDateString();
 
-    // Set up colors and fonts
-    const primaryColor = [139, 69, 19]; // Wood brown
-    const secondaryColor = [107, 114, 128]; // Gray
-
-    // Header
-    doc.setFontSize(24);
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.text('KALANA FURNITURE', 105, 30, { align: 'center' });
-
-    doc.setFontSize(16);
-    doc.text('Customer Administration Analytics Report', 105, 45, { align: 'center' });
+    // Title
+    doc.setFontSize(20);
+    doc.setTextColor(139, 69, 19); // Wood brown
+    doc.text('Kalana Furniture - Customer Analytics Report', 14, 22);
 
     doc.setFontSize(10);
-    doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 105, 55, { align: 'center' });
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${today}`, 14, 30);
 
-    // Summary Metrics Section
+    // Summary Section
     doc.setFontSize(14);
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.text('SUMMARY METRICS', 20, 75);
+    doc.setTextColor(0);
+    doc.text('Performance Summary', 14, 45);
 
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-
-    const metrics = [
-      { label: 'Total Customers:', value: dashboardData.totalCustomers.toString() },
-      { label: 'Active Inquiries:', value: dashboardData.activeInquiries.toString() },
-      { label: 'Active Refunds:', value: dashboardData.activeRefunds.toString() },
-      { label: 'Resolution Rate:', value: `${dashboardData.resolutionRate}%` },
-      { label: 'Average Response Time:', value: dashboardData.avgResponseTime }
+    const summaryData = [
+      ['Total Customers', dashboardData.totalCustomers.toString()],
+      ['Active Inquiries', dashboardData.activeInquiries.toString()],
+      ['Active Refunds', dashboardData.activeRefunds.toString()],
+      ['Resolution Rate', `${dashboardData.resolutionRate}%`],
+      ['Avg. Response Time', dashboardData.avgResponseTime],
     ];
 
-    let yPos = 90;
-    metrics.forEach(metric => {
-      doc.text(`${metric.label} ${metric.value}`, 25, yPos);
-      yPos += 10;
+    autoTable(doc, {
+      startY: 50,
+      head: [['Metric', 'Value']],
+      body: summaryData,
+      theme: 'grid',
+      headStyles: { fillColor: [139, 69, 19] },
+      styles: { fontSize: 10 }
     });
 
-    // Inquiry Status Breakdown
-    yPos += 10;
+    // Recent Inquiries List
+    const finalY = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
     doc.setFontSize(14);
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.text('INQUIRY STATUS BREAKDOWN', 20, yPos);
+    doc.text('Recent Inquiries', 14, finalY);
 
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
+    const inquiryRows = dashboardData.inquiries.slice(0, 15).map(i => [
+      `${i.first_name} ${i.last_name}`,
+      i.email,
+      i.message.length > 20 ? i.message.substring(0, 20) + '...' : i.message,
+      i.status,
+      new Date(i.created_at).toLocaleDateString()
+    ]);
 
-    const statusData = [
-      { label: 'Pending Inquiries:', value: dashboardData.activeInquiries.toString() },
-      { label: 'Resolved Inquiries:', value: dashboardData.inquiries.filter(i => i.status === 'Resolved').length.toString() },
-      { label: 'Total Inquiries:', value: dashboardData.inquiries.length.toString() }
-    ];
-
-    yPos += 15;
-    statusData.forEach(status => {
-      doc.text(`${status.label} ${status.value}`, 25, yPos);
-      yPos += 10;
+    autoTable(doc, {
+      startY: finalY + 5,
+      head: [['Name', 'Email', 'Message', 'Status', 'Date']],
+      body: inquiryRows,
+      theme: 'striped',
+      headStyles: { fillColor: [139, 69, 19] },
+      styles: { fontSize: 9 }
     });
 
-    // Recent Inquiries
-    yPos += 10;
-    doc.setFontSize(14);
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.text('RECENT INQUIRIES', 20, yPos);
-
-    doc.setFontSize(8);
-    doc.setTextColor(0, 0, 0);
-
-    yPos += 15;
-    const recentInquiries = dashboardData.inquiries.slice(0, 8);
-    recentInquiries.forEach(inquiry => {
-      const name = `${inquiry.first_name} ${inquiry.last_name}`;
-      const status = inquiry.status;
-      const date = new Date(inquiry.created_at).toLocaleDateString();
-
-      // Truncate name if too long
-      const truncatedName = name.length > 25 ? name.substring(0, 22) + '...' : name;
-
-      doc.text(`${truncatedName} (${status}) - ${date}`, 25, yPos);
-      yPos += 8;
-
-      // Add new page if needed
-      if (yPos > 270) {
-        doc.addPage();
-        yPos = 30;
-      }
-    });
-
-    // Footer
-    const pageHeight = doc.internal.pageSize.height;
-    doc.setFontSize(8);
-    doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-    doc.text('This report provides an overview of customer service performance and inquiry management.', 105, pageHeight - 30, { align: 'center' });
-    doc.text('Generated by Kalana Furniture Customer Administration System', 105, pageHeight - 20, { align: 'center' });
-
-    // Download the PDF
-    const fileName = `kalana-furniture-analytics-report-${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(fileName);
+    doc.save(`customer_analytics_${new Date().toISOString().split('T')[0]}.pdf`);
   };
   return (
     <div className="space-y-6">

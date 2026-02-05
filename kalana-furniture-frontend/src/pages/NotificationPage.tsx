@@ -1,35 +1,75 @@
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { FaBell, FaCalendar, FaCircle } from 'react-icons/fa';
+import { useState, useEffect } from 'react';
+import { contactService, type ContactForm } from '../services/api';
+
+interface Notification {
+  id: number;
+  title: string;
+  message: string;
+  date: string;
+  isRead: boolean;
+  type: 'response' | 'system';
+}
 
 const NotificationPage = () => {
-  // Mock data for notifications
-  const notifications = [
-    {
-      id: 1,
-      title: 'Order Delivered',
-      message: 'Your order #12345 has been successfully delivered. We hope you enjoy your purchase!',
-      date: '2023-10-25 14:30',
-      isRead: false,
-      type: 'order'
-    },
-    {
-      id: 2,
-      title: 'New Offer Available',
-      message: 'Get 20% off on all living room furniture this weekend! Use code LIVING20.',
-      date: '2023-10-24 09:00',
-      isRead: true,
-      type: 'promo'
-    },
-    {
-      id: 3,
-      title: 'Welcome to Kalana Furniture',
-      message: 'Thank you for creating an account. Explore our latest collection of handcrafted furniture.',
-      date: '2023-10-20 10:15',
-      isRead: true,
-      type: 'system'
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const contactForms = await contactService.getAll();
+
+      // Transform contact forms with responses into notifications
+      const responseNotifications: Notification[] = contactForms
+        .filter((form: ContactForm) => form.response && form.response.trim() !== '')
+        .map((form: ContactForm) => ({
+          id: form.id,
+          title: `Response to your inquiry`,
+          message: form.response!,
+          date: new Date(form.created_at).toLocaleString(),
+          isRead: false, // You could track read status in the database
+          type: 'response' as const
+        }));
+
+      // Add a welcome notification if there are no responses yet
+      if (responseNotifications.length === 0) {
+        responseNotifications.push({
+          id: 999,
+          title: 'Welcome to Kalana Furniture',
+          message: 'Thank you for creating an account. Explore our latest collection of handcrafted furniture.',
+          date: new Date().toLocaleString(),
+          isRead: true,
+          type: 'system'
+        });
+      }
+
+      setNotifications(responseNotifications);
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+      setError('Failed to load notifications');
+      // Fallback to default notification
+      setNotifications([{
+        id: 999,
+        title: 'Welcome to Kalana Furniture',
+        message: 'Thank you for creating an account. Explore our latest collection of handcrafted furniture.',
+        date: new Date().toLocaleString(),
+        isRead: true,
+        type: 'system'
+      }]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   return (
     <>
@@ -46,7 +86,24 @@ const NotificationPage = () => {
           </div>
 
           <div className="space-y-4">
-            {notifications.length > 0 ? (
+            {loading ? (
+              <div className="text-center py-16 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-wood-accent mx-auto mb-4"></div>
+                <p className="text-wood-light">Loading notifications...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-16 bg-red-50/10 backdrop-blur-md rounded-2xl border border-red-200/20">
+                <div className="text-6xl text-red-400/50 mb-4">⚠️</div>
+                <h3 className="text-2xl font-bold text-red-300 mb-2">Error Loading Notifications</h3>
+                <p className="text-red-200 mb-4">{error}</p>
+                <button
+                  onClick={fetchNotifications}
+                  className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : notifications.length > 0 ? (
               notifications.map((notification) => (
                 <div 
                   key={notification.id} 
@@ -64,8 +121,7 @@ const NotificationPage = () => {
                           {notification.title}
                         </h3>
                         <span className={`text-xs px-2 py-1 rounded-full ${
-                          notification.type === 'order' ? 'bg-blue-100 text-blue-800' :
-                          notification.type === 'promo' ? 'bg-green-100 text-green-800' :
+                          notification.type === 'response' ? 'bg-blue-100 text-blue-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
                           {notification.type.charAt(0).toUpperCase() + notification.type.slice(1)}

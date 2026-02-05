@@ -425,6 +425,11 @@ export const contactService = {
   submit: async (data: ContactData): Promise<{ message: string }> => {
     const response = await api.post('/contact', data);
     return response.data;
+  },
+
+  getAll: async (): Promise<ContactForm[]> => {
+    const response = await api.get('/contact');
+    return response.data.data || response.data;
   }
 };
 
@@ -440,5 +445,19 @@ export const refundService = {
     return response.data;
   }
 };
+
+// Contact Service
+export interface ContactForm {
+  id: number;
+  user_id?: string;
+  first_name: string;
+  last_name: string;
+  mobile_number?: string;
+  email: string;
+  message: string;
+  response?: string;
+  status: string;
+  created_at: string;
+}
 
 export { api };

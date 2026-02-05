@@ -94,6 +94,7 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('Supplier Admin Login Attempt:', { email, password });
 
     // Validate input
     if (!email || !password) {

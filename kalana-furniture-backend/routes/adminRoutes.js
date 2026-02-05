@@ -17,10 +17,16 @@ router.get('/verify', adminController.verifyToken);
 router.post('/change-password', adminController.changePassword);
 
 // Supplier management routes
+router.get('/suppliers', adminController.getAllSuppliers);
 router.get('/suppliers/pending', adminController.getPendingApplications);
 router.get('/suppliers/approved', adminController.getApprovedSuppliers);
 router.put('/suppliers/:id/approve', adminController.approveSupplier);
 router.put('/suppliers/:id/reject', adminController.rejectSupplier);
+router.put('/suppliers/:id/status', adminController.updateSupplierStatus);
+
+// Supplier contact management routes
+router.get('/supplier-contacts', adminController.getAllSupplierContacts);
+router.put('/supplier-contacts/:id', adminController.updateSupplierContact);
 
 // Inventory management routes
 router.get('/inventory', adminController.getInventory);
