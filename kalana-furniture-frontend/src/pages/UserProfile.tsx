@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   FaUser,
   FaPhone,
@@ -427,6 +427,20 @@ const UserProfile = () => {
                 >
                   Change Password
                 </button>
+              </div>
+
+              <div className="mt-8 text-center bg-white/5 rounded-xl p-6 border border-white/10">
+                <h3 className="text-xl font-bold text-white mb-2">Need Help?</h3>
+                <p className="text-wood-light mb-4">
+                  Have questions or need assistance with your orders?
+                </p>
+                <Link
+                  to="/contact"
+                  className="inline-flex items-center justify-center bg-white/20 text-white font-bold py-3 px-8 rounded-lg hover:bg-white/30 transition-all duration-300 w-full"
+                >
+                  <FaEnvelope className="mr-2" />
+                  Contact Support
+                </Link>
               </div>
             </div>
           </div>

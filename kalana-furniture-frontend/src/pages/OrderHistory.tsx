@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FaHistory } from 'react-icons/fa';
 import Header from '../components/Header';
 import { useAuth } from '../hooks/useAuth';
@@ -53,7 +53,7 @@ const OrderModal = ({ order, onClose, onCancel }: { order: GroupedOrder; onClose
             </div>
             <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20">
               <p className="text-xs uppercase tracking-wider text-wood-light mb-2 font-semibold">Payment Method</p>
-              <p className="font-bold text-white">Cash on Delivery</p>
+              <p className="font-bold text-white">{order.payment_method}</p>
             </div>
           </div>
 
@@ -147,6 +147,7 @@ const OrderModal = ({ order, onClose, onCancel }: { order: GroupedOrder; onClose
   );
 };
 const OrderHistoryPage = () => {
+  const navigate = useNavigate();
   const [selectedOrder, setSelectedOrder] = useState<GroupedOrder | null>(null);
   const [orders, setOrders] = useState<GroupedOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -169,6 +170,9 @@ const OrderHistoryPage = () => {
         const orderId = order.id?.toString() || 'unknown';
         
         if (!groups[orderId]) {
+          const paymentType = order.payments?.[0]?.payment_type;
+          const paymentMethod = paymentType === 'card' ? 'Card Payment' : 'Cash on Delivery';
+
           groups[orderId] = {
             id: order.id ?? 0,
             customer_id: order.customer_id || '',
@@ -179,7 +183,8 @@ const OrderHistoryPage = () => {
             delivery_phone: order.delivery_phone || '',
             delivery_email: order.delivery_email || '',
             items: [],
-            total: 0
+            total: 0,
+            payment_method: paymentMethod
           };
         }
         
@@ -336,6 +341,14 @@ const OrderHistoryPage = () => {
                         >
                           View Details
                         </button>
+                        {(order.status === 'placed' || order.status === 'Placed') && (
+                          <button
+                            onClick={() => navigate('/refund-request', { state: { orderId: order.id } })}
+                            className="text-red-300 hover:text-red-200 font-bold transition-colors duration-200 bg-red-500/10 hover:bg-red-500/20 px-4 py-2 rounded-lg border border-red-500/20 hover:border-red-500/40 ml-2"
+                          >
+                            Request Refund
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

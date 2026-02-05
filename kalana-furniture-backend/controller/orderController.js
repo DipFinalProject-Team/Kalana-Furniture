@@ -7,7 +7,8 @@ exports.getAllOrders = async (req, res) => {
       .select(`
         *,
         customer:users(name, email),
-        product:products(productName)
+        product:products(productName),
+        payments(payment_type)
       `)
       .order('created_at', { ascending: false });
 
@@ -47,7 +48,8 @@ exports.getUserOrders = async (req, res) => {
       .from('orders')
       .select(`
         *,
-        product:products(productName)
+        product:products(productName),
+        payments(payment_type)
       `)
       .eq('customer_id', userId)
       .order('created_at', { ascending: false });
@@ -84,7 +86,8 @@ exports.getOrderById = async (req, res) => {
       .select(`
         *,
         customer:users(name, email),
-        product:products(productName)
+        product:products(productName),
+        payments(payment_type)
       `)
       .eq('id', id)
       .single();
@@ -117,7 +120,9 @@ exports.createOrder = async (req, res) => {
       total,
       status,
       deliveryDetails,
-      promoCode
+      promoCode,
+      paymentMethod,
+      cardDetails
     } = req.body;
 
     // Validate required fields
@@ -162,6 +167,49 @@ exports.createOrder = async (req, res) => {
       .single();
 
     if (orderError) throw orderError;
+
+    // Process Payment
+    if (paymentMethod === 'card' && cardDetails) {
+      const { error: paymentError } = await supabase
+        .from('payments')
+        .insert([{
+          payment_type: 'card',
+          order_id: orderData.id,
+          product_id: product_id,
+          customer_id: customer_id,
+          card_holder: cardDetails.cardHolder,
+          payment_date: new Date()
+        }]);
+
+      if (paymentError) {
+        console.error("Error creating payment record:", paymentError);
+        // Maybe we should revert the order? Or just log it. For now, log it.
+      }
+    } else if (paymentMethod === 'cash') {
+       // Optional: Record cash payment intent or wait for delivery?
+       // The requirement is mostly about card details in payment table.
+       // But schema allows 'cash' type. We can insert a record for cash too if needed,
+       // but typically cash is paid on delivery.
+       // Let's insert a record for consistency if the user wants "payments" table to track it.
+       // "when add card deatils and add and cornfimr order need to create databse table payment table that store... type card or cash"
+       // It implies tracking all payments. But for cash, we might not have it "paid" yet.
+       // I'll stick to card for now unless user explicitly asked for cash entries too.
+       // Re-reading: "payment type card or cash". Okay, I will add cash entry too, maybe with status 'pending' if the table supported it, but it doesn't.
+       // I'll just add the entry as 'cash'.
+       const { error: paymentError } = await supabase
+        .from('payments')
+        .insert([{
+            payment_type: 'cash',
+            order_id: orderData.id,
+            product_id: product_id,
+            customer_id: customer_id,
+            payment_date: new Date()
+        }]);
+       
+       if (paymentError) {
+           console.error("Error creating payment record for cash:", paymentError);
+       }
+    }
 
     // Update product stock
     const { error: stockError } = await supabase

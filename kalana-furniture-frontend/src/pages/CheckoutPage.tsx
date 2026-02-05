@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaShippingFast, FaUser, FaMapMarkerAlt, FaPhone, FaEnvelope, FaMoneyBillWave } from 'react-icons/fa';
+import { FaShippingFast, FaUser, FaMapMarkerAlt, FaPhone, FaEnvelope, FaMoneyBillWave, FaCreditCard } from 'react-icons/fa';
 import { useCart } from '../contexts/CartContext';
 import Header from '../components/Header';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -78,6 +78,16 @@ const CheckoutPage = () => {
     email: '',
   });
 
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
+  const [cardDetails, setCardDetails] = useState({
+    cardNumber: '',
+    cardHolder: '',
+    expiryDate: '',
+    cvv: ''
+  });
+  const [showCardModal, setShowCardModal] = useState(false);
+  const [isCardSaved, setIsCardSaved] = useState(false);
+
   const [isEditing, setIsEditing] = useState(false);
   const [toast, setToast] = useState<{type: 'success' | 'error', message: string} | null>(null);
 
@@ -127,6 +137,50 @@ const CheckoutPage = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setDeliveryDetails(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCardInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+
+    if (name === 'cardNumber') {
+      // Remove non-digits
+      const rawValue = value.replace(/\D/g, '');
+      // Limit to 16 digits
+      const truncated = rawValue.slice(0, 16);
+      // Add space every 4 digits
+      const formatted = truncated.replace(/(\d{4})(?=\d)/g, '$1 ');
+      setCardDetails(prev => ({ ...prev, [name]: formatted }));
+    } else if (name === 'expiryDate') {
+      // Remove non-digits
+      const rawValue = value.replace(/\D/g, '');
+      // Limit to 4 digits (MMYY)
+      const truncated = rawValue.slice(0, 4);
+      // Add slash after 2 digits if followed by numbers
+      const formatted = truncated.replace(/^(\d{2})(\d)/, '$1/$2');
+      setCardDetails(prev => ({ ...prev, [name]: formatted }));
+    } else {
+      setCardDetails(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSaveCard = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validate 16 digits for card number
+    const rawCardNumber = cardDetails.cardNumber.replace(/\s/g, '');
+    if (rawCardNumber.length !== 16) {
+      setToast({ type: 'error', message: 'Card number must be exactly 16 digits' });
+      return;
+    }
+
+    if (!cardDetails.cardNumber || !cardDetails.cardHolder || !cardDetails.expiryDate || !cardDetails.cvv) {
+      setToast({ type: 'error', message: 'Please fill in all card details' });
+      return;
+    }
+    // Basic validation could be added here
+    setIsCardSaved(true);
+    setShowCardModal(false);
+    setToast({ type: 'success', message: 'Card details saved temporarily' });
   };
 
   const handleBuyNowApplyPromoCode = async () => {
@@ -200,6 +254,12 @@ const CheckoutPage = () => {
       return;
     }
 
+    if (paymentMethod === 'card' && !isCardSaved) {
+      setToast({ type: 'error', message: 'Please add and save your card details' });
+      setShowCardModal(true);
+      return;
+    }
+
     try {
       if (isBuyNow && buyNowProduct) {
         // Handle buy now order
@@ -209,7 +269,9 @@ const CheckoutPage = () => {
           quantity: buyNowQuantity,
           total: Math.max(((buyNowProduct.discountPrice || buyNowProduct.price) * buyNowQuantity) - buyNowAppliedDiscount, 0),
           deliveryDetails: deliveryDetails,
-          promoCode: buyNowPromoCode || null // Include promo code if applied
+          promoCode: buyNowPromoCode || null, // Include promo code if applied
+          paymentMethod: paymentMethod,
+          cardDetails: paymentMethod === 'card' ? cardDetails : null
         };
 
         await orderService.create(orderData);
@@ -226,7 +288,9 @@ const CheckoutPage = () => {
             quantity: item.quantity,
             total: Math.max(itemSubtotal - discountPortion, 0),
             deliveryDetails: deliveryDetails,
-            promoCode: promoCode || null // Include promo code if applied
+            promoCode: promoCode || null, // Include promo code if applied
+            paymentMethod: paymentMethod,
+            cardDetails: paymentMethod === 'card' ? cardDetails : null
           };
 
           return orderService.create(orderData);
@@ -356,15 +420,68 @@ const CheckoutPage = () => {
                   <FaMoneyBillWave className="mr-3 text-wood-accent" />
                   Payment Method
                 </h2>
-                <div className="bg-white/20 border-2 border-wood-accent rounded-lg p-6 flex items-center justify-between cursor-pointer">
-                  <div>
-                    <h3 className="font-bold text-white text-lg">Cash on Delivery</h3>
-                    <p className="text-wood-light text-sm">Pay with cash upon receiving your order.</p>
+                
+                <div className="flex gap-4 mb-6">
+                  <div 
+                    onClick={() => setPaymentMethod('cash')}
+                    className={`flex-1 p-4 rounded-lg border-2 cursor-pointer transition-all ${paymentMethod === 'cash' ? 'border-wood-accent bg-wood-accent/20' : 'border-white/20 hover:border-white/40 bg-white/5'}`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-white font-bold">Cash on Delivery</span>
+                      {paymentMethod === 'cash' && <div className="w-4 h-4 rounded-full bg-wood-accent"></div>}
+                    </div>
+                    <FaMoneyBillWave className="text-3xl text-wood-light" />
                   </div>
-                  <div className="w-6 h-6 rounded-full border-2 border-wood-accent flex items-center justify-center">
-                    <div className="w-3 h-3 bg-wood-accent rounded-full"></div>
+
+                  <div 
+                    onClick={() => setPaymentMethod('card')}
+                    className={`flex-1 p-4 rounded-lg border-2 cursor-pointer transition-all ${paymentMethod === 'card' ? 'border-wood-accent bg-wood-accent/20' : 'border-white/20 hover:border-white/40 bg-white/5'}`}
+                  >
+                     <div className="flex items-center justify-between mb-2">
+                      <span className="text-white font-bold">Card Payment</span>
+                      {paymentMethod === 'card' && <div className="w-4 h-4 rounded-full bg-wood-accent"></div>}
+                    </div>
+                    <FaCreditCard className="text-3xl text-wood-light" />
                   </div>
                 </div>
+
+                {paymentMethod === 'card' && (
+                  <div className="mt-4">
+                    {isCardSaved ? (
+                      <div className="bg-white/10 p-4 rounded-lg border border-white/20 flex justify-between items-center">
+                        <div className="flex items-center">
+                          <FaCreditCard className="text-2xl text-wood-accent mr-3" />
+                          <div>
+                            <p className="text-white font-bold">Card Ending in {cardDetails.cardNumber.slice(-4)}</p>
+                            <p className="text-wood-light text-sm">Expires: {cardDetails.expiryDate}</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            setIsCardSaved(false);
+                            setShowCardModal(true);
+                          }}
+                          className="text-wood-light hover:text-white underline text-sm"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => setShowCardModal(true)}
+                         className="w-full py-3 bg-wood-accent/20 border border-wood-accent text-wood-accent rounded-lg hover:bg-wood-accent hover:text-white transition-colors flex items-center justify-center font-bold"
+                      >
+                        <FaCreditCard className="mr-2" /> Add Card Details
+                      </button>
+                    )}
+                  </div>
+                )}
+                
+                {paymentMethod === 'cash' && (
+                  <div className="text-wood-light text-sm mt-2">
+                    Pay with cash upon receiving your order.
+                  </div>
+                )}
               </div>
             </div>
 
@@ -496,6 +613,80 @@ const CheckoutPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Card Details Modal */}
+        {showCardModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+             <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowCardModal(false)}></div>
+             <div className="relative bg-nav-brown border border-wood-light rounded-2xl w-full max-w-md p-8 shadow-2xl">
+               <h3 className="text-2xl font-bold text-white mb-6">Add Card Details</h3>
+               <form onSubmit={handleSaveCard} className="space-y-4">
+                 <div>
+                   <label className="block text-wood-light text-sm mb-1">Card Number</label>
+                   <input 
+                     type="text" 
+                     name="cardNumber"
+                     value={cardDetails.cardNumber}
+                     onChange={handleCardInputChange}
+                     placeholder="**** **** **** ****"
+                     className="w-full bg-white/10 border border-white/20 rounded-lg text-white p-3 focus:outline-none focus:ring-2 focus:ring-wood-accent"
+                   />
+                 </div>
+                 <div>
+                   <label className="block text-wood-light text-sm mb-1">Card Holder Name</label>
+                   <input 
+                     type="text" 
+                     name="cardHolder"
+                     value={cardDetails.cardHolder}
+                     onChange={handleCardInputChange}
+                     placeholder="John Doe"
+                     className="w-full bg-white/10 border border-white/20 rounded-lg text-white p-3 focus:outline-none focus:ring-2 focus:ring-wood-accent"
+                   />
+                 </div>
+                 <div className="flex gap-4">
+                   <div className="flex-1">
+                     <label className="block text-wood-light text-sm mb-1">Expiry Date</label>
+                     <input 
+                       type="text" 
+                       name="expiryDate"
+                       value={cardDetails.expiryDate}
+                       onChange={handleCardInputChange}
+                       placeholder="MM/YY"
+                       className="w-full bg-white/10 border border-white/20 rounded-lg text-white p-3 focus:outline-none focus:ring-2 focus:ring-wood-accent"
+                     />
+                   </div>
+                   <div className="flex-1">
+                     <label className="block text-wood-light text-sm mb-1">CVV</label>
+                     <input 
+                       type="text" 
+                       name="cvv"
+                       value={cardDetails.cvv}
+                       onChange={handleCardInputChange}
+                       placeholder="123"
+                       className="w-full bg-white/10 border border-white/20 rounded-lg text-white p-3 focus:outline-none focus:ring-2 focus:ring-wood-accent"
+                     />
+                   </div>
+                 </div>
+                 
+                 <div className="flex gap-4 mt-8">
+                   <button 
+                     type="button"
+                     onClick={() => setShowCardModal(false)}
+                     className="flex-1 py-3 border border-white/20 text-white rounded-lg hover:bg-white/10 transition-colors"
+                   >
+                     Cancel
+                   </button>
+                   <button 
+                     type="submit"
+                     className="flex-1 py-3 bg-wood-accent text-white font-bold rounded-lg hover:bg-wood-accent-hover transition-colors"
+                   >
+                     Save Card
+                   </button>
+                 </div>
+               </form>
+             </div>
+          </div>
+        )}
 
         {/* Toast Notification */}
         {toast && (

@@ -296,6 +296,7 @@ export interface Order {
   delivery_phone?: string;
   delivery_email?: string;
   created_at?: string;
+  payments?: { payment_type: string }[];
   customer?: {
     name: string;
     email: string;
@@ -328,10 +329,11 @@ export interface GroupedOrder {
   delivery_email: string;
   items: GroupedOrderItem[];
   total: number;
+  payment_method: string;
 }
 
 export const orderService = {
-  create: async (orderData: { product_id: number, quantity: number, total: number, deliveryDetails: DeliveryDetails }): Promise<{ message: string; order: Order }> => {
+  create: async (orderData: { product_id: number, quantity: number, total: number, deliveryDetails: DeliveryDetails, promoCode?: string | null, paymentMethod?: string, cardDetails?: any }): Promise<{ message: string; order: Order }> => {
     const response = await api.post('/orders', orderData);
     return response.data;
   },
@@ -406,6 +408,35 @@ export const promotionService = {
 
   apply: async (code: string): Promise<{ valid: boolean; promotion?: any; error?: string }> => {
     const response = await api.post('/promotions/apply', { code });
+    return response.data;
+  }
+};
+
+export interface ContactData {
+  first_name: string;
+  last_name: string;
+  mobile_number?: string;
+  email: string;
+  message: string;
+  user_id?: string;
+}
+
+export const contactService = {
+  submit: async (data: ContactData): Promise<{ message: string }> => {
+    const response = await api.post('/contact', data);
+    return response.data;
+  }
+};
+
+export interface RefundRequestData {
+  order_id: number;
+  user_id: string;
+  message: string;
+}
+
+export const refundService = {
+  create: async (data: RefundRequestData): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post('/refunds', data);
     return response.data;
   }
 };

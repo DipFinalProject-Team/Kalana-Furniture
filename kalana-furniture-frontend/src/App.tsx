@@ -17,6 +17,8 @@ import ReviewPage from './pages/ReviewPage';
 import CheckoutPage from './pages/CheckoutPage';
 import Story from './pages/Story';
 import Contact from './pages/Contact';
+import NotificationPage from './pages/NotificationPage';
+import RefundRequestPage from './pages/RefundRequestPage';
 function App() {
   const navigate = useNavigate();
 
@@ -42,6 +44,8 @@ function App() {
             <Route path="/product/:id" element={<ProductDetailsPage />} />
             <Route path="/review/:id" element={<ReviewPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/notifications" element={<NotificationPage />} />
+            <Route path="/refund-request" element={<RefundRequestPage />} />
             <Route path="*" element={<HomePage />} />
           </Routes>
         </div>
