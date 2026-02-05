@@ -486,6 +486,42 @@ exports.updateSupplierStatus = async (req, res) => {
   }
 };
 
+exports.deleteSupplier = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Delete related contact forms first (since no cascade)
+    const { error: contactError } = await supabase
+      .from('supplier_contact_form')
+      .delete()
+      .eq('supplier_id', id);
+
+    if (contactError) {
+      console.error('Error deleting supplier contacts:', contactError);
+      throw contactError;
+    }
+
+    const { error } = await supabase
+      .from('suppliers')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: 'Supplier deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete supplier error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete supplier: ' + (error.message || 'Unknown error'),
+      error: error
+    });
+  }
+};
+
 exports.getAllSupplierContacts = async (req, res) => {
   try {
     // Note: 'response' and 'status' columns might not exist in the database yet.

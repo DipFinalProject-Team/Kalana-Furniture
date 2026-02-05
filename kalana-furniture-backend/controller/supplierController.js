@@ -1083,3 +1083,32 @@ exports.getOrderTrends = async (req, res) => {
     });
   }
 };
+
+exports.getNotifications = async (req, res) => {
+  try {
+    const supplierId = req.supplier.sub;
+
+    // Fetch messages from supplier_contact_form where response is not null
+    const { data: notifications, error } = await supabase
+      .from('supplier_contact_form')
+      .select('*')
+      .eq('supplier_id', supplierId)
+      .not('response', 'is', null)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: notifications
+    });
+  } catch (error) {
+    console.error('Get notifications error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch notifications'
+    });
+  }
+};

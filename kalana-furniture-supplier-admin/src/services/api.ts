@@ -36,7 +36,7 @@ export const authService = {
 };
 
 export interface Supplier {
-  supplier_id: number;
+  id: number;
   name: string;
   company_name?: string;
   email: string;
@@ -64,6 +64,10 @@ export const supplierService = {
 
   reject: async (id: number): Promise<void> => {
     await api.put(`/admin/suppliers/${id}/reject`);
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/admin/suppliers/${id}`);
   },
 };
 

@@ -23,6 +23,7 @@ router.get('/suppliers/approved', adminController.getApprovedSuppliers);
 router.put('/suppliers/:id/approve', adminController.approveSupplier);
 router.put('/suppliers/:id/reject', adminController.rejectSupplier);
 router.put('/suppliers/:id/status', adminController.updateSupplierStatus);
+router.delete('/suppliers/:id', adminController.deleteSupplier);
 
 // Supplier contact management routes
 router.get('/supplier-contacts', adminController.getAllSupplierContacts);

@@ -33,4 +33,7 @@ router.put('/orders/:id/details', authenticateSupplier, supplierController.updat
 router.get('/invoices', authenticateSupplier, supplierController.getInvoices);
 router.get('/invoices/:id', authenticateSupplier, supplierController.getInvoiceDetails);
 
+// Notification routes
+router.get('/notifications', authenticateSupplier, supplierController.getNotifications);
+
 module.exports = router;

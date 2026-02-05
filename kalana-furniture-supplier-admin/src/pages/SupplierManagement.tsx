@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LuSearch, LuFilter, LuEye, LuCheck, LuX } from 'react-icons/lu';
+import { LuSearch, LuFilter, LuEye, LuCheck, LuX, LuTrash } from 'react-icons/lu';
 import { supplierService, type Supplier } from '../services/api';
 import ConfirmationModal from '../components/ConfirmationModal';
 
@@ -13,7 +13,7 @@ const SupplierManagement: React.FC = () => {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<'toggle' | 'approve' | 'reject'>('toggle');
+  const [confirmAction, setConfirmAction] = useState<'toggle' | 'approve' | 'reject' | 'delete'>('toggle');
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
@@ -71,6 +71,12 @@ const SupplierManagement: React.FC = () => {
     setIsStatusModalOpen(true);
   };
 
+  const handleDeleteClick = (supplier: Supplier) => {
+    setSelectedSupplier(supplier);
+    setConfirmAction('delete');
+    setIsStatusModalOpen(true);
+  };
+
   const confirmStatusChange = async () => {
     if (!selectedSupplier) return;
 
@@ -78,23 +84,31 @@ const SupplierManagement: React.FC = () => {
       setUpdatingStatus(true);
       
       let newStatus = '';
-      if (confirmAction === 'approve') {
-        await supplierService.approve(selectedSupplier.supplier_id);
-        newStatus = 'approved';
-      } else if (confirmAction === 'reject') {
-        await supplierService.reject(selectedSupplier.supplier_id);
-        newStatus = 'rejected';
+      if (confirmAction === 'delete') {
+         if (selectedSupplier.id) {
+           await supplierService.delete(selectedSupplier.id);
+           setSuppliers(prev => prev.filter(s => s.id !== selectedSupplier.id));
+           setFilteredSuppliers(prev => prev.filter(s => s.id !== selectedSupplier.id));
+         }
       } else {
-        newStatus = selectedSupplier.status === 'Active' ? 'Inactive' : 'Active';
-        await supplierService.updateStatus(selectedSupplier.supplier_id, newStatus);
-      }
+        if (confirmAction === 'approve') {
+          await supplierService.approve(selectedSupplier.id);
+          newStatus = 'approved';
+        } else if (confirmAction === 'reject') {
+          await supplierService.reject(selectedSupplier.id);
+          newStatus = 'rejected';
+        } else {
+          newStatus = selectedSupplier.status === 'Active' ? 'Inactive' : 'Active';
+          await supplierService.updateStatus(selectedSupplier.id, newStatus);
+        }
 
-      // Update local state
-      setSuppliers(prev => prev.map(supplier =>
-        supplier.supplier_id === selectedSupplier.supplier_id
-          ? { ...supplier, status: newStatus }
-          : supplier
-      ));
+        // Update local state
+        setSuppliers(prev => prev.map(supplier =>
+          supplier.id === selectedSupplier.id
+            ? { ...supplier, status: newStatus }
+            : supplier
+        ));
+      }
 
       setIsStatusModalOpen(false);
       setSelectedSupplier(null);
@@ -201,7 +215,7 @@ const SupplierManagement: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredSuppliers.map((supplier) => (
-                <tr key={supplier.supplier_id} className="hover:bg-gray-50">
+                <tr key={supplier.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div className="text-sm font-medium text-gray-900">{supplier.company_name || supplier.name}</div>
@@ -248,6 +262,14 @@ const SupplierManagement: React.FC = () => {
                           </button>
                         </>
                       )}
+
+                      <button
+                        onClick={() => handleDeleteClick(supplier)}
+                        className="text-gray-400 hover:text-red-600 transition-colors"
+                        title="Delete Supplier"
+                      >
+                        <LuTrash className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -363,15 +385,20 @@ const SupplierManagement: React.FC = () => {
         title={
           confirmAction === 'approve' ? 'Approve Supplier' : 
           confirmAction === 'reject' ? 'Reject Supplier' : 
+          confirmAction === 'delete' ? 'Delete Supplier' :
           'Change Supplier Status'
         }
         message={
           confirmAction === 'approve' ? `Are you sure you want to approve ${selectedSupplier?.name}? They will be able to log in.` :
           confirmAction === 'reject' ? `Are you sure you want to reject ${selectedSupplier?.name}?` :
+          confirmAction === 'delete' ? `Are you sure you want to delete ${selectedSupplier?.name}? This action cannot be undone.` :
           `Are you sure you want to ${selectedSupplier?.status === 'Active' ? 'deactivate' : 'activate'} ${selectedSupplier?.name}?`
         }
-        confirmText={updatingStatus ? 'Updating...' : 'Confirm'}
-        type={confirmAction === 'reject' ? 'danger' : 'warning'}
+        confirmText={
+          updatingStatus ? 'Updating...' : 
+          confirmAction === 'delete' ? 'Delete' : 'Confirm'
+        }
+        type={confirmAction === 'reject' || confirmAction === 'delete' ? 'danger' : 'warning'}
       />
     </div>
   );

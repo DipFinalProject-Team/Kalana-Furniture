@@ -47,8 +47,8 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   const styles = getTypeStyles();
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+    <div className="fixed inset-0 bg-transparent backdrop-blur-md flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 border border-gray-100">
         <div className="p-6">
           <div className="flex items-center mb-4">
             <FaExclamationTriangle className={`w-6 h-6 mr-3 ${styles.icon}`} />

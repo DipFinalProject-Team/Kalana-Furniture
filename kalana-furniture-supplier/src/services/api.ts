@@ -128,5 +128,10 @@ export const supplierService = {
   submitContactForm: async (data: { supplier_id: string, message: string }): Promise<{ success: boolean; message: string }> => {
     const response = await api.post('/supplier-contact', data);
     return response.data;
+  },
+
+  getNotifications: async () => {
+    const response = await api.get('/suppliers/notifications');
+    return response.data;
   }
 };
