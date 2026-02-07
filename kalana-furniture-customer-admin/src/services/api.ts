@@ -108,3 +108,32 @@ export interface RefundRequest {
   status: string;
   created_at: string;
 }
+
+export interface Order {
+  id: number;
+  customer_id: string;
+  product_id: number;
+  quantity: number;
+  total: number;
+  status: string;
+  delivery_name: string;
+  delivery_address: string;
+  delivery_phone: string;
+  delivery_email: string;
+  created_at: string;
+  customer?: {
+    name: string;
+    email: string;
+  };
+  product?: {
+    productName: string;
+    images: string[];
+  };
+}
+
+export const orderService = {
+  getAll: async (): Promise<Order[]> => {
+    const response = await api.get('/admin/orders');
+    return response.data;
+  }
+};

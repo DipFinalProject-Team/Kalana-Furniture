@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import CustomerManagement from './pages/CustomerManagement';
 import Inquiries from './pages/Inquiries';
 import RefundRequests from './pages/RefundRequests';
+import OrderManagement from './pages/OrderManagement';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -52,6 +53,7 @@ const AppContent: React.FC = () => {
         }
       >
         <Route index element={<Dashboard />} />
+        <Route path="orders" element={<OrderManagement />} />
         <Route path="customers" element={<CustomerManagement />} />
         <Route path="inquiries" element={<Inquiries />} />
         <Route path="refunds" element={<RefundRequests />} />

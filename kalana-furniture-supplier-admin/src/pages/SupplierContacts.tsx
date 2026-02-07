@@ -62,8 +62,9 @@ const SupplierContacts: React.FC = () => {
         setSelectedContact({ ...selectedContact, status: 'Resolved', response: responseText.trim() });
 
         showToast('Response sent successfully! Contact marked as resolved.', 'success');
-        setIsDetailModalOpen(false);
-        setResponseText('');
+        // Keep modal open to show the resolved state and response
+        // setIsDetailModalOpen(false); 
+        // setResponseText(''); // Keep text or clear it? Clearing it might be confusing if we switch to read-only view which uses selectedContact.response
       } catch (err) {
         console.error('Error sending response:', err);
         showToast('Failed to send response', 'error');

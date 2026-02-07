@@ -540,6 +540,8 @@ exports.getAllSupplierContacts = async (req, res) => {
         supplier_contact_form_id,
         supplier_id,
         message,
+        response,
+        status,
         created_at,
         suppliers (
           name,
@@ -558,6 +560,8 @@ exports.getAllSupplierContacts = async (req, res) => {
             supplier_contact_form_id,
             supplier_id,
             message,
+            response,
+            status,
             created_at,
             suppliers (
               company_name,

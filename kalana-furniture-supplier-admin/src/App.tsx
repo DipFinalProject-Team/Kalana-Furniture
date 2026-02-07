@@ -6,6 +6,9 @@ import Dashboard from './pages/Dashboard';
 import LoginPage from './pages/LoginPage';
 import SupplierManagement from './pages/SupplierManagement';
 import SupplierContacts from './pages/SupplierContacts';
+import Inventory from './pages/Inventory';
+import CreateSupplierOrder from './pages/CreateSupplierOrder';
+import Invoice from './pages/Invoice';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -52,6 +55,9 @@ const AppContent: React.FC = () => {
       >
         <Route index element={<Dashboard />} />
         <Route path="suppliers" element={<SupplierManagement />} />
+        <Route path="inventory" element={<Inventory />} />
+        <Route path="inventory/create-order" element={<CreateSupplierOrder />} />
+        <Route path="invoices" element={<Invoice />} />
         <Route path="contacts" element={<SupplierContacts />} />
         <Route path="reports" element={<div className="p-4 text-gray-600">Reports (Coming Soon)</div>} />
       </Route>

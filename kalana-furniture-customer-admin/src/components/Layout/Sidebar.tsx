@@ -7,7 +7,7 @@ import {
   LuUsers,
   LuMessageSquare
 } from 'react-icons/lu';
-import { FaCreditCard } from 'react-icons/fa';
+import { FaCreditCard, FaShoppingBag } from 'react-icons/fa';
 import ConfirmationModal from '../ConfirmationModal';
 
 const Sidebar: React.FC = () => {
@@ -16,8 +16,10 @@ const Sidebar: React.FC = () => {
   const { logout } = useAuth();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
+  // Force re-render list
   const navItems = [
     { path: '/', name: 'Dashboard', icon: LuLayoutDashboard },
+    { path: '/orders', name: 'Orders', icon: FaShoppingBag },
     { path: '/customers', name: 'Customers', icon: LuUsers },
     { path: '/inquiries', name: 'Inquiries', icon: LuMessageSquare },
     { path: '/refunds', name: 'Refunds', icon: FaCreditCard },

@@ -5,7 +5,9 @@ import {
   LuLayoutDashboard,
   LuLogOut,
   LuUsers,
-  LuMessageSquare
+  LuMessageSquare,
+  LuPackage,
+  LuFileText
 } from 'react-icons/lu';
 import ConfirmationModal from '../ConfirmationModal';
 
@@ -18,6 +20,8 @@ const Sidebar: React.FC = () => {
   const navItems = [
     { path: '/', name: 'Dashboard', icon: LuLayoutDashboard },
     { path: '/suppliers', name: 'Suppliers', icon: LuUsers },
+    { path: '/inventory', name: 'Inventory', icon: LuPackage },
+    { path: '/invoices', name: 'Invoices', icon: LuFileText },
     { path: '/contacts', name: 'Contacts', icon: LuMessageSquare },
   ];
 

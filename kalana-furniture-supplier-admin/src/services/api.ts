@@ -95,4 +95,94 @@ export const supplierContactService = {
   },
 };
 
+
+export interface InventoryItem {
+  id: number;
+  productName: string;
+  sku: string;
+  category: string;
+  price: number;
+  stock: number;
+  status: string;
+  lastUpdated: string;
+  image: string;
+  description?: string;
+  images?: string[];
+}
+
+export interface SupplierOrder {
+  id: string;
+  productName: string;
+  quantity: number;
+  expectedDelivery: string;
+  totalPrice: number | null;
+  status: 'Pending' | 'Accepted' | 'Rejected' | 'Dispatched' | 'Delivered' | 'Completed';
+  orderDate: string;
+  actualDeliveryDate?: string;
+  deliveryNotes?: string;
+  supplierId?: string;
+  supplierName?: string;
+}
+
+export interface Invoice {
+  id: string;
+  orderId: string;
+  supplierName: string;
+  amount: number;
+  date: string;
+  dueDate: string;
+  status: 'Pending' | 'Paid' | 'Overdue';
+  paymentDate?: string;
+}
+
+export const inventoryService = {
+  getInventory: async (): Promise<InventoryItem[]> => {
+    const response = await api.get('/admin/inventory');
+    return response.data.inventory;
+  },
+
+  updateStock: async (id: number, stock: number): Promise<{ success: boolean; message: string; product: InventoryItem }> => {
+    const response = await api.put(`/admin/inventory/${id}/stock`, { stock });
+    return response.data;
+  },
+
+  getPurchaseOrders: async (): Promise<SupplierOrder[]> => {
+    const response = await api.get('/admin/purchase-orders');
+    return response.data.orders;
+  },
+
+  createPurchaseOrder: async (orderData: {
+    productId: number;
+    supplierId: number;
+    quantity: number;
+    expectedDelivery: string;
+    pricePerUnit?: number;
+  }): Promise<{ success: boolean; message: string; order: SupplierOrder }> => {
+    const response = await api.post('/admin/purchase-orders', orderData);
+    return response.data;
+  },
+
+  updatePurchaseOrderStatus: async (id: number, status: string, additionalData?: {
+    actualDeliveryDate?: string;
+    deliveryNotes?: string;
+  }): Promise<{ success: boolean; message: string; order: SupplierOrder }> => {
+    const response = await api.put(`/admin/purchase-orders/${id}/status`, { status, ...additionalData });
+    return response.data;
+  },
+
+  getApprovedSuppliers: async (): Promise<Supplier[]> => {
+     const response = await api.get('/admin/suppliers/approved');
+     return response.data;
+  },
+
+  getInvoices: async (): Promise<Invoice[]> => {
+    const response = await api.get('/admin/invoices');
+    return response.data.invoices;
+  },
+
+  markInvoiceAsPaid: async (id: string): Promise<void> => {
+    await api.put(`/admin/invoices/${id}/pay`);
+  }
+};
+
 export { api };
